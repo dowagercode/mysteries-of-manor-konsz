@@ -1,0 +1,2328 @@
+<title>Mysteries of Manor Konsz</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Grenze+Gotisch:wght@600;800&family=Nunito:wght@400;600;800&family=Patrick+Hand&display=swap">
+<style>
+/* Layout: a game cabinet. Scene on top, short caption under it, item drawer at the bottom. One dark look on purpose. */
+:root {
+  --bg: #120d1a;
+  --panel: #1f1729;
+  --panel-2: #2a2036;
+  --ink: #ece6f5;
+  --muted: #a99cbf;
+  --accent: #c58af0;
+  --gold: #f6e7b8;
+  --display: "Grenze Gotisch", Georgia, serif;
+  --body: "Nunito", system-ui, -apple-system, sans-serif;
+  --hand: "Patrick Hand", "Comic Sans MS", "Chalkboard SE", cursive;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.5; }
+.wrap {
+  max-width: 980px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 32px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(1.8rem, 5vw, 2.6rem); margin: 0; line-height: 1; }
+.who { font-family: var(--hand); font-size: 1.2rem; color: var(--accent); }
+.tools { display: flex; gap: 8px; flex-wrap: wrap; }
+
+#game { display: flex; flex-direction: column; gap: 12px; }
+#game[hidden] { display: none; }
+#game:fullscreen { background: var(--bg); padding: 16px; justify-content: center; overflow: auto; }
+#game:fullscreen .stage svg { max-height: calc(100vh - 230px); width: auto; max-width: 100%; margin: 0 auto; }
+#game:fullscreen .stage { background: var(--bg); border-color: transparent; }
+
+.stage { position: relative; border-radius: 14px; overflow: hidden; border: 2px solid var(--panel-2); background: #000; }
+.stage svg { display: block; width: 100%; height: auto; }
+.flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+.hot { fill: transparent; cursor: pointer; }
+.hot:hover, .hot:focus-visible { fill: rgba(246, 231, 184, 0.10); stroke: var(--gold); stroke-width: 3; stroke-dasharray: 8 6; outline: none; }
+body.using .hot { cursor: copy; }
+body.busy .hot, body.busy .marker { display: none; }
+.marker { fill: var(--gold); stroke: #2a1f3d; stroke-width: 3; pointer-events: none; opacity: 0.9; }
+.anim { transform-box: fill-box; transform-origin: center; }
+#badguy, #witchBody, #mayH { transform-origin: 50% 100%; }
+@media (prefers-reduced-motion: no-preference) {
+  .marker { animation: blink 1.6s ease-in-out infinite; }
+  .bob { animation: bob 2.6s ease-in-out infinite; }
+  @keyframes blink { 50% { opacity: 0.35; } }
+  @keyframes bob { 50% { transform: translateY(-8px); } }
+}
+.room-title {
+  position: absolute; left: 12px; top: 10px;
+  font-family: var(--hand); font-size: 1.15rem; color: var(--gold);
+  background: rgba(18, 13, 26, 0.7); padding: 2px 10px; border-radius: 8px;
+}
+
+.story {
+  background: var(--panel); border-radius: 12px; padding: 12px 16px;
+  min-height: 84px; display: flex; flex-direction: column; gap: 6px;
+}
+.goal { font-weight: 800; color: var(--gold); font-size: 0.95rem; min-height: 1.4em; }
+.goal:not(:empty)::before { content: "Goal: "; color: var(--muted); font-weight: 600; }
+.caption { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.speaker { font-family: var(--hand); font-size: 1.4rem; color: var(--accent); line-height: 1; }
+.line { font-size: 1.15rem; font-weight: 600; }
+.story-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.hover-label { color: var(--muted); font-size: 0.92rem; min-height: 1.4em; }
+button {
+  font: inherit; font-weight: 800; border: 0; border-radius: 10px; padding: 8px 16px; cursor: pointer;
+  background: var(--accent); color: #1a1022;
+}
+button:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+button.ghost { background: var(--panel-2); color: var(--ink); }
+button[aria-pressed="true"] { background: var(--gold); color: #1a1022; }
+.exits { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.drawer {
+  background: var(--panel); border-radius: 12px; padding: 10px 12px;
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.drawer-label { font-family: var(--hand); font-size: 1.2rem; color: var(--gold); }
+.slots { display: flex; gap: 10px; flex-wrap: wrap; }
+.slot {
+  width: 64px; height: 64px; border-radius: 10px; background: var(--panel-2);
+  border: 2px solid transparent; padding: 6px; display: grid; place-items: center; cursor: pointer;
+}
+.slot svg { width: 100%; height: 100%; }
+.slot.selected { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(246, 231, 184, 0.25); }
+.slot.empty { cursor: default; opacity: 0.4; }
+.drawer-hint { color: var(--muted); font-size: 0.92rem; flex: 1 1 200px; min-width: 0; }
+
+.screen {
+  background: var(--panel); border-radius: 14px; padding: 28px 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 18px; text-align: center;
+}
+.screen h2 { font-family: var(--display); font-size: clamp(2rem, 7vw, 3.4rem); margin: 0; line-height: 1; text-wrap: balance; }
+.screen p { margin: 0; color: var(--muted); max-width: 52ch; }
+.cover { width: 100%; max-width: 560px; height: auto; border-radius: 10px; background: #fff; }
+.kids { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; width: 100%; max-width: 720px; }
+@media (max-width: 560px) { .kids { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.kid {
+  background: var(--panel-2); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  border: 2px solid transparent; color: var(--ink);
+}
+.kid:hover { border-color: var(--accent); }
+.kid svg { width: 100%; max-width: 130px; height: auto; }
+.kid span { font-family: var(--hand); font-size: 1.4rem; font-weight: 400; }
+.map { position: absolute; inset: 0; background: rgba(18, 13, 26, 0.92); display: grid; place-items: center; padding: 12px; overflow: auto; }
+.map[hidden] { display: none; }
+.map-panel { display: flex; flex-direction: column; gap: 10px; align-items: center; width: min(560px, 100%); }
+.map h3 { font-family: var(--hand); font-size: 1.5rem; font-weight: 400; margin: 0; color: var(--gold); }
+.ship-map { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.7fr) minmax(0, 1fr); gap: 6px; width: 100%; background: #2c364c; border: 3px solid #9aa7c2; border-radius: 120px 120px 24px 24px; padding: 14px; }
+.ship-map .fore { border-radius: 60px 60px 8px 8px; background: #4b5b78; }
+.ship-map .aft { border-radius: 8px 8px 20px 20px; background: #4b5b78; }
+.ship-map .hub { background: #6b5a8a; }
+.ship-map .hall { background: #283247; color: var(--muted); writing-mode: vertical-rl; }
+.ship-map button { padding: 8px 4px; font-size: 0.85rem; background: #3d4a66; color: var(--ink); min-width: 0; }
+.ship-map .cockpit { grid-column: 1 / -1; border-radius: 40px 40px 8px 8px; }
+.ship-map .wide { grid-column: span 2; }
+.fridge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 8px; width: 100%; background: #dfe6f2; border: 4px solid #9aa7c2; border-radius: 14px; padding: 12px; }
+.fridge-item { display: flex; flex-direction: column; align-items: center; gap: 2px; background: #fff; color: #2a1f3d; padding: 6px; font-size: 0.8rem; min-width: 0; }
+.fridge-item svg { width: 40px; height: 40px; }
+.fridge-item.taken { opacity: 0.35; }
+.ship-map .hideout { grid-column: 1 / -1; background: #5a2a8a; }
+.ship-map .here { outline: 3px solid var(--gold); }
+@media (prefers-reduced-motion: no-preference) { .blinky { animation: blink 1.2s ease-in-out infinite; } }
+.kid-pick { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; }
+.kid-pick svg { width: 22px; height: 30px; }
+.special { background: var(--gold); color: #1a1022; }
+.skip { color: var(--muted); font-size: 0.9rem; }
+.skip summary { cursor: pointer; }
+.skip .exits { margin-top: 10px; justify-content: center; }
+.floor { fill: transparent; cursor: pointer; }
+#bubbles { pointer-events: none; }
+.player { cursor: pointer; }
+.note { color: var(--muted); font-size: 0.85rem; text-align: center; }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <radialGradient id="portalGrad" cx="45%" cy="40%" r="70%">
+      <stop offset="0" stop-color="#f1d9ff"/>
+      <stop offset="0.45" stop-color="#a965e6"/>
+      <stop offset="1" stop-color="#4b1f7a"/>
+    </radialGradient>
+    <radialGradient id="ballGlow">
+      <stop offset="0" stop-color="#fff6a8" stop-opacity="0.95"/>
+      <stop offset="0.5" stop-color="#ffe066" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#ffe066" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="discGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#c99af5"/>
+      <stop offset="1" stop-color="#6a2fb0"/>
+    </linearGradient>
+    <radialGradient id="orbGlow">
+      <stop offset="0" stop-color="#b9ffe3" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#7cf0c0" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- May -->
+    <symbol id="may" viewBox="0 0 200 300">
+      <g stroke="#2a1f3d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <circle cx="60" cy="58" r="26" fill="#6b3f2a"/>
+        <circle cx="140" cy="58" r="26" fill="#6b3f2a"/>
+        <path d="M86 158 L50 192" fill="none"/>
+        <path d="M114 158 L152 186" fill="none"/>
+        <circle cx="48" cy="194" r="7" fill="#f3c9a5" stroke-width="3"/>
+        <circle cx="155" cy="188" r="7" fill="#f3c9a5" stroke-width="3"/>
+        <path d="M90 232 L76 278" fill="none"/>
+        <path d="M110 232 L124 278" fill="none"/>
+        <ellipse cx="70" cy="282" rx="13" ry="6" fill="#8a2c55"/>
+        <ellipse cx="130" cy="282" rx="13" ry="6" fill="#8a2c55"/>
+        <path d="M84 140 L116 140 L140 234 Q100 246 60 234 Z" fill="#e8669a"/>
+        <circle cx="100" cy="100" r="44" fill="#f3c9a5"/>
+        <path d="M56 100 Q56 54 100 54 Q144 54 144 100 Q128 78 100 82 Q72 78 56 100 Z" fill="#6b3f2a"/>
+        <path d="M88 124 Q100 136 112 124" fill="none"/>
+      </g>
+      <circle cx="74" cy="120" r="6" fill="#f29bb0" opacity="0.8"/>
+      <circle cx="126" cy="120" r="6" fill="#f29bb0" opacity="0.8"/>
+      <path transform="translate(83 106)" d="M0 -10 L3 -3 L10 0 L3 3 L0 10 L-3 3 L-10 0 L-3 -3Z" fill="#2a1f3d"/>
+      <path transform="translate(117 106)" d="M0 -10 L3 -3 L10 0 L3 3 L0 10 L-3 3 L-10 0 L-3 -3Z" fill="#2a1f3d"/>
+      <path transform="translate(100 196)" d="M0 -8 L2.4 -2.4 L8 0 L2.4 2.4 L0 8 L-2.4 2.4 L-8 0 L-2.4 -2.4Z" fill="#fff"/>
+    </symbol>
+
+    <!-- Jon's purple oval -->
+    <symbol id="jon-oval" viewBox="0 0 220 300">
+      <ellipse cx="40" cy="176" rx="34" ry="104" fill="#b77cf0" opacity="0.25"/>
+      <ellipse cx="40" cy="176" rx="28" ry="96" fill="url(#portalGrad)" stroke="#2a1f3d" stroke-width="4"/>
+      <ellipse cx="33" cy="146" rx="7" ry="44" fill="#fff" opacity="0.3"/>
+    </symbol>
+
+    <!-- Jon -->
+    <symbol id="jon" viewBox="0 0 220 300">
+      <g stroke="#2a1f3d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M112 244 L104 282" fill="none"/>
+        <path d="M134 244 L142 282" fill="none"/>
+        <ellipse cx="99" cy="285" rx="13" ry="6" fill="#e04e39"/>
+        <ellipse cx="147" cy="285" rx="13" ry="6" fill="#e04e39"/>
+        <path d="M100 160 L66 196" fill="none"/>
+        <path d="M144 160 L172 198" fill="none"/>
+        <circle cx="64" cy="198" r="7" fill="#e9b48a" stroke-width="3"/>
+        <circle cx="174" cy="200" r="7" fill="#e9b48a" stroke-width="3"/>
+        <path d="M98 146 L146 146 L152 214 L92 214 Z" fill="#3a86c8"/>
+        <polygon points="122,164 125.5,173.1 135.3,173.7 127.7,179.9 130.2,189.3 122,184 113.8,189.3 116.3,179.9 108.7,173.7 118.5,173.1" fill="#ffd23f" stroke-width="2.5"/>
+        <path d="M92 212 L152 212 L156 248 L128 248 L122 230 L116 248 L88 248 Z" fill="#2f4a6e"/>
+        <polygon points="80,106 76,46 96,72 104,22 118,64 134,26 140,70 166,50 162,108" fill="#f0a830"/>
+        <circle cx="122" cy="106" r="40" fill="#e9b48a"/>
+        <path d="M110 120 Q122 130 134 120" fill="none"/>
+      </g>
+      <circle cx="108" cy="102" r="4.5" fill="#2a1f3d"/>
+      <circle cx="136" cy="102" r="4.5" fill="#2a1f3d"/>
+    </symbol>
+
+    <!-- Jasin -->
+    <symbol id="jasin" viewBox="0 0 200 300">
+      <circle cx="160" cy="262" r="40" fill="url(#ballGlow)"/>
+      <g stroke="#2a1f3d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M90 240 L84 282" fill="none"/>
+        <path d="M110 240 L136 262" fill="none"/>
+        <ellipse cx="80" cy="285" rx="13" ry="6" fill="#222"/>
+        <ellipse cx="139" cy="266" rx="10" ry="6" fill="#222" transform="rotate(-30 139 266)"/>
+        <path d="M120 158 L150 196" fill="none"/>
+        <circle cx="152" cy="198" r="7" fill="#c68a5e" stroke-width="3"/>
+        <path d="M80 144 L120 144 L128 212 L72 212 Z" fill="#3fae6a"/>
+        <path d="M72 210 L128 210 L130 242 L104 242 L100 228 L96 242 L70 242 Z" fill="#f4f4f4"/>
+        <path d="M82 158 L60 196" fill="none"/>
+        <circle cx="50" cy="190" r="21" fill="#fff"/>
+        <circle cx="62" cy="196" r="7" fill="#c68a5e" stroke-width="3"/>
+        <circle cx="100" cy="100" r="42" fill="#c68a5e"/>
+        <path d="M58 96 Q54 60 78 52 Q84 38 100 46 Q114 34 124 50 Q146 52 142 80 Q148 90 142 98 Q132 76 112 74 Q100 84 86 74 Q70 80 58 96 Z" fill="#3b2a20"/>
+        <path d="M78 114 Q100 146 122 114 Z" fill="#fff"/>
+        <circle cx="160" cy="262" r="18" fill="#fff"/>
+      </g>
+      <polygon points="50,182 57.6,187.5 54.7,196.5 45.3,196.5 42.4,187.5" fill="#2a1f3d"/>
+      <text x="100" y="192" text-anchor="middle" font-family="Nunito, sans-serif" font-weight="800" font-size="22" fill="#fff">10</text>
+      <circle cx="86" cy="98" r="4.5" fill="#2a1f3d"/>
+      <circle cx="114" cy="98" r="4.5" fill="#2a1f3d"/>
+      <polygon points="160,255 166.7,259.8 164.1,267.7 155.9,267.7 153.3,259.8" fill="#2a1f3d"/>
+      <g stroke="#f2b705" stroke-width="3" stroke-linecap="round">
+        <path d="M160 228 L160 218"/><path d="M188 240 L196 234"/><path d="M190 270 L199 274"/><path d="M134 236 L127 229"/>
+      </g>
+    </symbol>
+
+    <!-- Olivia -->
+    <symbol id="olivia" viewBox="0 0 200 300">
+      <g stroke="#2a1f3d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M64 82 Q24 92 30 150 Q46 136 60 112 Z" fill="#a8452f"/>
+        <path d="M136 82 Q176 92 170 150 Q154 136 140 112 Z" fill="#a8452f"/>
+        <path d="M58 96 Q56 50 100 50 Q144 50 142 96 Z" fill="#a8452f"/>
+        <circle cx="57" cy="92" r="6" fill="#e8669a" stroke-width="3"/>
+        <circle cx="143" cy="92" r="6" fill="#e8669a" stroke-width="3"/>
+        <path d="M92 216 L88 282" fill="none"/>
+        <path d="M108 216 L114 282" fill="none"/>
+        <ellipse cx="84" cy="285" rx="12" ry="6" fill="#8b4fd1"/>
+        <ellipse cx="118" cy="285" rx="12" ry="6" fill="#8b4fd1"/>
+        <path d="M86 146 L70 204" fill="none"/>
+        <path d="M114 146 L130 204" fill="none"/>
+        <path d="M84 134 L116 134 L122 212 L78 212 Z" fill="#38b2ac"/>
+        <path d="M8 210 Q18 230 30 222 Q42 236 54 225 Q66 238 78 227 Q90 240 100 228 Q110 240 122 227 Q134 238 146 225 Q158 236 170 222 Q182 230 192 210 Q150 194 100 194 Q50 194 8 210 Z" fill="url(#discGrad)"/>
+        <circle cx="69" cy="206" r="7" fill="#f6d2b8" stroke-width="3"/>
+        <circle cx="131" cy="206" r="7" fill="#f6d2b8" stroke-width="3"/>
+        <circle cx="100" cy="96" r="40" fill="#f6d2b8"/>
+        <path d="M60 92 Q62 56 100 56 Q138 56 140 92 Q120 70 100 74 Q80 70 60 92 Z" fill="#a8452f"/>
+        <path d="M90 118 Q100 126 110 118" fill="none"/>
+      </g>
+      <ellipse cx="100" cy="209" rx="72" ry="10" fill="none" stroke="#ecd9ff" stroke-width="2" opacity="0.8"/>
+      <ellipse cx="100" cy="208" rx="46" ry="6" fill="none" stroke="#ecd9ff" stroke-width="2" opacity="0.6"/>
+      <circle cx="76" cy="112" r="5.5" fill="#f29bb0" opacity="0.8"/>
+      <circle cx="124" cy="112" r="5.5" fill="#f29bb0" opacity="0.8"/>
+      <path transform="translate(86 100) scale(0.9)" d="M0 -10 L3 -3 L10 0 L3 3 L0 10 L-3 3 L-10 0 L-3 -3Z" fill="#2a1f3d"/>
+      <path transform="translate(114 100) scale(0.9)" d="M0 -10 L3 -3 L10 0 L3 3 L0 10 L-3 3 L-10 0 L-3 -3Z" fill="#2a1f3d"/>
+    </symbol>
+
+    <!-- The kids' spaceship (no writing) -->
+    <symbol id="ship" viewBox="0 0 500 330">
+      <g stroke="#2a1f3d" stroke-width="4" stroke-linecap="round">
+        <path d="M170 236 L170 320"/><path d="M198 236 L198 320"/>
+        <path d="M170 256 L198 256"/><path d="M170 276 L198 276"/><path d="M170 296 L198 296"/><path d="M170 316 L198 316"/>
+      </g>
+      <path d="M40 130 C40 50 160 30 280 30 C380 30 450 70 480 110 L420 140 L480 175 C440 220 360 240 280 240 C160 240 40 210 40 130 Z" fill="#f4e9ff" stroke="#2a1f3d" stroke-width="5" stroke-linejoin="round"/>
+      <path d="M52 92 Q42 132 56 180 L80 196 Q68 130 86 68 Z" fill="#a24fd6"/>
+      <path d="M112 50 Q96 130 112 216" fill="none" stroke="#2a1f3d" stroke-width="5"/>
+      <circle cx="160" cy="104" r="20" fill="#5a2a8a" stroke="#2a1f3d" stroke-width="4"/>
+      <circle cx="153" cy="97" r="5" fill="#fff" opacity="0.7"/>
+      <path d="M210 150 Q256 206 304 150" fill="none" stroke="#2a1f3d" stroke-width="5" stroke-linecap="round"/>
+    </symbol>
+
+    <!-- The witch (from drawing 6) -->
+    <symbol id="witch" viewBox="0 0 220 320">
+      <g stroke="#2a1f3d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M86 64 Q62 120 56 186 L78 182 Q82 124 96 88 Z" fill="#cfc6b8"/>
+        <path d="M138 60 Q172 110 170 156 L150 156 Q146 112 130 84 Z" fill="#cfc6b8"/>
+        <path d="M102 250 L96 300" fill="none" stroke="#3f9a47"/>
+        <path d="M126 250 L134 288" fill="none" stroke="#3f9a47"/>
+        <ellipse cx="90" cy="303" rx="13" ry="5" fill="#b44fd6"/>
+        <ellipse cx="140" cy="291" rx="13" ry="5" fill="#b44fd6"/>
+        <path d="M72 170 L46 230" fill="none" stroke="#3f9a47"/>
+        <path d="M154 170 L182 228" fill="none" stroke="#3f9a47"/>
+        <path d="M46 230 L18 236 M46 230 L24 254 M46 230 L36 262 M46 230 L50 262" fill="none" stroke="#3f9a47" stroke-width="3"/>
+        <path d="M182 228 L208 240 M182 228 L202 258 M182 228 L190 264 M182 228 L176 262" fill="none" stroke="#3f9a47" stroke-width="3"/>
+        <path d="M108 100 L120 100 L120 124 L108 124 Z" fill="#b44fd6"/>
+        <path d="M86 120 L142 120 L170 180 L160 184 L178 248 L160 240 L150 258 L134 242 L120 260 L106 242 L92 258 L80 240 L60 248 L74 186 L56 182 Z" fill="#b44fd6"/>
+        <ellipse cx="114" cy="70" rx="30" ry="38" fill="#6cc070"/>
+        <path d="M130 64 L172 78 L130 82 Z" fill="#6cc070"/>
+        <path d="M84 44 Q112 20 142 34 L138 48 Q112 40 88 54 Z" fill="#8b2fb8"/>
+        <path d="M98 92 L104 86 L110 92 L116 86 L122 92 L128 86 L126 100 L100 100 Z" fill="#fff" stroke-width="3"/>
+      </g>
+      <circle cx="104" cy="62" r="4.5" fill="#1d3b1f"/>
+      <circle cx="122" cy="60" r="4.5" fill="#1d3b1f"/>
+      <g stroke="#8a2fb0" stroke-width="2" opacity="0.6">
+        <path d="M96 150 L100 210 M118 140 L116 230 M136 150 L140 220"/>
+      </g>
+    </symbol>
+
+    <!-- The ping-pong bad guy (from drawing 7) -->
+    <symbol id="pingpong" viewBox="0 0 220 300">
+      <g stroke="#2a1f3d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M94 232 L90 272" fill="none"/>
+        <path d="M126 232 L132 272" fill="none"/>
+        <ellipse cx="84" cy="277" rx="14" ry="7" fill="#222"/>
+        <ellipse cx="138" cy="277" rx="14" ry="7" fill="#222"/>
+        <path d="M74 160 L52 198" fill="none"/>
+        <path d="M146 160 L172 178" fill="none"/>
+        <path d="M78 212 L142 212 L146 242 L116 242 L110 228 L104 242 L74 242 Z" fill="#c0392b"/>
+        <ellipse cx="110" cy="182" rx="46" ry="42" fill="#f1d3b8"/>
+        <path d="M66 150 Q110 128 154 150 L158 182 Q110 192 62 182 Z" fill="#b89a7c"/>
+        <path d="M180 166 L172 176" fill="none" stroke-width="6"/>
+        <circle cx="192" cy="152" r="17" fill="#e8542c"/>
+        <circle cx="172" cy="178" r="7" fill="#f1d3b8" stroke-width="3"/>
+        <rect x="26" y="196" width="28" height="32" rx="3" fill="#f0a020"/>
+        <path d="M26 204 Q14 206 16 214 Q18 222 26 220" fill="none"/>
+        <rect x="24" y="190" width="32" height="9" rx="4" fill="#fffaf0"/>
+        <circle cx="54" cy="200" r="7" fill="#f1d3b8" stroke-width="3"/>
+        <ellipse cx="110" cy="100" rx="27" ry="34" fill="#f1d3b8"/>
+        <path d="M92 74 L90 52 L100 62 L104 42 L112 58 L120 44 L122 62 L132 54 L128 76 Q110 66 92 74 Z" fill="#222"/>
+        <path d="M97 90 L106 95 M123 90 L114 95" fill="none" stroke-width="3"/>
+        <path d="M101 120 Q110 111 119 120" fill="none" stroke-width="3"/>
+      </g>
+      <circle cx="103" cy="102" r="3.5" fill="#2a1f3d"/>
+      <circle cx="117" cy="102" r="3.5" fill="#2a1f3d"/>
+      <path d="M88 196 q4 -4 8 0 q4 4 8 0 M110 206 q4 -4 8 0 q4 4 8 0 M94 212 q3 -3 6 0 M120 194 q3 -3 6 0" fill="none" stroke="#5a4a3c" stroke-width="2"/>
+    </symbol>
+
+    <!-- The witch's apprentice (from drawing 10) -->
+    <symbol id="apprentice" viewBox="0 0 220 300">
+      <g stroke="#2a1f3d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M80 160 L86 240 L134 240 L140 160 Z" fill="#b44fd6"/>
+        <circle cx="110" cy="138" r="26" fill="#9fd08a"/>
+        <path d="M74 124 L146 116 L106 46 Z" fill="#3b2a5c"/>
+        <path d="M100 152 Q110 158 120 150" fill="none" stroke-width="3"/>
+        <path d="M140 190 L196 262" fill="none" stroke="#7a5230" stroke-width="7"/>
+        <path d="M28 236 L192 236 L170 276 L50 276 Z" fill="#6b4a2f"/>
+        <path d="M44 250 H178" fill="none" stroke-width="2"/>
+      </g>
+      <circle cx="101" cy="138" r="3.5" fill="#2a1f3d"/>
+      <circle cx="119" cy="138" r="3.5" fill="#2a1f3d"/>
+      <path d="M20 288 Q50 280 80 288 M140 290 Q170 282 200 290" fill="none" stroke="#5d8a4a" stroke-width="3" stroke-linecap="round"/>
+    </symbol>
+
+    <!-- The wizard -->
+    <symbol id="wizard" viewBox="0 0 220 320">
+      <g stroke="#a08b74" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <path d="M100 246 L96 292 L80 294"/>
+        <path d="M122 246 L124 294 L140 294"/>
+        <path d="M42 214 L40 262 M40 262 L24 270 M40 262 L30 280 M40 262 L42 282 M40 262 L52 276"/>
+        <path d="M180 204 L196 244 M196 244 L214 246 M196 244 L210 260 M196 244 L198 264 M196 244 L186 258"/>
+      </g>
+      <g stroke="#2a1f3d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M88 94 Q84 150 100 176 L112 158 L124 176 Q140 150 136 94 Q112 110 88 94 Z" fill="#d8d0c4"/>
+        <path d="M66 118 L156 116 L192 200 L176 210 L152 154 L150 236 L138 226 L126 254 L112 230 L100 256 L88 228 L76 242 L74 154 L52 222 L28 214 Z" fill="#b44fd6"/>
+        <circle cx="90" cy="60" r="10" fill="#d8d0c4"/><circle cx="134" cy="60" r="10" fill="#d8d0c4"/>
+        <circle cx="86" cy="78" r="8" fill="#d8d0c4"/><circle cx="138" cy="78" r="8" fill="#d8d0c4"/>
+        <ellipse cx="112" cy="80" rx="26" ry="36" fill="#f1dcc6"/>
+        <circle cx="98" cy="50" r="9" fill="#d8d0c4"/><circle cx="112" cy="46" r="9" fill="#d8d0c4"/><circle cx="126" cy="50" r="9" fill="#d8d0c4"/>
+        <path d="M74 38 L150 34 L152 50 L76 54 Z" fill="#b44fd6"/>
+        <path d="M96 26 L132 24 L134 36 L98 38 Z" fill="#b44fd6"/>
+        <path d="M112 76 Q130 86 114 94" fill="#f1dcc6" stroke-width="3"/>
+        <path d="M102 104 Q112 114 122 104" fill="none" stroke-width="3"/>
+      </g>
+      <circle cx="101" cy="72" r="3.5" fill="#2a1f3d"/>
+      <circle cx="123" cy="72" r="3.5" fill="#2a1f3d"/>
+      <g stroke="#8a2fb0" stroke-width="2" opacity="0.6">
+        <path d="M96 150 L98 220 M124 150 L122 222 M60 170 L48 206 M168 170 L180 196"/>
+      </g>
+    </symbol>
+  <symbol id="pingpong2" viewBox="0 0 220 300">
+      <g stroke="#2a1f3d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M94 232 L90 272" fill="none"/>
+        <path d="M126 232 L132 272" fill="none"/>
+        <ellipse cx="84" cy="277" rx="14" ry="7" fill="#222"/>
+        <ellipse cx="138" cy="277" rx="14" ry="7" fill="#222"/>
+        <path d="M74 160 L52 198" fill="none"/>
+        <path d="M146 160 L172 178" fill="none"/>
+        <path d="M78 212 L142 212 L146 242 L116 242 L110 228 L104 242 L74 242 Z" fill="#c0392b"/>
+        <ellipse cx="110" cy="182" rx="46" ry="42" fill="#f1d3b8"/>
+        <path d="M66 150 Q110 128 154 150 L158 182 Q110 192 62 182 Z" fill="#b89a7c"/>
+        
+        
+        <circle cx="172" cy="178" r="7" fill="#f1d3b8" stroke-width="3"/>
+        <rect x="26" y="196" width="28" height="32" rx="3" fill="#f0a020"/>
+        <path d="M26 204 Q14 206 16 214 Q18 222 26 220" fill="none"/>
+        <rect x="24" y="190" width="32" height="9" rx="4" fill="#fffaf0"/>
+        <circle cx="54" cy="200" r="7" fill="#f1d3b8" stroke-width="3"/>
+        <ellipse cx="110" cy="100" rx="27" ry="34" fill="#f1d3b8"/>
+        <path d="M92 74 L90 52 L100 62 L104 42 L112 58 L120 44 L122 62 L132 54 L128 76 Q110 66 92 74 Z" fill="#222"/>
+        <path d="M97 90 L106 95 M123 90 L114 95" fill="none" stroke-width="3"/>
+        <path d="M101 120 Q110 111 119 120" fill="none" stroke-width="3"/>
+      </g>
+      <circle cx="103" cy="102" r="3.5" fill="#2a1f3d"/>
+      <circle cx="117" cy="102" r="3.5" fill="#2a1f3d"/>
+      <path d="M88 196 q4 -4 8 0 q4 4 8 0 M110 206 q4 -4 8 0 q4 4 8 0 M94 212 q3 -3 6 0 M120 194 q3 -3 6 0" fill="none" stroke="#5a4a3c" stroke-width="2"/>
+    </symbol></defs>
+</svg>
+
+<div class="wrap">
+  <header>
+    <h1>Mysteries of Manor Konsz</h1>
+    <div class="tools">
+      <span class="who" id="who"></span>
+      <button class="ghost" id="voices-btn" type="button" aria-pressed="true">Voices</button>
+      <button class="ghost" id="speak-btn" type="button" aria-pressed="false">Read aloud</button>
+      <button class="ghost" id="full-btn" type="button">Full screen</button>
+    </div>
+  </header>
+
+  <section class="screen" id="title-screen">
+    <img class="cover" src="00-cover.jpg" alt="The kids' cover drawing: Mysteries of Manor Konsz, with a big magnifying glass" width="900" height="654">
+    <p>A point-and-click story game by Dandy, Addie, and team. Click to walk around. Click the glowing dots to look, talk, and pick things up. To use an item, click it in your drawer, then click something in the scene.</p>
+    <div class="exits">
+      <button id="continue-btn" type="button" hidden>Continue where you left off</button>
+      <button id="start-btn" type="button">Start</button>
+    </div>
+    <details class="skip">
+      <summary>Skip to a scene (for testing)</summary>
+      <div class="exits" id="skip-list"></div>
+    </details>
+  </section>
+
+  <div id="game" hidden>
+    <div class="stage">
+      <svg id="scene" viewBox="0 0 800 450" role="img" aria-label="Game scene"></svg>
+      <div class="flash" id="flash"></div>
+      <div class="room-title" id="room-title"></div>
+      <div class="map" id="fridge" hidden>
+        <div class="map-panel">
+          <h3 id="container-title">Inside the fridge</h3>
+          <div class="fridge-grid" id="fridge-items"></div>
+          <button class="ghost" id="fridge-close" type="button">Close</button>
+        </div>
+      </div>
+      <div class="map" id="map" hidden>
+        <div class="map-panel">
+          <h3>Where should May go?</h3>
+          <div class="ship-map" id="ship-map"></div>
+          <button class="ghost" id="map-close" type="button">Close map</button>
+        </div>
+      </div>
+    </div>
+    <div class="story" aria-live="polite">
+      <div class="goal" id="goal"></div>
+      <div class="caption"><span class="speaker" id="speaker"></span><span class="line" id="line"></span></div>
+      <div class="story-row">
+        <div class="hover-label" id="hover-label"></div>
+        <div class="exits" id="exits"></div>
+        <button id="next-btn" type="button" hidden>Next ▸</button>
+      </div>
+    </div>
+    <div class="drawer">
+      <div class="drawer-label">Item drawer</div>
+      <div class="slots" id="slots"></div>
+      <div class="drawer-hint" id="drawer-hint">Click an item, then click something in the scene to use it.</div>
+    </div>
+  </div>
+
+  <p class="note">Mockup: art and story come from the team's drawings and notes. Some lines and puzzles are placeholders until the kids decide.</p>
+</div>
+
+<script>
+const SCENES = {"manor": "\n          <defs>\n            <linearGradient id=\"s1sky\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">\n              <stop offset=\"0\" stop-color=\"#140f2a\"/><stop offset=\"1\" stop-color=\"#4a2f6b\"/>\n            </linearGradient>\n            <radialGradient id=\"s1moon\"><stop offset=\"0.55\" stop-color=\"#f6e7b8\" stop-opacity=\"0.35\"/><stop offset=\"1\" stop-color=\"#f6e7b8\" stop-opacity=\"0\"/></radialGradient>\n          </defs>\n          <rect width=\"800\" height=\"450\" fill=\"url(#s1sky)\"/>\n          <circle cx=\"650\" cy=\"88\" r=\"90\" fill=\"url(#s1moon)\"/>\n          <circle cx=\"650\" cy=\"88\" r=\"44\" fill=\"#f6e7b8\"/>\n          <circle cx=\"636\" cy=\"78\" r=\"8\" fill=\"#e6d29c\"/><circle cx=\"662\" cy=\"100\" r=\"6\" fill=\"#e6d29c\"/>\n          <g fill=\"#f6e7b8\">\n            <circle cx=\"60\" cy=\"50\" r=\"2\"/><circle cx=\"140\" cy=\"96\" r=\"1.5\"/><circle cx=\"230\" cy=\"40\" r=\"2\"/><circle cx=\"320\" cy=\"80\" r=\"1.5\"/>\n            <circle cx=\"420\" cy=\"30\" r=\"2\"/><circle cx=\"500\" cy=\"70\" r=\"1.5\"/><circle cx=\"560\" cy=\"160\" r=\"1.5\"/><circle cx=\"740\" cy=\"190\" r=\"2\"/>\n            <circle cx=\"760\" cy=\"40\" r=\"1.5\"/><circle cx=\"30\" cy=\"160\" r=\"1.5\"/>\n          </g>\n          <path d=\"M0 350 Q200 290 400 320 T800 310 L800 450 L0 450 Z\" fill=\"#251c38\"/>\n          <!-- manor -->\n          <g stroke=\"#120d1e\" stroke-width=\"4\" stroke-linejoin=\"round\">\n            <rect x=\"300\" y=\"196\" width=\"220\" height=\"140\" fill=\"#30264a\"/>\n            <polygon points=\"290,200 410,120 530,200\" fill=\"#211a35\"/>\n            <rect x=\"262\" y=\"150\" width=\"54\" height=\"190\" fill=\"#2b2244\"/>\n            <polygon points=\"254,152 289,74 324,152\" fill=\"#1c1630\"/>\n            <rect x=\"500\" y=\"126\" width=\"54\" height=\"214\" fill=\"#2b2244\"/>\n            <polygon points=\"492,128 527,44 562,128\" fill=\"#1c1630\"/>\n            <path d=\"M386 336 L386 290 Q410 262 434 290 L434 336 Z\" fill=\"#160f22\"/>\n          </g>\n          <g fill=\"#f5c75a\">\n            <rect x=\"278\" y=\"180\" width=\"22\" height=\"30\" rx=\"3\"/>\n            <rect x=\"516\" y=\"160\" width=\"22\" height=\"30\" rx=\"3\"/>\n            <rect x=\"330\" y=\"220\" width=\"26\" height=\"34\" rx=\"3\"/>\n            <rect x=\"460\" y=\"220\" width=\"26\" height=\"34\" rx=\"3\" fill=\"#3a3150\"/>\n            <circle cx=\"410\" cy=\"170\" r=\"14\"/>\n            <rect x=\"516\" y=\"240\" width=\"22\" height=\"30\" rx=\"3\" fill=\"#3a3150\"/>\n          </g>\n          <circle cx=\"410\" cy=\"170\" r=\"14\" fill=\"none\" stroke=\"#120d1e\" stroke-width=\"4\"/>\n          <path d=\"M386 336 Q400 390 330 450 L470 450 Q420 390 434 336 Z\" fill=\"#3a2f52\"/>\n          <!-- dead tree -->\n          <g stroke=\"#120d1e\" stroke-linecap=\"round\" fill=\"none\">\n            <path d=\"M120 360 L130 230\" stroke-width=\"12\"/>\n            <path d=\"M128 260 L84 214 L70 220\" stroke-width=\"7\"/>\n            <path d=\"M129 248 L170 206 L188 210\" stroke-width=\"7\"/>\n            <path d=\"M130 232 L120 190\" stroke-width=\"5\"/>\n            <path d=\"M100 232 L92 200\" stroke-width=\"4\"/>\n          </g>\n          <!-- bats -->\n          <g fill=\"#120d1e\">\n            <path d=\"M560 210 q8 -10 16 0 q4 -6 8 0 q4 -6 8 0 q8 -10 16 0 q-12 4 -24 10 q-12 -6 -24 -10Z\"/>\n            <path d=\"M210 120 q6 -8 12 0 q3 -5 6 0 q3 -5 6 0 q6 -8 12 0 q-9 3 -18 8 q-9 -5 -18 -8Z\"/>\n          </g>\n          <!-- signpost -->\n          <g stroke=\"#2a1f3d\" stroke-width=\"3\" stroke-linejoin=\"round\">\n            <rect x=\"676\" y=\"300\" width=\"10\" height=\"120\" fill=\"#6b4a2f\"/>\n            <path d=\"M600 300 L760 300 L780 320 L760 340 L600 340 Z\" fill=\"#c9a46a\"/>\n            <path d=\"M600 352 L760 352 L780 372 L760 392 L600 392 Z\" fill=\"#c9a46a\"/>\n          </g>\n          <g font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"20\" fill=\"#2a1f3d\">\n            <text x=\"610\" y=\"327\">Secret mansion 8 mi</text>\n            <text x=\"610\" y=\"379\">Secret castle 50 mi</text>\n          </g>\n          <!-- the kids arriving -->\n          <use href=\"#may\" x=\"190\" y=\"352\" width=\"52\" height=\"78\"/>\n          <use href=\"#jon\" x=\"226\" y=\"352\" width=\"57\" height=\"78\"/>\n          <use href=\"#jasin\" x=\"266\" y=\"352\" width=\"52\" height=\"78\"/>\n          <use href=\"#olivia\" x=\"304\" y=\"352\" width=\"52\" height=\"78\"/>\n        ", "hideout": "\n          <defs>\n            <radialGradient id=\"s2room\" cx=\"50%\" cy=\"45%\" r=\"60%\">\n              <stop offset=\"0\" stop-color=\"#e3c6ff\"/><stop offset=\"1\" stop-color=\"#8b4fd1\"/>\n            </radialGradient>\n            <clipPath id=\"s2clip\"><circle cx=\"600\" cy=\"250\" r=\"176\"/></clipPath>\n          </defs>\n          <!-- OUT -->\n          <rect width=\"400\" height=\"450\" fill=\"#4a3a63\"/>\n          <rect y=\"330\" width=\"400\" height=\"120\" fill=\"#33284a\"/>\n          <path d=\"M0 330 L400 330\" stroke=\"#2a1f3d\" stroke-width=\"4\"/>\n          <rect x=\"34\" y=\"70\" width=\"74\" height=\"96\" fill=\"#2a2140\" stroke=\"#c9a46a\" stroke-width=\"7\"/>\n          <ellipse cx=\"71\" cy=\"112\" rx=\"20\" ry=\"26\" fill=\"#57486f\"/>\n          <circle cx=\"64\" cy=\"108\" r=\"3\" fill=\"#f5c75a\"/><circle cx=\"78\" cy=\"108\" r=\"3\" fill=\"#f5c75a\"/>\n          <ellipse cx=\"280\" cy=\"250\" rx=\"62\" ry=\"142\" fill=\"#b77cf0\" opacity=\"0.25\"/>\n          <ellipse cx=\"280\" cy=\"250\" rx=\"52\" ry=\"130\" fill=\"url(#portalGrad)\" stroke=\"#2a1f3d\" stroke-width=\"4\"/>\n          <ellipse cx=\"268\" cy=\"210\" rx=\"12\" ry=\"60\" fill=\"#fff\" opacity=\"0.3\"/>\n          <g id=\"mayH\" class=\"anim\"><use href=\"#may\" x=\"86\" y=\"160\" width=\"124\" height=\"186\"/></g>\n          <g id=\"bubMay\" class=\"anim\"><path d=\"M120 54 Q120 22 190 22 Q262 22 262 54 Q262 86 200 86 L176 112 L180 86 Q120 86 120 54 Z\" fill=\"#fff\" stroke=\"#2a1f3d\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n          <text x=\"191\" y=\"66\" text-anchor=\"middle\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"32\" fill=\"#2a1f3d\">Git out!!</text></g>\n          <text x=\"20\" y=\"40\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"34\" fill=\"#f6e7b8\">OUT</text>\n          <!-- IN -->\n          <rect x=\"400\" width=\"400\" height=\"450\" fill=\"#231a36\"/>\n          <circle cx=\"600\" cy=\"250\" r=\"176\" fill=\"url(#s2room)\"/>\n          <g clip-path=\"url(#s2clip)\">\n            <rect x=\"400\" y=\"340\" width=\"400\" height=\"120\" fill=\"#6d3cb0\"/>\n            <path d=\"M440 340 L760 340\" stroke=\"#2a1f3d\" stroke-width=\"3\"/>\n            <g fill=\"#fff\" opacity=\"0.7\">\n              <circle cx=\"500\" cy=\"130\" r=\"3\"/><circle cx=\"560\" cy=\"104\" r=\"2.5\"/><circle cx=\"660\" cy=\"110\" r=\"3\"/><circle cx=\"720\" cy=\"160\" r=\"2.5\"/><circle cx=\"470\" cy=\"190\" r=\"2\"/>\n            </g>\n            <g id=\"box\" class=\"anim\"><g stroke=\"#2a1f3d\" stroke-width=\"4\" stroke-linejoin=\"round\">\n              <rect x=\"462\" y=\"190\" width=\"72\" height=\"150\" rx=\"6\" fill=\"#f3e3c3\"/>\n              <path d=\"M462 228 L534 228\" fill=\"none\"/>\n            </g>\n            <circle cx=\"526\" cy=\"210\" r=\"4\" fill=\"#2a1f3d\"/>\n            <g fill=\"#e8669a\" stroke=\"#2a1f3d\" stroke-width=\"2.5\">\n              <circle cx=\"498\" cy=\"266\" r=\"10\"/><circle cx=\"512\" cy=\"278\" r=\"10\"/><circle cx=\"506\" cy=\"294\" r=\"10\"/><circle cx=\"490\" cy=\"294\" r=\"10\"/><circle cx=\"484\" cy=\"278\" r=\"10\"/>\n            </g>\n            <circle cx=\"498\" cy=\"282\" r=\"7\" fill=\"#ffd23f\" stroke=\"#2a1f3d\" stroke-width=\"2.5\"/></g>\n            <g id=\"jonH\" class=\"anim\"><use href=\"#jon\" x=\"540\" y=\"140\" width=\"164\" height=\"224\"/></g>\n          </g>\n          <circle cx=\"600\" cy=\"250\" r=\"176\" fill=\"none\" stroke=\"#2a1f3d\" stroke-width=\"5\"/>\n          <g id=\"bubJon\" class=\"anim\"><path d=\"M610 52 Q610 24 680 24 Q752 24 752 52 Q752 80 692 80 L668 104 L672 80 Q610 80 610 52 Z\" fill=\"#fff\" stroke=\"#2a1f3d\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n          <text x=\"681\" y=\"61\" text-anchor=\"middle\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"28\" fill=\"#2a1f3d\">No ma'am!</text></g>\n          <g id=\"egg\" class=\"anim\"><path d=\"M732 292 C746 292 754 312 754 324 C754 338 744 344 732 344 C720 344 710 338 710 324 C710 312 718 292 732 292 Z\" fill=\"#fff6e6\" stroke=\"#2a1f3d\" stroke-width=\"4\"/>\n          <text x=\"732\" y=\"333\" text-anchor=\"middle\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"26\" fill=\"#a24fd6\">?</text></g>\n          <text x=\"420\" y=\"40\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"34\" fill=\"#f6e7b8\">IN</text>\n          <path d=\"M400 0 L400 450\" stroke=\"#2a1f3d\" stroke-width=\"6\"/>\n        ", "spaceship": "\n          <defs>\n            <linearGradient id=\"s3sky\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\">\n              <stop offset=\"0\" stop-color=\"#0d0a22\"/><stop offset=\"1\" stop-color=\"#33205c\"/>\n            </linearGradient>\n          </defs>\n          <rect width=\"800\" height=\"450\" fill=\"url(#s3sky)\"/>\n          <g fill=\"#fff\">\n            <circle cx=\"40\" cy=\"40\" r=\"2\"/><circle cx=\"120\" cy=\"90\" r=\"1.5\"/><circle cx=\"90\" cy=\"300\" r=\"2\"/><circle cx=\"40\" cy=\"400\" r=\"1.5\"/>\n            <circle cx=\"200\" cy=\"30\" r=\"1.5\"/><circle cx=\"340\" cy=\"20\" r=\"2\"/><circle cx=\"470\" cy=\"60\" r=\"1.5\"/><circle cx=\"560\" cy=\"24\" r=\"2\"/>\n            <circle cx=\"740\" cy=\"50\" r=\"1.5\"/><circle cx=\"770\" cy=\"200\" r=\"2\"/><circle cx=\"520\" cy=\"420\" r=\"1.5\"/><circle cx=\"300\" cy=\"430\" r=\"2\"/>\n            <circle cx=\"420\" cy=\"400\" r=\"1.5\"/><circle cx=\"20\" cy=\"210\" r=\"1.5\"/>\n          </g>\n          <g fill=\"#c99af5\">\n            <path transform=\"translate(160 380)\" d=\"M0 -9 L2.5 -2.5 L9 0 L2.5 2.5 L0 9 L-2.5 2.5 L-9 0 L-2.5 -2.5Z\"/>\n            <path transform=\"translate(450 30)\" d=\"M0 -9 L2.5 -2.5 L9 0 L2.5 2.5 L0 9 L-2.5 2.5 L-9 0 L-2.5 -2.5Z\"/>\n            <path transform=\"translate(60 140)\" d=\"M0 -9 L2.5 -2.5 L9 0 L2.5 2.5 L0 9 L-2.5 2.5 L-9 0 L-2.5 -2.5Z\"/>\n            <path transform=\"translate(610 410)\" d=\"M0 -9 L2.5 -2.5 L9 0 L2.5 2.5 L0 9 L-2.5 2.5 L-9 0 L-2.5 -2.5Z\"/>\n          </g>\n          <circle cx=\"700\" cy=\"370\" r=\"66\" fill=\"#e8669a\"/>\n          <ellipse cx=\"700\" cy=\"370\" rx=\"104\" ry=\"18\" fill=\"none\" stroke=\"#f6c0d4\" stroke-width=\"6\" transform=\"rotate(-14 700 370)\"/>\n          <circle cx=\"680\" cy=\"350\" r=\"10\" fill=\"#d4508a\"/><circle cx=\"720\" cy=\"392\" r=\"7\" fill=\"#d4508a\"/>\n          <g id=\"shipGroup\" class=\"anim\"><g transform=\"translate(110 110)\">\n            <g stroke=\"#2a1f3d\" stroke-width=\"4\" stroke-linecap=\"round\">\n              <path d=\"M170 236 L170 320\"/><path d=\"M198 236 L198 320\"/>\n              <path d=\"M170 256 L198 256\"/><path d=\"M170 276 L198 276\"/><path d=\"M170 296 L198 296\"/><path d=\"M170 316 L198 316\"/>\n            </g>\n            <g fill=\"#f5c75a\" opacity=\"0.8\">\n              <circle cx=\"500\" cy=\"130\" r=\"10\"/><circle cx=\"526\" cy=\"120\" r=\"7\"/><circle cx=\"546\" cy=\"138\" r=\"5\"/>\n            </g>\n            <path d=\"M40 130 C40 50 160 30 280 30 C380 30 450 70 480 110 L420 140 L480 175 C440 220 360 240 280 240 C160 240 40 210 40 130 Z\" fill=\"#f4e9ff\" stroke=\"#2a1f3d\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n            <path d=\"M52 92 Q42 132 56 180 L80 196 Q68 130 86 68 Z\" fill=\"#a24fd6\"/>\n            <path d=\"M112 50 Q96 130 112 216\" fill=\"none\" stroke=\"#2a1f3d\" stroke-width=\"5\"/>\n            <circle cx=\"160\" cy=\"104\" r=\"20\" fill=\"#5a2a8a\" stroke=\"#2a1f3d\" stroke-width=\"4\"/>\n            <circle cx=\"153\" cy=\"97\" r=\"5\" fill=\"#fff\" opacity=\"0.7\"/>\n            <path d=\"M210 150 Q256 206 304 150\" fill=\"none\" stroke=\"#2a1f3d\" stroke-width=\"5\" stroke-linecap=\"round\"/>\n            <text x=\"250\" y=\"96\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"32\" fill=\"#6a2fb0\" transform=\"rotate(4 300 90)\">Let's go to space!</text>\n          </g></g>\n          <g id=\"shipBubble\" class=\"anim\" style=\"display:none\"><path d=\"M560 70 Q560 36 650 36 Q740 36 740 70 Q740 104 668 104 L636 132 L642 104 Q560 104 560 70 Z\" fill=\"#fff\" stroke=\"#2a1f3d\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n          <text x=\"650\" y=\"81\" text-anchor=\"middle\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"32\" fill=\"#2a1f3d\">GIT OUT!!</text></g>\n        ", "splash": "\n          <defs>\n            <linearGradient id=\"s6space\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">\n              <stop offset=\"0\" stop-color=\"#0d0a22\"/><stop offset=\"1\" stop-color=\"#2c1b52\"/>\n            </linearGradient>\n            <linearGradient id=\"s6sky\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">\n              <stop offset=\"0\" stop-color=\"#2c1b52\"/><stop offset=\"0.6\" stop-color=\"#7fb2e0\"/><stop offset=\"1\" stop-color=\"#bfe0f5\"/>\n            </linearGradient>\n          </defs>\n          <!-- left: in space -->\n          <rect width=\"400\" height=\"450\" fill=\"url(#s6space)\"/>\n          <g fill=\"#fff\">\n            <circle cx=\"30\" cy=\"30\" r=\"1.5\"/><circle cx=\"360\" cy=\"40\" r=\"2\"/><circle cx=\"60\" cy=\"420\" r=\"1.5\"/><circle cx=\"340\" cy=\"410\" r=\"2\"/>\n            <circle cx=\"200\" cy=\"20\" r=\"1.5\"/><circle cx=\"20\" cy=\"240\" r=\"1.5\"/><circle cx=\"380\" cy=\"250\" r=\"1.5\"/>\n          </g>\n          <g id=\"asteroids\" class=\"anim\"><path d=\"M70 92 Q72 58 106 54 Q140 50 154 82 Q160 116 132 140 Q98 152 76 128 Q64 112 70 92 Z\" fill=\"#8a7d6e\" stroke=\"#2a1f3d\" stroke-width=\"4\"/>\n          <path d=\"M178 76 Q186 32 230 30 Q280 30 290 74 Q296 120 256 142 Q208 154 186 124 Q172 102 178 76 Z\" fill=\"#776b5d\" stroke=\"#2a1f3d\" stroke-width=\"4\"/>\n          <g fill=\"#5e5348\" stroke=\"#2a1f3d\" stroke-width=\"2\"><circle cx=\"96\" cy=\"86\" r=\"10\"/><circle cx=\"128\" cy=\"112\" r=\"7\"/><circle cx=\"122\" cy=\"74\" r=\"5\"/><circle cx=\"214\" cy=\"68\" r=\"13\"/><circle cx=\"256\" cy=\"104\" r=\"10\"/><circle cx=\"258\" cy=\"58\" r=\"6\"/><circle cx=\"222\" cy=\"118\" r=\"6\"/></g>\n          <g stroke=\"#f5c75a\" stroke-width=\"3\" stroke-linecap=\"round\" opacity=\"0.8\"><path d=\"M160 140 L172 150\"/><path d=\"M176 132 L190 136\"/></g></g>\n          <g id=\"shipFall\" class=\"anim\"><g transform=\"rotate(22 180 290)\"><use href=\"#ship\" x=\"30\" y=\"190\" width=\"300\" height=\"198\"/></g>\n          <g stroke=\"#fff\" stroke-width=\"3\" stroke-linecap=\"round\" opacity=\"0.7\"><path d=\"M40 170 L70 220\"/><path d=\"M90 150 L120 200\"/><path d=\"M20 250 L40 285\"/></g></g>\n          <g id=\"bubAhh\" class=\"anim\"><path d=\"M210 330 Q210 300 300 300 Q390 300 390 330 Q390 362 310 362 Q300 380 280 392 Q286 372 270 362 Q210 362 210 330 Z\" fill=\"#fff\" stroke=\"#2a1f3d\" stroke-width=\"4\" stroke-linejoin=\"round\" transform=\"translate(0 -20)\"/>\n          <text x=\"300\" y=\"322\" text-anchor=\"middle\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"32\" fill=\"#2a1f3d\">AHHHHH!</text></g>\n          <!-- right: falling into the water -->\n          <rect x=\"400\" width=\"400\" height=\"450\" fill=\"url(#s6sky)\"/>\n          <path d=\"M400 350 Q450 336 500 350 T600 350 T700 350 T800 350 L800 450 L400 450 Z\" fill=\"#2f7fb5\"/>\n          <path d=\"M420 380 Q440 372 460 380 M560 396 Q580 388 600 396 M700 384 Q720 376 740 384\" fill=\"none\" stroke=\"#bfe0f5\" stroke-width=\"3\" stroke-linecap=\"round\"/>\n          <g id=\"shipSplash\" class=\"anim\"><g transform=\"rotate(32 610 250)\">\n            <use href=\"#ship\" x=\"470\" y=\"150\" width=\"270\" height=\"178\"/>\n          </g></g>\n          <g id=\"splashDrops\" class=\"anim\"><g fill=\"#e6f4ff\" stroke=\"#2a1f3d\" stroke-width=\"3\">\n            <path d=\"M590 352 L570 300 L604 340 Z\"/><path d=\"M660 352 L690 296 L670 344 Z\"/><path d=\"M624 350 L628 292 L640 348 Z\"/>\n          </g></g>\n          <g stroke=\"#fff\" stroke-width=\"3\" stroke-linecap=\"round\" opacity=\"0.8\">\n            <path d=\"M470 60 L500 120\"/><path d=\"M520 30 L550 90\"/><path d=\"M450 140 L470 180\"/>\n          </g>\n          <g id=\"bubShucks\" class=\"anim\"><path d=\"M560 70 Q560 36 660 36 Q760 36 760 70 Q760 104 670 104 L640 132 L646 104 Q560 104 560 70 Z\" fill=\"#fff\" stroke=\"#2a1f3d\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n          <text x=\"660\" y=\"81\" text-anchor=\"middle\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"36\" fill=\"#2a1f3d\">Shucks!</text></g>\n          <path d=\"M400 0 L400 450\" stroke=\"#2a1f3d\" stroke-width=\"6\"/>\n        ", "pingpong": "\n          <defs>\n            <linearGradient id=\"s7sky\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">\n              <stop offset=\"0\" stop-color=\"#2a2340\"/><stop offset=\"1\" stop-color=\"#8a6f8f\"/>\n            </linearGradient>\n            <radialGradient id=\"s7lamp\" cx=\"50%\" cy=\"0%\" r=\"100%\">\n              <stop offset=\"0\" stop-color=\"#ffe9a8\" stop-opacity=\"0.55\"/><stop offset=\"1\" stop-color=\"#ffe9a8\" stop-opacity=\"0\"/>\n            </radialGradient>\n          </defs>\n          <rect width=\"800\" height=\"450\" fill=\"url(#s7sky)\"/>\n          <path d=\"M-20 450 L160 150 L250 210 L400 20 L560 200 L640 140 L820 450 Z\" fill=\"#5a4c5e\" stroke=\"#2a1f3d\" stroke-width=\"5\" stroke-linejoin=\"round\"/>\n          <path d=\"M360 72 L400 20 L440 74 L420 66 L404 82 L388 64 Z\" fill=\"#e8e2ee\"/>\n          <!-- cave -->\n          <path d=\"M250 450 L250 300 Q250 180 420 180 Q590 180 590 300 L590 450 Z\" fill=\"#1a1420\" stroke=\"#2a1f3d\" stroke-width=\"5\"/>\n          <path d=\"M420 186 L420 226\" stroke=\"#555\" stroke-width=\"2\"/>\n          <circle cx=\"420\" cy=\"232\" r=\"8\" fill=\"#ffe9a8\"/>\n          <path d=\"M420 236 L300 450 L540 450 Z\" fill=\"url(#s7lamp)\"/>\n          <g stroke=\"#cfc8dc\" stroke-width=\"1.5\" fill=\"none\" opacity=\"0.5\">\n            <path d=\"M262 260 L300 230 M262 260 L310 262 M262 260 L290 294 M278 246 Q290 262 280 280\"/>\n          </g>\n          <!-- ping-pong table -->\n          <g stroke=\"#2a1f3d\" stroke-width=\"4\" stroke-linejoin=\"round\">\n            <path d=\"M330 400 L326 440 M510 400 L514 440\" fill=\"none\"/>\n            <path d=\"M300 366 L540 366 L560 400 L280 400 Z\" fill=\"#2e7d4f\"/>\n            <path d=\"M420 366 L420 400\" stroke=\"#fff\" stroke-width=\"3\"/>\n            <path d=\"M420 350 L420 400\" fill=\"none\"/>\n            <rect x=\"404\" y=\"350\" width=\"32\" height=\"18\" fill=\"#fff\" opacity=\"0.6\" stroke-width=\"2\"/>\n          </g>\n          <circle cx=\"360\" cy=\"330\" r=\"6\" fill=\"#fff\" stroke=\"#2a1f3d\" stroke-width=\"2\"/>\n          <path d=\"M370 324 Q390 312 404 318\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2\" stroke-dasharray=\"4 4\" opacity=\"0.7\"/>\n          <g id=\"badguy\" class=\"anim\"><use href=\"#pingpong\" x=\"470\" y=\"250\" width=\"120\" height=\"164\"/></g>\n          <!-- sign -->\n          <g transform=\"rotate(-6 420 160)\">\n            <rect x=\"340\" y=\"140\" width=\"160\" height=\"36\" rx=\"4\" fill=\"#c9a46a\" stroke=\"#2a1f3d\" stroke-width=\"3\"/>\n            <text x=\"420\" y=\"166\" text-anchor=\"middle\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"22\" fill=\"#2a1f3d\">PING-PONG</text>\n          </g>\n          <g id=\"standing\" class=\"anim\"><use href=\"#may\" x=\"40\" y=\"340\" width=\"60\" height=\"90\"/><use href=\"#jon\" x=\"88\" y=\"340\" width=\"66\" height=\"90\"/><use href=\"#jasin\" x=\"146\" y=\"340\" width=\"60\" height=\"90\"/><use href=\"#olivia\" x=\"196\" y=\"340\" width=\"60\" height=\"90\"/></g><g id=\"spinfx\" style=\"display:none\"><!-- Olivia spins and her friends float out of reach -->\n          <defs>\n            <radialGradient id=\"s7glow\"><stop offset=\"0\" stop-color=\"#e3c6ff\" stop-opacity=\"0.85\"/><stop offset=\"1\" stop-color=\"#b77cf0\" stop-opacity=\"0\"/></radialGradient>\n          </defs>\n          <circle cx=\"226\" cy=\"400\" r=\"70\" fill=\"url(#s7glow)\"/>\n          <g id=\"floaters\" class=\"anim\"><circle cx=\"70\" cy=\"244\" r=\"48\" fill=\"url(#s7glow)\"/>\n          <circle cx=\"129\" cy=\"214\" r=\"48\" fill=\"url(#s7glow)\"/>\n          <circle cx=\"180\" cy=\"250\" r=\"48\" fill=\"url(#s7glow)\"/>\n          <use href=\"#may\" x=\"40\" y=\"200\" width=\"60\" height=\"90\"/>\n          <use href=\"#jon\" x=\"96\" y=\"170\" width=\"66\" height=\"90\"/>\n          <use href=\"#jasin\" x=\"150\" y=\"206\" width=\"60\" height=\"90\"/>\n          <g stroke=\"#e3c6ff\" stroke-width=\"3\" stroke-linecap=\"round\" opacity=\"0.8\">\n            <path d=\"M58 300 L58 316 M82 300 L82 312 M120 270 L120 286 M144 270 L144 282 M170 306 L170 322 M194 306 L194 318\"/>\n          </g></g>\n          <g id=\"oliviaSpin\" class=\"anim\"><use href=\"#olivia\" x=\"196\" y=\"340\" width=\"60\" height=\"90\"/>\n          <g fill=\"none\" stroke=\"#e3c6ff\" stroke-width=\"3\" stroke-linecap=\"round\">\n            <path d=\"M184 404 Q226 430 268 404\"/>\n            <path d=\"M176 390 Q170 370 184 360\"/>\n            <path d=\"M276 390 Q282 370 268 360\"/>\n          </g></g>\n          <g id=\"missed\" class=\"anim\"><path d=\"M520 268 Q470 250 440 290\" fill=\"none\" stroke=\"#f6e7b8\" stroke-width=\"3\" stroke-dasharray=\"6 6\"/>\n          <text x=\"560\" y=\"236\" text-anchor=\"middle\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"30\" fill=\"#f6e7b8\">MISSED!</text></g></g><g id=\"ko\" class=\"anim\" style=\"display:none\"><text x=\"560\" y=\"262\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"34\" fill=\"#f6e7b8\">Zzz</text></g>\n        ", "whichone": "\n          <defs>\n            <linearGradient id=\"s5sky\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">\n              <stop offset=\"0\" stop-color=\"#6e5a9e\"/><stop offset=\"1\" stop-color=\"#e7b8c8\"/>\n            </linearGradient>\n          </defs>\n          <rect width=\"800\" height=\"450\" fill=\"url(#s5sky)\"/>\n          <path d=\"M0 400 Q200 380 400 396 T800 388 L800 450 L0 450 Z\" fill=\"#4f6b4a\"/>\n          <path d=\"M520 450 Q560 410 660 396 L700 396 Q640 412 620 450 Z\" fill=\"#8a7a5c\"/>\n          <!-- thought cloud: outline pass, then fill pass -->\n          <g fill=\"none\" stroke=\"#2a1f3d\" stroke-width=\"5\">\n            <circle cx=\"260\" cy=\"92\" r=\"52\"/><circle cx=\"350\" cy=\"70\" r=\"58\"/><circle cx=\"455\" cy=\"68\" r=\"60\"/><circle cx=\"555\" cy=\"80\" r=\"56\"/>\n            <circle cx=\"630\" cy=\"112\" r=\"44\"/><circle cx=\"210\" cy=\"124\" r=\"40\"/><circle cx=\"330\" cy=\"132\" r=\"48\"/><circle cx=\"450\" cy=\"138\" r=\"48\"/><circle cx=\"565\" cy=\"138\" r=\"44\"/>\n          </g>\n          <g fill=\"#fff\">\n            <circle cx=\"260\" cy=\"92\" r=\"52\"/><circle cx=\"350\" cy=\"70\" r=\"58\"/><circle cx=\"455\" cy=\"68\" r=\"60\"/><circle cx=\"555\" cy=\"80\" r=\"56\"/>\n            <circle cx=\"630\" cy=\"112\" r=\"44\"/><circle cx=\"210\" cy=\"124\" r=\"40\"/><circle cx=\"330\" cy=\"132\" r=\"48\"/><circle cx=\"450\" cy=\"138\" r=\"48\"/><circle cx=\"565\" cy=\"138\" r=\"44\"/>\n          </g>\n          <circle cx=\"226\" cy=\"190\" r=\"11\" fill=\"#fff\" stroke=\"#2a1f3d\" stroke-width=\"4\"/>\n          <circle cx=\"208\" cy=\"214\" r=\"7\" fill=\"#fff\" stroke=\"#2a1f3d\" stroke-width=\"3\"/>\n          <!-- bike -->\n          <g stroke=\"#2a1f3d\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\">\n            <circle cx=\"248\" cy=\"124\" r=\"20\"/><circle cx=\"312\" cy=\"124\" r=\"20\"/>\n            <path d=\"M248 124 L272 94 L312 124 L282 124 Z\" stroke=\"#e04e39\"/>\n            <path d=\"M272 94 L268 84 M260 84 L278 84\"/>\n            <path d=\"M312 124 L300 80 L314 76\"/>\n          </g>\n          <!-- train -->\n          <g stroke=\"#2a1f3d\" stroke-width=\"4\" stroke-linejoin=\"round\">\n            <rect x=\"404\" y=\"40\" width=\"14\" height=\"22\" fill=\"#2a1f3d\"/>\n            <rect x=\"394\" y=\"60\" width=\"96\" height=\"48\" rx=\"7\" fill=\"#3a86c8\"/>\n            <rect x=\"456\" y=\"36\" width=\"34\" height=\"28\" fill=\"#3a86c8\"/>\n            <circle cx=\"412\" cy=\"114\" r=\"10\" fill=\"#2a1f3d\"/><circle cx=\"442\" cy=\"114\" r=\"10\" fill=\"#2a1f3d\"/><circle cx=\"472\" cy=\"114\" r=\"10\" fill=\"#2a1f3d\"/>\n          </g>\n          <g fill=\"#fff6c0\"><rect x=\"404\" y=\"72\" width=\"16\" height=\"14\" rx=\"2\"/><rect x=\"428\" y=\"72\" width=\"16\" height=\"14\" rx=\"2\"/><rect x=\"462\" y=\"42\" width=\"20\" height=\"14\" rx=\"2\"/></g>\n          <circle cx=\"418\" cy=\"26\" r=\"7\" fill=\"#e6e0f0\"/><circle cx=\"430\" cy=\"14\" r=\"9\" fill=\"#e6e0f0\"/>\n          <!-- jeep -->\n          <g stroke=\"#2a1f3d\" stroke-width=\"4\" stroke-linejoin=\"round\">\n            <path d=\"M546 90 L554 64 L604 64 L612 90\" fill=\"none\" stroke-width=\"5\"/>\n            <rect x=\"530\" y=\"88\" width=\"104\" height=\"32\" rx=\"7\" fill=\"#6b7d3a\"/>\n            <circle cx=\"556\" cy=\"124\" r=\"12\" fill=\"#222\"/><circle cx=\"608\" cy=\"124\" r=\"12\" fill=\"#222\"/>\n            <circle cx=\"630\" cy=\"98\" r=\"5\" fill=\"#ffeaa0\" stroke-width=\"2\"/>\n          </g>\n          <use href=\"#olivia\" x=\"110\" y=\"196\" width=\"160\" height=\"240\"/>\n          <!-- speech bubble -->\n          <path d=\"M440 300 Q440 236 600 236 Q760 236 760 300 Q760 364 600 364 Q520 364 490 352 L300 330 L460 336 Q440 322 440 300 Z\" fill=\"#fff\" stroke=\"#2a1f3d\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n          <text x=\"600\" y=\"290\" text-anchor=\"middle\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"38\" fill=\"#2a1f3d\">Jip, bik, tran,</text>\n          <text x=\"600\" y=\"334\" text-anchor=\"middle\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"38\" fill=\"#2a1f3d\">wich own?</text>\n        ", "living": "\n          <defs>\n            <symbol id=\"spider\" viewBox=\"-12 -10 24 20\">\n              <path d=\"M-4 -2 L-11 -8 M-4 0 L-12 -1 M-4 2 L-11 6 M-3 3 L-8 10 M4 -2 L11 -8 M4 0 L12 -1 M4 2 L11 6 M3 3 L8 10\" stroke=\"#111\" stroke-width=\"1.6\" fill=\"none\" stroke-linecap=\"round\"/>\n              <ellipse cx=\"0\" cy=\"1\" rx=\"5\" ry=\"4\" fill=\"#111\"/>\n              <circle cx=\"0\" cy=\"-4\" r=\"3\" fill=\"#111\"/>\n              <circle cx=\"-1.2\" cy=\"-4.5\" r=\"0.9\" fill=\"#e33\"/><circle cx=\"1.2\" cy=\"-4.5\" r=\"0.9\" fill=\"#e33\"/>\n            </symbol>\n          </defs>\n          <rect width=\"800\" height=\"450\" fill=\"#3d2f4f\"/>\n          <g stroke=\"#4a3a5e\" stroke-width=\"10\">\n            <path d=\"M20 0 V340 M80 0 V340 M140 0 V340 M200 0 V340 M260 0 V340 M320 0 V340 M380 0 V340 M440 0 V340 M500 0 V340 M560 0 V340 M620 0 V340 M680 0 V340 M740 0 V340\"/>\n          </g>\n          <path d=\"M300 40 L330 40 L326 90 L312 70 Z\" fill=\"#cbb8a0\" stroke=\"#2a1f3d\" stroke-width=\"2\"/>\n          <rect y=\"340\" width=\"800\" height=\"110\" fill=\"#4a3826\"/>\n          <g stroke=\"#3a2b1c\" stroke-width=\"3\"><path d=\"M0 370 H800 M0 405 H800 M0 440 H800 M120 340 V370 M380 370 V405 M600 340 V370 M240 405 V440 M700 405 V440\"/></g>\n          <!-- cobweb -->\n          <g stroke=\"#cfc8dc\" stroke-width=\"1.5\" fill=\"none\" opacity=\"0.7\">\n            <path d=\"M0 0 L120 30 M0 0 L90 80 M0 0 L30 120\"/>\n            <path d=\"M40 10 Q30 30 10 40 M80 20 Q60 55 20 80 M115 30 Q90 75 30 118\"/>\n          </g>\n          <use href=\"#spider\" x=\"76\" y=\"52\" width=\"24\" height=\"20\"/>\n          <!-- window -->\n          <rect x=\"400\" y=\"60\" width=\"110\" height=\"100\" fill=\"#1d1838\" stroke=\"#2a1f3d\" stroke-width=\"6\"/>\n          <circle cx=\"478\" cy=\"92\" r=\"16\" fill=\"#f6e7b8\"/>\n          <path d=\"M455 60 V160 M400 110 H510\" stroke=\"#2a1f3d\" stroke-width=\"5\"/>\n          <!-- couch -->\n          <g stroke=\"#2a1f3d\" stroke-width=\"4\" stroke-linejoin=\"round\">\n            <rect x=\"70\" y=\"236\" width=\"280\" height=\"76\" rx=\"22\" fill=\"#7a4f6a\"/>\n            <rect x=\"60\" y=\"298\" width=\"300\" height=\"52\" rx=\"12\" fill=\"#8a5c79\"/>\n            <rect x=\"36\" y=\"266\" width=\"54\" height=\"96\" rx=\"18\" fill=\"#7a4f6a\"/>\n            <rect x=\"330\" y=\"266\" width=\"54\" height=\"96\" rx=\"18\" fill=\"#7a4f6a\"/>\n            <path d=\"M80 362 L80 380 M340 362 L340 380\" fill=\"none\"/>\n          </g>\n          <g fill=\"#f2ebe0\" stroke=\"#2a1f3d\" stroke-width=\"2.5\" stroke-linejoin=\"round\">\n            <path d=\"M130 256 L144 270 L136 280 L152 292 L124 288 L132 276 Z\"/>\n            <path d=\"M246 312 L268 306 L262 320 L284 326 L254 334 L258 322 Z\"/>\n            <path d=\"M342 296 L362 300 L352 314 L368 322 L344 324 Z\"/>\n          </g>\n          <use href=\"#spider\" x=\"168\" y=\"262\" width=\"24\" height=\"20\"/>\n          <use href=\"#spider\" x=\"290\" y=\"250\" width=\"28\" height=\"23\"/>\n          <use href=\"#spider\" x=\"200\" y=\"318\" width=\"22\" height=\"18\"/>\n          <use href=\"#spider\" x=\"96\" y=\"314\" width=\"24\" height=\"20\"/>\n          <use href=\"#spider\" x=\"350\" y=\"276\" width=\"20\" height=\"17\"/>\n          <!-- TV -->\n          <g stroke=\"#2a1f3d\" stroke-width=\"4\" stroke-linejoin=\"round\">\n            <path d=\"M478 200 L462 160 M522 200 L540 158\" fill=\"none\"/>\n            <rect x=\"440\" y=\"296\" width=\"124\" height=\"46\" rx=\"4\" fill=\"#3a2a1e\"/>\n            <rect x=\"450\" y=\"198\" width=\"104\" height=\"100\" rx=\"12\" fill=\"#5a5560\"/>\n            <rect x=\"462\" y=\"210\" width=\"80\" height=\"70\" rx=\"6\" fill=\"#c9d0d6\"/>\n          </g>\n          <g stroke=\"#7d8790\" stroke-width=\"2\"><path d=\"M466 218 H538 M466 228 H520 M470 238 H538 M466 248 H530 M476 258 H538 M466 268 H526\"/></g>\n          <text x=\"502\" y=\"252\" text-anchor=\"middle\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"22\" fill=\"#2a1f3d\">???</text>\n          <!-- kitchen door -->\n          <rect x=\"706\" y=\"186\" width=\"82\" height=\"194\" fill=\"#f5c75a\" stroke=\"#2a1f3d\" stroke-width=\"5\"/>\n          <path d=\"M706 186 L740 200 L740 368 L706 380 Z\" fill=\"#5a3f2a\" stroke=\"#2a1f3d\" stroke-width=\"4\" stroke-linejoin=\"round\"/>\n          <rect x=\"690\" y=\"138\" width=\"110\" height=\"36\" rx=\"5\" fill=\"#c9a46a\" stroke=\"#2a1f3d\" stroke-width=\"3\"/>\n          <text x=\"745\" y=\"163\" text-anchor=\"middle\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"22\" fill=\"#2a1f3d\">Kitchen \u2192</text>\n          <use href=\"#may\" x=\"726\" y=\"300\" width=\"50\" height=\"75\"/>\n          <use href=\"#olivia\" x=\"664\" y=\"306\" width=\"50\" height=\"75\"/>\n          <!-- mean dog -->\n          <g transform=\"rotate(-18 590 360)\" stroke=\"#2a1f3d\" stroke-width=\"4\" stroke-linejoin=\"round\" stroke-linecap=\"round\">\n            <path d=\"M548 380 L540 410 M566 384 L564 414 M612 382 L628 404 M628 376 L648 394\" fill=\"none\"/>\n            <path d=\"M540 360 Q520 344 512 326\" fill=\"none\"/>\n            <ellipse cx=\"588\" cy=\"364\" rx=\"52\" ry=\"26\" fill=\"#6b5040\"/>\n            <circle cx=\"642\" cy=\"336\" r=\"26\" fill=\"#6b5040\"/>\n            <path d=\"M626 316 L622 292 L640 312 Z M650 312 L664 292 L662 318 Z\" fill=\"#4a3528\"/>\n            <path d=\"M650 344 L680 342 L676 360 L648 356 Z\" fill=\"#c0392b\"/>\n            <path d=\"M652 344 L656 350 L660 344 L664 350 L668 344 L672 350 L676 343\" fill=\"none\" stroke=\"#fff\" stroke-width=\"2.5\"/>\n            <path d=\"M630 326 L642 330 M648 326 L658 324\" fill=\"none\" stroke-width=\"3\"/>\n          </g>\n          <text x=\"640\" y=\"268\" text-anchor=\"middle\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"34\" fill=\"#f6e7b8\">GRRR!</text>\n        ", "jeep": "\n          <defs>\n            <linearGradient id=\"s4sky\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">\n              <stop offset=\"0\" stop-color=\"#121d22\"/><stop offset=\"1\" stop-color=\"#3d4d3c\"/>\n            </linearGradient>\n          </defs>\n          <rect width=\"800\" height=\"450\" fill=\"url(#s4sky)\"/>\n          <circle cx=\"120\" cy=\"80\" r=\"36\" fill=\"#e3edc4\"/>\n          <path d=\"M40 92 Q90 74 150 90 Q200 80 240 96 Q180 108 120 102 Q70 110 40 92 Z\" fill=\"#2c3a37\" opacity=\"0.9\"/>\n          <path d=\"M0 260 L120 190 L230 240 L380 150 L520 220 L620 120 L720 190 L800 160 L800 450 L0 450 Z\" fill=\"#202b30\"/>\n          <!-- castle -->\n          <g fill=\"#11181c\" stroke=\"#0a0f12\" stroke-width=\"3\">\n            <rect x=\"570\" y=\"130\" width=\"100\" height=\"70\"/>\n            <rect x=\"552\" y=\"90\" width=\"34\" height=\"110\"/>\n            <rect x=\"654\" y=\"76\" width=\"34\" height=\"124\"/>\n            <path d=\"M552 90 L552 80 L560 80 L560 90 M569 90 L569 80 L577 80 L577 90 M578 90 L586 90 L586 80\" />\n            <path d=\"M654 76 L654 66 L662 66 L662 76 M671 76 L671 66 L679 66 L679 76 M680 76 L688 76 L688 66\"/>\n            <path d=\"M600 200 L600 170 Q620 150 640 170 L640 200 Z\" fill=\"#070a0c\"/>\n          </g>\n          <rect x=\"661\" y=\"96\" width=\"20\" height=\"26\" fill=\"#f5c75a\"/>\n          <path d=\"M662 107 L680 106 L680 111 L662 112 Z M667 102 L676 102 L676 107 L667 107 Z\" fill=\"#11181c\"/>\n          <circle cx=\"671\" cy=\"118\" r=\"5\" fill=\"#11181c\"/>\n          <rect x=\"560\" y=\"110\" width=\"16\" height=\"22\" fill=\"#f5c75a\" opacity=\"0.7\"/>\n          <g fill=\"#0a0f12\">\n            <path d=\"M600 60 q6 -8 12 0 q3 -5 6 0 q3 -5 6 0 q6 -8 12 0 q-9 3 -18 8 q-9 -5 -18 -8Z\"/>\n            <path d=\"M700 40 q5 -7 10 0 q2.5 -4 5 0 q2.5 -4 5 0 q5 -7 10 0 q-7 3 -15 7 q-8 -4 -15 -7Z\"/>\n          </g>\n          <path d=\"M0 330 Q200 280 420 300 T800 290 L800 450 L0 450 Z\" fill=\"#1a2420\"/>\n          <!-- road -->\n          <path d=\"M40 450 C220 400 120 340 320 300 S540 250 610 200\" fill=\"none\" stroke=\"#5c5442\" stroke-width=\"44\" stroke-linecap=\"round\"/>\n          <path d=\"M40 450 C220 400 120 340 320 300 S540 250 610 200\" fill=\"none\" stroke=\"#d9c27a\" stroke-width=\"3\" stroke-dasharray=\"14 14\"/>\n          <!-- dead trees -->\n          <g stroke=\"#0c1110\" stroke-linecap=\"round\" fill=\"none\">\n            <path d=\"M720 420 L728 300\" stroke-width=\"10\"/><path d=\"M726 330 L690 292\" stroke-width=\"6\"/><path d=\"M727 316 L760 284\" stroke-width=\"6\"/>\n            <path d=\"M470 330 L474 262\" stroke-width=\"7\"/><path d=\"M473 284 L452 262\" stroke-width=\"4\"/><path d=\"M474 276 L494 254\" stroke-width=\"4\"/>\n          </g>\n          <!-- jeep -->\n          <g id=\"jeepG\" class=\"anim\"><g transform=\"translate(150 300)\">\n            <polygon points=\"184,40 340,-10 340,110 184,58\" fill=\"#fff6c0\" opacity=\"0.18\"/>\n            <g stroke=\"#2a1f3d\" stroke-width=\"4\" stroke-linejoin=\"round\">\n              <rect x=\"0\" y=\"-34\" width=\"116\" height=\"110\" rx=\"6\" fill=\"#6b7d3a\"/>\n              <rect x=\"112\" y=\"22\" width=\"74\" height=\"54\" rx=\"6\" fill=\"#6b7d3a\"/>\n              <rect x=\"10\" y=\"-22\" width=\"44\" height=\"34\" rx=\"3\" fill=\"#c9d6a0\"/>\n              <rect x=\"62\" y=\"-22\" width=\"44\" height=\"34\" rx=\"3\" fill=\"#c9d6a0\"/>\n              <rect x=\"44\" y=\"70\" width=\"28\" height=\"44\" rx=\"3\" fill=\"#53632c\"/>\n              <path d=\"M44 84 L72 84 M44 98 L72 98\" fill=\"none\" stroke-width=\"3\"/>\n              <circle cx=\"182\" cy=\"40\" r=\"7\" fill=\"#ffeaa0\"/>\n            </g>\n            <!-- kids in the windows -->\n            <g stroke=\"#2a1f3d\" stroke-width=\"2.5\">\n              <circle cx=\"18\" cy=\"-12\" r=\"4\" fill=\"#6b3f2a\"/><circle cx=\"30\" cy=\"-12\" r=\"4\" fill=\"#6b3f2a\"/>\n              <circle cx=\"24\" cy=\"-2\" r=\"8\" fill=\"#f3c9a5\"/>\n              <polygon points=\"35,-4 37,-16 41,-9 44,-18 47,-9 51,-15 52,-4\" fill=\"#f0a830\"/>\n              <circle cx=\"43\" cy=\"0\" r=\"8\" fill=\"#e9b48a\"/>\n              <circle cx=\"75\" cy=\"0\" r=\"8\" fill=\"#c68a5e\"/>\n              <path d=\"M67 -1 Q69 -10 75 -9 Q81 -10 83 -1 Q78 -5 75 -4 Q71 -5 67 -1 Z\" fill=\"#3b2a20\"/>\n              <path d=\"M88 -4 Q84 2 86 10 L90 2 Z M102 -4 Q106 2 104 10 L100 2 Z\" fill=\"#a8452f\"/>\n              <circle cx=\"95\" cy=\"0\" r=\"8\" fill=\"#f6d2b8\"/>\n            </g>\n            <text x=\"78\" y=\"56\" text-anchor=\"middle\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"34\" fill=\"#2a1f3d\">S</text>\n            <!-- big spoked wheels -->\n            <g stroke=\"#2a1f3d\" stroke-width=\"4\">\n              <circle cx=\"24\" cy=\"80\" r=\"26\" fill=\"#222\"/>\n              <circle cx=\"158\" cy=\"80\" r=\"26\" fill=\"#222\"/>\n            </g>\n            <g stroke=\"#999\" stroke-width=\"3\" stroke-linecap=\"round\">\n              <path d=\"M24 58 L24 102 M2 80 L46 80 M8 64 L40 96 M40 64 L8 96\"/>\n              <path d=\"M158 58 L158 102 M136 80 L180 80 M142 64 L174 96 M174 64 L142 96\"/>\n            </g>\n            <circle cx=\"24\" cy=\"80\" r=\"6\" fill=\"#bbb\"/><circle cx=\"158\" cy=\"80\" r=\"6\" fill=\"#bbb\"/>\n          </g></g>\n          <!-- mile marker -->\n          <g stroke=\"#2a1f3d\" stroke-width=\"3\" stroke-linejoin=\"round\">\n            <rect x=\"44\" y=\"300\" width=\"8\" height=\"70\" fill=\"#6b4a2f\"/>\n            <rect x=\"0\" y=\"270\" width=\"96\" height=\"44\" rx=\"6\" fill=\"#c9a46a\"/>\n          </g>\n          <text x=\"48\" y=\"290\" text-anchor=\"middle\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"17\" fill=\"#2a1f3d\">Secret castle</text>\n          <text x=\"48\" y=\"308\" text-anchor=\"middle\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"17\" fill=\"#2a1f3d\">50 mi</text>\n        ", "witchhouse": "\n          <defs>\n            <linearGradient id=\"s9sky\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">\n              <stop offset=\"0\" stop-color=\"#3b3550\"/><stop offset=\"1\" stop-color=\"#7d8a6a\"/>\n            </linearGradient>\n          </defs>\n          <rect width=\"800\" height=\"450\" fill=\"url(#s9sky)\"/>\n          <!-- trees -->\n          <g stroke=\"#1f2b22\" stroke-width=\"4\" stroke-linejoin=\"round\">\n            <path d=\"M560 300 L566 200 M640 310 L636 190 M720 300 L724 210 M90 300 L96 220\" fill=\"none\" stroke=\"#3a2b1c\" stroke-width=\"8\"/>\n            <path d=\"M520 220 Q520 160 570 160 Q610 130 650 160 Q700 150 720 190 Q770 190 770 230 Q700 250 640 236 Q580 250 520 220 Z\" fill=\"#2f4232\"/>\n            <path d=\"M40 240 Q40 200 80 196 Q110 170 140 200 Q170 210 160 240 Q100 256 40 240 Z\" fill=\"#2f4232\"/>\n          </g>\n          <!-- swamp -->\n          <path d=\"M0 360 Q200 330 400 350 T800 340 L800 450 L0 450 Z\" fill=\"#3f5a3a\" stroke=\"#2a1f3d\" stroke-width=\"4\"/>\n          <g fill=\"none\" stroke=\"#9fc48a\" stroke-width=\"2.5\" stroke-linecap=\"round\" opacity=\"0.8\">\n            <path d=\"M540 392 Q570 384 600 392 M120 410 Q150 402 180 410 M640 420 Q670 412 700 420\"/>\n            <circle cx=\"250\" cy=\"400\" r=\"5\"/><circle cx=\"560\" cy=\"420\" r=\"4\"/><circle cx=\"700\" cy=\"380\" r=\"5\"/>\n          </g>\n          <!-- smoke -->\n          <g fill=\"#d6cfe0\" opacity=\"0.85\" stroke=\"#2a1f3d\" stroke-width=\"2\">\n            <circle cx=\"448\" cy=\"92\" r=\"16\"/><circle cx=\"424\" cy=\"66\" r=\"22\"/><circle cx=\"386\" cy=\"42\" r=\"28\"/><circle cx=\"334\" cy=\"28\" r=\"30\"/>\n          </g>\n          <!-- bird legs -->\n          <g stroke=\"#e0a030\" stroke-width=\"7\" stroke-linecap=\"round\" fill=\"none\">\n            <path d=\"M344 334 L338 384\"/><path d=\"M440 332 L448 384\"/>\n            <path d=\"M338 384 L316 396 M338 384 L336 400 M338 384 L356 396\"/>\n            <path d=\"M448 384 L426 396 M448 384 L448 400 M448 384 L468 396\"/>\n          </g>\n          <!-- house -->\n          <g stroke=\"#2a1f3d\" stroke-width=\"4\" stroke-linejoin=\"round\">\n            <rect x=\"300\" y=\"92\" width=\"50\" height=\"96\" fill=\"#6d5a72\"/>\n            <path d=\"M310 110 H340 M310 130 H340 M310 150 H340 M325 92 V188\" fill=\"none\" stroke-width=\"2.5\"/>\n            <path d=\"M286 94 L326 40 L364 94 Z\" fill=\"#4a3a5e\"/>\n            <rect x=\"430\" y=\"108\" width=\"26\" height=\"56\" fill=\"#6d5a72\"/>\n            <path d=\"M298 194 L470 182 L482 334 L294 340 Z\" fill=\"#8a6f8f\"/>\n            <path d=\"M276 204 L390 100 L502 198 Z\" fill=\"#4a3a5e\"/>\n            <path d=\"M378 158 L392 136 L406 160 Z\" fill=\"#f5c75a\"/>\n            <rect x=\"318\" y=\"214\" width=\"30\" height=\"36\" fill=\"#f5c75a\"/>\n            <rect x=\"374\" y=\"212\" width=\"30\" height=\"36\" fill=\"#2a2430\"/>\n            <rect x=\"428\" y=\"210\" width=\"30\" height=\"36\" fill=\"#f5c75a\"/>\n            <rect x=\"318\" y=\"274\" width=\"26\" height=\"36\" fill=\"#2a2430\"/>\n            <rect x=\"434\" y=\"270\" width=\"26\" height=\"36\" fill=\"#f5c75a\"/>\n            <rect x=\"366\" y=\"268\" width=\"48\" height=\"70\" fill=\"#5a3f2a\"/>\n          </g>\n          <circle cx=\"404\" cy=\"306\" r=\"3.5\" fill=\"#f5c75a\"/>\n          <g id=\"appr\" class=\"anim bob\"><!-- the apprentice in a little boat on the swamp -->\n          <g stroke=\"#2a1f3d\" stroke-width=\"3\" stroke-linejoin=\"round\" stroke-linecap=\"round\">\n            <path d=\"M128 344 L132 372 L160 372 L162 344 Z\" fill=\"#b44fd6\"/>\n            <circle cx=\"146\" cy=\"334\" r=\"11\" fill=\"#9fd08a\"/>\n            <path d=\"M132 328 L160 324 L144 298 Z\" fill=\"#3b2a5c\"/>\n            <path d=\"M160 352 L204 396\" fill=\"none\" stroke=\"#7a5230\" stroke-width=\"5\"/>\n            <path d=\"M70 370 L222 370 L200 398 L90 398 Z\" fill=\"#6b4a2f\"/>\n            <path d=\"M84 380 H208\" fill=\"none\" stroke-width=\"2\"/>\n          </g>\n          <path d=\"M60 404 Q90 396 120 404 M180 406 Q210 398 240 406\" fill=\"none\" stroke=\"#9fc48a\" stroke-width=\"2.5\" stroke-linecap=\"round\"/>\n          <text x=\"94\" y=\"270\" font-family=\"Patrick Hand, Comic Sans MS, cursive\" font-size=\"22\" fill=\"#f6e7b8\">apprentice</text>\n          <path d=\"M140 276 L144 294\" stroke=\"#f6e7b8\" stroke-width=\"2.5\" stroke-linecap=\"round\"/></g>\n        <g id=\"ripples\" class=\"anim\" style=\"display:none\" fill=\"none\" stroke=\"#9fc48a\" stroke-width=\"4\"><ellipse cx=\"560\" cy=\"390\" rx=\"80\" ry=\"20\"/><ellipse cx=\"560\" cy=\"390\" rx=\"140\" ry=\"34\"/><ellipse cx=\"560\" cy=\"390\" rx=\"200\" ry=\"48\"/></g><g id=\"swampKids\" class=\"anim\"><use href=\"#may\" x=\"600\" y=\"320\" width=\"50\" height=\"75\"/><use href=\"#jon\" x=\"642\" y=\"320\" width=\"55\" height=\"75\"/><use href=\"#jasin\" x=\"688\" y=\"320\" width=\"50\" height=\"75\"/><use href=\"#olivia\" x=\"730\" y=\"320\" width=\"50\" height=\"75\"/></g><g id=\"witch\" style=\"display:none\"><g id=\"witchBody\" class=\"anim\"><use href=\"#witch\" x=\"240\" y=\"246\" width=\"100\" height=\"145\"/></g></g><g id=\"cage\" class=\"anim\" style=\"display:none\" stroke=\"#2a1f3d\" stroke-width=\"3\"><rect x=\"366\" y=\"268\" width=\"48\" height=\"70\" fill=\"#5a3f2a\"/><use href=\"#witch\" x=\"370\" y=\"276\" width=\"40\" height=\"58\"/><path d=\"M370 270 V336 M380 270 V336 M390 270 V336 M400 270 V336 M410 270 V336\" stroke=\"#c9c2b0\" stroke-width=\"3\"/></g>", "castle": "\n          <defs>\n            <linearGradient id=\"s8sky\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">\n              <stop offset=\"0\" stop-color=\"#3e3946\"/><stop offset=\"1\" stop-color=\"#8d8692\"/>\n            </linearGradient>\n          </defs>\n          <rect width=\"800\" height=\"450\" fill=\"url(#s8sky)\"/>\n          <g stroke=\"#a59faa\" stroke-width=\"10\" stroke-linecap=\"round\" opacity=\"0.35\">\n            <path d=\"M30 40 L120 36 M200 60 L330 56 M480 30 L600 34 M60 140 L110 138 M690 160 L770 158 M20 260 L90 256 M700 260 L780 264\"/>\n          </g>\n          <path d=\"M716 52 Q690 80 712 112 Q680 100 682 74 Q686 54 716 52 Z\" fill=\"#f6e7b8\"/>\n          <path d=\"M640 92 Q680 80 720 96 Q760 88 790 100 Q750 110 700 106 Q670 112 640 92 Z\" fill=\"#6d6577\" opacity=\"0.8\"/>\n          <path d=\"M0 410 Q120 360 240 380 L560 380 Q680 360 800 400 L800 450 L0 450 Z\" fill=\"#4c4654\"/>\n          <!-- castle, outlined in the kids' purple marker -->\n          <g stroke=\"#b44fd6\" stroke-width=\"5\" stroke-linejoin=\"round\" fill=\"#6d6577\">\n            <path d=\"M262 384 Q120 320 132 150 Q138 90 176 48 L196 60 Q164 120 184 230 Q206 310 300 350 Z\"/>\n            <path d=\"M540 384 Q690 310 664 150 Q650 96 540 70 L560 86 L600 96 Q636 150 616 236 Q590 312 512 342 Z\"/>\n            <path d=\"M290 384 L290 250 Q340 220 400 236 Q460 220 520 250 L520 384 Z\"/>\n            <path d=\"M296 252 L284 120 Q300 150 318 236 Z\"/>\n            <path d=\"M330 238 L350 100 Q356 160 368 232 Z\"/>\n            <path d=\"M384 232 L404 90 Q414 160 418 230 Z\"/>\n            <path d=\"M432 232 L460 110 Q462 170 466 236 Z\"/>\n            <path d=\"M478 240 L512 140 Q500 200 506 250 Z\"/>\n          </g>\n          <path d=\"M150 58 L196 18 L204 70 Z\" fill=\"#8b2fb8\" stroke=\"#2a1f3d\" stroke-width=\"3\" stroke-linejoin=\"round\"/>\n          <circle cx=\"404\" cy=\"282\" r=\"22\" fill=\"#2a2430\" stroke=\"#b44fd6\" stroke-width=\"5\"/>\n          <path d=\"M404 260 V304 M382 282 H426\" stroke=\"#b44fd6\" stroke-width=\"4\"/>\n          <g fill=\"#f5c75a\" stroke=\"#b44fd6\" stroke-width=\"3\">\n            <rect x=\"160\" y=\"160\" width=\"12\" height=\"22\"/><rect x=\"186\" y=\"270\" width=\"12\" height=\"22\"/>\n            <rect x=\"620\" y=\"120\" width=\"10\" height=\"20\"/><rect x=\"600\" y=\"210\" width=\"10\" height=\"20\"/><rect x=\"614\" y=\"210\" width=\"10\" height=\"20\"/>\n            <rect x=\"330\" y=\"300\" width=\"12\" height=\"18\"/><rect x=\"460\" y=\"300\" width=\"12\" height=\"18\"/>\n            <rect x=\"350\" y=\"340\" width=\"12\" height=\"18\"/><rect x=\"452\" y=\"344\" width=\"12\" height=\"18\"/>\n          </g>\n          <g fill=\"#2a2430\" stroke=\"#b44fd6\" stroke-width=\"3\">\n            <rect x=\"150\" y=\"230\" width=\"12\" height=\"22\"/><rect x=\"232\" y=\"330\" width=\"14\" height=\"16\"/>\n            <rect x=\"560\" y=\"330\" width=\"12\" height=\"20\"/><rect x=\"644\" y=\"170\" width=\"10\" height=\"20\"/>\n          </g>\n          <!-- the witch's swamp by the castle entrance -->\n          <ellipse cx=\"190\" cy=\"420\" rx=\"170\" ry=\"30\" fill=\"#3f5a3a\" stroke=\"#2a1f3d\" stroke-width=\"4\"/>\n          <ellipse cx=\"170\" cy=\"416\" rx=\"120\" ry=\"16\" fill=\"#5d7a4a\" opacity=\"0.7\"/>\n          <g fill=\"none\" stroke=\"#9fc48a\" stroke-width=\"2\"><circle cx=\"120\" cy=\"414\" r=\"5\"/><circle cx=\"260\" cy=\"420\" r=\"4\"/><circle cx=\"210\" cy=\"410\" r=\"3\"/></g>\n          <g stroke=\"#2f4a2a\" stroke-width=\"4\" stroke-linecap=\"round\"><path d=\"M40 420 L34 370 M52 422 L56 378 M330 418 L324 372 M342 420 L350 380\"/></g>\n          <g fill=\"#5a3f2a\"><ellipse cx=\"34\" cy=\"368\" rx=\"4\" ry=\"10\"/><ellipse cx=\"324\" cy=\"370\" rx=\"4\" ry=\"10\"/></g>\n          \n          <path d=\"M386 384 L386 352 Q404 330 422 352 L422 384 Z\" fill=\"#2a2430\" stroke=\"#b44fd6\" stroke-width=\"5\"/>\n          <path d=\"M404 384 Q380 400 398 416 Q420 430 390 450\" fill=\"none\" stroke=\"#b44fd6\" stroke-width=\"5\"/>\n          <path d=\"M412 384 Q440 400 424 418 Q408 432 444 450\" fill=\"none\" stroke=\"#b44fd6\" stroke-width=\"5\"/>\n        "};
+const NS = "http://www.w3.org/2000/svg";
+
+const KIDS = {
+  may: { name: "May", w: 60, h: 90 },
+  jon: { name: "Jon", w: 66, h: 90 },
+  jasin: { name: "Jasin", w: 60, h: 90 },
+  olivia: { name: "Olivia", w: 60, h: 90 },
+  group: { name: "the whole team", w: 200, h: 80, group: true }
+};
+
+const ITEMS = {
+  ball: { name: "Jasin's glowing soccer ball", icon: '<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="18" fill="#ffe066" opacity="0.4"/><circle cx="20" cy="20" r="13" fill="#fff" stroke="#2a1f3d" stroke-width="2.5"/><polygon points="20,14 25.7,18.1 23.5,24.8 16.5,24.8 14.3,18.1" fill="#2a1f3d"/></svg>' },
+  paddle: { name: "Ping-pong paddle", icon: '<svg viewBox="0 0 40 40"><path d="M10 32 L18 24" stroke="#2a1f3d" stroke-width="5" stroke-linecap="round"/><circle cx="25" cy="15" r="11" fill="#e8542c" stroke="#2a1f3d" stroke-width="2.5"/></svg>' },
+  sugar: { name: "Sugar", icon: '<svg viewBox="0 0 40 40"><path d="M10 12 L30 12 L32 36 L8 36 Z" fill="#fff" stroke="#2a1f3d" stroke-width="2.5" stroke-linejoin="round"/><path d="M10 12 L14 6 L26 6 L30 12" fill="#f4f4f8" stroke="#2a1f3d" stroke-width="2"/><rect x="12" y="20" width="16" height="8" fill="#e8669a"/></svg>' },
+  flour: { name: "Flour", icon: '<svg viewBox="0 0 40 40"><path d="M10 12 L30 12 L32 36 L8 36 Z" fill="#f2e6cc" stroke="#2a1f3d" stroke-width="2.5" stroke-linejoin="round"/><path d="M10 12 L14 6 L26 6 L30 12" fill="#f8f0de" stroke="#2a1f3d" stroke-width="2"/><path d="M14 26 Q20 18 26 26" fill="none" stroke="#c9a46a" stroke-width="3"/></svg>' },
+  oil: { name: "Oil", icon: '<svg viewBox="0 0 40 40"><path d="M16 4 H24 V10 L28 16 V36 H12 V16 L16 10 Z" fill="#f2c94c" stroke="#2a1f3d" stroke-width="2.5" stroke-linejoin="round"/><rect x="14" y="20" width="12" height="8" fill="#fff6c0"/></svg>' },
+  cacao: { name: "Cacao", icon: '<svg viewBox="0 0 40 40"><path d="M10 12 L30 12 L32 36 L8 36 Z" fill="#7a4a2c" stroke="#2a1f3d" stroke-width="2.5" stroke-linejoin="round"/><ellipse cx="16" cy="24" rx="4" ry="6" fill="#4a2a18"/><ellipse cx="25" cy="27" rx="4" ry="6" fill="#4a2a18"/></svg>' },
+  water: { name: "Water", icon: '<svg viewBox="0 0 40 40"><path d="M14 8 H26 L30 16 V34 Q30 36 28 36 H12 Q10 36 10 34 V16 Z" fill="#bfe0f5" stroke="#2a1f3d" stroke-width="2.5" stroke-linejoin="round"/><path d="M20 18 Q26 26 20 30 Q14 26 20 18 Z" fill="#3a86c8"/></svg>' },
+  yeast: { name: "Yeast", icon: '<svg viewBox="0 0 40 40"><rect x="8" y="12" width="24" height="18" rx="3" fill="#e0c48a" stroke="#2a1f3d" stroke-width="2.5"/><circle cx="16" cy="21" r="2" fill="#a07a48"/><circle cx="22" cy="19" r="2" fill="#a07a48"/><circle cx="25" cy="24" r="2" fill="#a07a48"/></svg>' },
+  cake: { name: "Chocolate cake", icon: '<svg viewBox="0 0 40 40"><rect x="6" y="18" width="28" height="16" rx="3" fill="#6b3f2a" stroke="#2a1f3d" stroke-width="2.5"/><path d="M6 22 Q11 26 14 22 Q18 26 22 22 Q26 26 30 22 Q32 25 34 22 V18 H6 Z" fill="#4a2a18"/><circle cx="20" cy="14" r="4" fill="#e04e39" stroke="#2a1f3d" stroke-width="2"/></svg>' },
+  opener: { name: "Can opener", icon: '<svg viewBox="0 0 40 40"><path d="M8 32 L22 18" stroke="#9aa7c2" stroke-width="5" stroke-linecap="round"/><circle cx="26" cy="14" r="7" fill="#c9d0d6" stroke="#2a1f3d" stroke-width="2.5"/><path d="M8 32 L22 18" stroke="#e04e39" stroke-width="3" stroke-linecap="round"/></svg>' },
+  tuna: { name: "Can of tuna", noUse: "Something rattles inside the can! May needs a way to open it.", icon: '<svg viewBox="0 0 40 40"><rect x="7" y="12" width="26" height="18" rx="3" fill="#c9d0d6" stroke="#2a1f3d" stroke-width="2.5"/><path d="M12 21 Q18 15 24 21 Q18 27 12 21 Z M24 21 L29 17 L29 25 Z" fill="#3a86c8"/></svg>' },
+  cheese: { name: "Moldy cheese", noUse: "Pee-yew! Someone on the ship might want this... (Who: the kids are still deciding.)", icon: '<svg viewBox="0 0 40 40"><path d="M6 30 L34 30 L34 18 L6 26 Z" fill="#f2c94c" stroke="#2a1f3d" stroke-width="2.5" stroke-linejoin="round"/><circle cx="16" cy="27" r="2.5" fill="#6fa35a"/><circle cx="27" cy="24" r="3" fill="#6fa35a"/><circle cx="30" cy="28" r="1.8" fill="#6fa35a"/></svg>' },
+  key: { name: "Engine room key", icon: '<svg viewBox="0 0 40 40"><circle cx="13" cy="20" r="7" fill="none" stroke="#ffd23f" stroke-width="4"/><path d="M20 20 H34 M29 20 V26 M34 20 V25" stroke="#ffd23f" stroke-width="4" stroke-linecap="round"/></svg>' },
+  map: { name: "Engine room map", icon: '<svg viewBox="0 0 40 40"><path d="M6 10 L15 7 L25 10 L34 7 V30 L25 33 L15 30 L6 33 Z" fill="#bfe0f5" stroke="#2a1f3d" stroke-width="2.5" stroke-linejoin="round"/><path d="M10 26 H18 V16 H28" fill="none" stroke="#3a86c8" stroke-width="2.5"/><circle cx="28" cy="16" r="2.5" fill="#e04e39"/></svg>' },
+  // drawn by the kids (art/11-memory-pills.png)
+  pills: { name: "Olivia's memory pills", icon: '<svg viewBox="0 0 40 40"><image href="pills.png" x="5" y="1" width="30" height="38"/></svg>' },
+  disguise: { name: "Priest disguises", icon: '<svg viewBox="0 0 40 40"><path d="M20 5 L29 11 L34 36 L6 36 L11 11 Z" fill="#3b2a5c" stroke="#2a1f3d" stroke-width="2.5" stroke-linejoin="round"/><rect x="15" y="9" width="10" height="5" rx="2" fill="#fff"/><circle cx="20" cy="22" r="1.8" fill="#f6e7b8"/><circle cx="20" cy="29" r="1.8" fill="#f6e7b8"/></svg>' }
+};
+
+let state;
+function resetState() {
+  state = { room: null, items: [], selected: null, flags: {}, queue: [], after: null, busy: false };
+}
+resetState();
+
+const $ = (id) => document.getElementById(id);
+const has = (item) => state.items.includes(item);
+function add(item) { if (!has(item)) state.items.push(item); renderDrawer(); }
+function removeItem(item) { state.items = state.items.filter((i) => i !== item); if (state.selected === item) state.selected = null; renderDrawer(); }
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+// ---------- Animation helpers ----------
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const T = (ms) => (reduce ? 1 : ms);
+// In scenes, a pause also lasts until any spoken line has finished, so voices don't overlap.
+async function wait(ms) {
+  await new Promise((r) => setTimeout(r, reduce ? Math.min(ms, 400) : ms));
+  const until = Date.now() + 9000;
+  try { while (speechSynthesis.speaking && Date.now() < until) await new Promise((r) => setTimeout(r, 120)); } catch (e) {}
+}
+
+// Plays keyframes on an element and keeps the final pose.
+async function anim(id, frames, opts = {}) {
+  const el = typeof id === "string" ? $(id) : id;
+  if (!el || !el.animate) return;
+  const a = el.animate(frames, { duration: T(opts.duration || 600), easing: opts.easing || "ease-in-out", fill: "forwards", delay: opts.delay || 0 });
+  try { await a.finished; } catch (e) { return; }
+  try { a.commitStyles(); } catch (e) {}
+  a.cancel();
+}
+function tween(fn, ms) {
+  return new Promise((res) => {
+    const d = T(ms), t0 = performance.now();
+    function step(now) { const v = Math.min(1, (now - t0) / d); fn(v); if (v < 1) requestAnimationFrame(step); else res(); }
+    requestAnimationFrame(step);
+  });
+}
+function pose(id, styles) { const el = $(id); if (el) Object.assign(el.style, styles); }
+function setFx(id, show) { const el = $(id); if (el) el.style.display = show ? "" : "none"; }
+function hideUse(groupId, kid) { const u = document.querySelector("#" + groupId + ' use[href="#' + kid + '"]'); if (u) u.style.display = "none"; }
+const pop = (id) => anim(id, [{ opacity: 0, transform: "scale(0.3)" }, { opacity: 1, transform: "scale(1.12)", offset: 0.7 }, { opacity: 1, transform: "scale(1)" }], { duration: 450 });
+async function shakeScene() {
+  $("flash").animate([{ opacity: 0 }, { opacity: 0.85 }, { opacity: 0 }], { duration: T(500) });
+  await anim("scene", [{ transform: "translate(0,0)" }, { transform: "translate(-14px,8px)" }, { transform: "translate(12px,-10px)" }, { transform: "translate(-8px,6px)" }, { transform: "translate(0,0)" }], { duration: 500 });
+}
+async function fadeOut() { await anim("scene", [{ opacity: 1 }, { opacity: 0 }], { duration: 500 }); }
+async function burst(x, y, word) {
+  const g = $("bubbles");
+  if (!g) return;
+  const el = document.createElementNS(NS, "g");
+  el.setAttribute("class", "anim");
+  el.innerHTML = '<path d="M' + x + ' ' + (y - 44) + ' L' + (x + 14) + ' ' + (y - 14) + ' L' + (x + 46) + ' ' + (y - 18) + ' L' + (x + 22) + ' ' + (y + 6) + ' L' + (x + 34) + ' ' + (y + 38) + ' L' + x + ' ' + (y + 18) + ' L' + (x - 34) + ' ' + (y + 38) + ' L' + (x - 22) + ' ' + (y + 6) + ' L' + (x - 46) + ' ' + (y - 18) + ' L' + (x - 14) + ' ' + (y - 14) + ' Z" fill="#ffd23f" stroke="#2a1f3d" stroke-width="3"/>' +
+    '<text x="' + x + '" y="' + (y + 8) + '" text-anchor="middle" font-family="Patrick Hand, Comic Sans MS, cursive" font-size="22" fill="#2a1f3d">' + word + "</text>";
+  g.appendChild(el);
+  await pop(el);
+  await wait(500);
+  await anim(el, [{ opacity: 1 }, { opacity: 0 }], { duration: 300 });
+  el.remove();
+}
+
+// ---------- The player's kid: walking ----------
+let P = null;
+let walkToken = 0;
+function spawnPlayer(kid, x, y, scale) {
+  const k = KIDS[kid];
+  const w = k.w * scale, h = k.h * scale;
+  // the whole team walks together as one group (Dandy: witch scene)
+  const body = k.group
+    ? '<use href="#may" x="' + (-100 * scale) + '" y="' + (-75 * scale) + '" width="' + 50 * scale + '" height="' + 75 * scale + '"/>' +
+      '<use href="#jon" x="' + (-52 * scale) + '" y="' + (-75 * scale) + '" width="' + 55 * scale + '" height="' + 75 * scale + '"/>' +
+      '<use href="#jasin" x="' + (2 * scale) + '" y="' + (-75 * scale) + '" width="' + 50 * scale + '" height="' + 75 * scale + '"/>' +
+      '<use href="#olivia" x="' + (50 * scale) + '" y="' + (-75 * scale) + '" width="' + 50 * scale + '" height="' + 75 * scale + '"/>'
+    : '<use href="#' + kid + '" x="' + (-w / 2) + '" y="' + (-h) + '" width="' + w + '" height="' + h + '"/>';
+  $("actors").innerHTML = '<g id="player" class="player"><g id="pInner">' + body + '</g></g>';
+  P = { kid, x, y, w, h, face: 1, bounce: 0, el: $("player"), inner: $("pInner") };
+  place();
+  P.el.addEventListener("click", (e) => { e.stopPropagation(); clickPlayer(); });
+}
+function place() {
+  if (!P) return;
+  P.el.setAttribute("transform", "translate(" + P.x + " " + P.y + ")");
+  P.inner.setAttribute("transform", "translate(0 " + P.bounce + ") scale(" + P.face + " 1)");
+  // In a wide room (the hallway), the view follows the player.
+  const room = ROOMS[state.room];
+  if (room && room.wide) {
+    const camX = Math.max(0, Math.min(room.wide - 800, P.x - 400));
+    $("scene").setAttribute("viewBox", camX + " 0 800 450");
+  }
+}
+function clampFloor(x, y) {
+  const f = ROOMS[state.room].floor;
+  return [Math.max(f.x1, Math.min(f.x2, x)), Math.max(f.y1, Math.min(f.y2, y))];
+}
+function walkTo(x, y, opts = {}) {
+  if (!P) return Promise.resolve(true);
+  clearBubble();
+  [x, y] = clampFloor(x, y);
+  const token = ++walkToken;
+  const sx = P.x, sy = P.y;
+  const dist = Math.hypot(x - sx, y - sy);
+  if (dist < 3) return Promise.resolve(true);
+  if (Math.abs(x - sx) > 2) P.face = x < sx ? -1 : 1;
+  const dur = reduce ? 1 : (dist / (opts.speed || 240)) * 1000;
+  const t0 = performance.now();
+  return new Promise((res) => {
+    function step(now) {
+      if (token !== walkToken) { P.bounce = 0; place(); return res(false); }
+      const t = Math.min(1, (now - t0) / dur);
+      P.x = sx + (x - sx) * t;
+      P.y = sy + (y - sy) * t;
+      P.bounce = t < 1 ? -Math.abs(Math.sin(((t * dur) / 1000) * 11)) * 7 : 0;
+      place();
+      if (t < 1) requestAnimationFrame(step); else res(true);
+    }
+    requestAnimationFrame(step);
+  });
+}
+function faceToward(x) { if (P && Math.abs(x - P.x) > 4) { P.face = x < P.x ? -1 : 1; place(); } }
+async function hopPlayer(times = 2) {
+  if (!P) return;
+  for (let i = 0; i < times; i++) await tween((v) => { P.bounce = -Math.sin(v * Math.PI) * 18; place(); }, 300);
+}
+async function spinPlayer() { for (let i = 0; i < 6; i++) { P.face *= -1; place(); await wait(150); } }
+const headOf = () => ({ x: P.x, y: P.y - P.h - 6 });
+
+// ---------- Speech bubbles, captions, reading aloud ----------
+// Read aloud = the narrator reads the story text. Voices = characters speak their own lines.
+let speakOn = false;
+let voicesOn = true;
+// Each character's voice: preferred built-in voices (first one found is used), plus pitch and speed.
+// These are starting choices until the kids say how everyone should sound.
+const VOICES = {
+  "May": { names: ["Samantha", "Karen", "Tessa", "Google US English"], pitch: 1.4, rate: 0.9 },
+  "Olivia": { names: ["Kathy", "Victoria", "Fiona", "Google UK English Female"], pitch: 1.6, rate: 0.88 },
+  "Jon": { names: ["Junior", "Daniel", "Alex"], pitch: 1.2, rate: 0.95 },
+  "Jasin": { names: ["Fred", "Tom", "Aaron", "Google UK English Male"], pitch: 1.0, rate: 0.92 },
+  "Ping-pong bad guy": { names: ["Ralph", "Bruce", "Rocko"], pitch: 0.5, rate: 0.78 },
+  "Witch": { names: ["Whisper", "Grandma", "Bubbles"], pitch: 1.3, rate: 0.75 },
+  "Wizard": { names: ["Albert", "Grandpa", "Reed"], pitch: 0.6, rate: 0.78 },
+  "Apprentice": { names: ["Eddy", "Junior"], pitch: 1.2, rate: 1.0 },
+  "Everyone": { names: ["Samantha", "Google US English"], pitch: 1.3, rate: 0.95 },
+  "Mouse": { names: ["Junior", "Samantha"], pitch: 1.9, rate: 1.15 }
+};
+const NARRATOR = { names: ["Samantha", "Daniel", "Google US English"], pitch: 1.0, rate: 0.88 };
+let allVoices = [];
+function loadVoices() { try { allVoices = speechSynthesis.getVoices().filter((v) => /^en/i.test(v.lang)); } catch (e) { allVoices = []; } }
+try { loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; } catch (e) {}
+function pickVoice(names) {
+  for (const n of names) { const v = allVoices.find((x) => x.name.includes(n)); if (v) return v; }
+  return null;
+}
+function say_out(text, profile, volume) {
+  try {
+    // Lines wait their turn instead of cutting each other off.
+    const u = new SpeechSynthesisUtterance(text);
+    const v = pickVoice(profile.names);
+    if (v) u.voice = v;
+    u.pitch = profile.pitch; u.rate = profile.rate; u.volume = volume || 1;
+    speechSynthesis.speak(u);
+  } catch (e) {}
+}
+// speak("text") reads narration when Read aloud is on; speak(text, "May") uses May's voice when Voices are on.
+function speak(text, who) {
+  if (!text) return;
+  const name = (who || "").replace(" (thinking)", "");
+  const profile = VOICES[name];
+  if (profile && voicesOn) return say_out(text, profile, who.includes("thinking") ? 0.6 : 1);
+  if (speakOn) say_out(text, NARRATOR);
+}
+function caption(who, text) {
+  $("speaker").textContent = who || "";
+  $("line").textContent = text;
+  speak(text, who);
+}
+function wrapText(t, n) {
+  const lines = []; let cur = "";
+  t.split(" ").forEach((w) => { if ((cur + " " + w).trim().length > n && cur) { lines.push(cur); cur = w; } else cur = (cur + " " + w).trim(); });
+  if (cur) lines.push(cur);
+  return lines;
+}
+function clearBubble() { const b = $("bubbles"); if (b) b.querySelectorAll(".bubble").forEach((n) => n.remove()); }
+function bubble(text, x, y) {
+  const g = $("bubbles");
+  if (!g) return;
+  clearBubble();
+  const lines = wrapText(text, 24);
+  const w = Math.max(...lines.map((l) => l.length)) * 10 + 30;
+  const h = lines.length * 24 + 16;
+  const bx = Math.max(6, Math.min(800 - w - 6, x - w / 2));
+  const by = Math.max(6, y - h - 18);
+  const tx = Math.max(bx + 18, Math.min(bx + w - 18, x));
+  const tipY = Math.max(by + h + 12, y);
+  const el = document.createElementNS(NS, "g");
+  el.setAttribute("class", "anim bubble");
+  el.innerHTML =
+    '<path d="M' + (tx - 10) + " " + (by + h - 2) + " L" + x + " " + tipY + " L" + (tx + 10) + " " + (by + h - 2) + ' Z" fill="#fff" stroke="#2a1f3d" stroke-width="3" stroke-linejoin="round"/>' +
+    '<rect x="' + bx + '" y="' + by + '" width="' + w + '" height="' + h + '" rx="14" fill="#fff" stroke="#2a1f3d" stroke-width="3"/>' +
+    '<rect x="' + (tx - 9) + '" y="' + (by + h - 6) + '" width="18" height="8" fill="#fff"/>' +
+    lines.map((l, i) => '<text x="' + (bx + w / 2) + '" y="' + (by + 30 + i * 24) + '" text-anchor="middle" font-family="Patrick Hand, Comic Sans MS, cursive" font-size="21" fill="#2a1f3d">' + esc(l) + "</text>").join("");
+  g.appendChild(el);
+  pop(el);
+}
+// A thought bubble: a cloud with little circles trailing down to whoever is thinking.
+function thought(text, x, y) {
+  const g = $("bubbles");
+  if (!g) return;
+  clearBubble();
+  const lines = wrapText(text, 22);
+  const w = Math.max(...lines.map((l) => l.length)) * 10 + 40;
+  const h = lines.length * 24 + 24;
+  const bx = Math.max(6, Math.min(800 - w - 6, x - w / 2));
+  const by = Math.max(6, y - h - 40);
+  const el = document.createElementNS(NS, "g");
+  el.setAttribute("class", "anim bubble");
+  el.innerHTML =
+    '<circle cx="' + (x - 6) + '" cy="' + (y - 8) + '" r="5" fill="#fff" stroke="#2a1f3d" stroke-width="2.5"/>' +
+    '<circle cx="' + (x - 16) + '" cy="' + (y - 24) + '" r="8" fill="#fff" stroke="#2a1f3d" stroke-width="2.5"/>' +
+    '<rect x="' + bx + '" y="' + by + '" width="' + w + '" height="' + h + '" rx="' + h / 2 + '" fill="#fff" stroke="#2a1f3d" stroke-width="3" stroke-dasharray="10 4"/>' +
+    lines.map((l, i) => '<text x="' + (bx + w / 2) + '" y="' + (by + 34 + i * 24) + '" text-anchor="middle" font-family="Patrick Hand, Comic Sans MS, cursive" font-size="21" font-style="italic" fill="#6a2fb0">' + esc(l) + "</text>").join("");
+  g.appendChild(el);
+  pop(el);
+}
+// talk("May", "Hi!", "player") puts a bubble over the player; talk(name, text, {x, y}) over someone else.
+function talk(who, text, at) {
+  caption(who, text);
+  const pos = at === "player" ? (P ? headOf() : null) : at;
+  if (pos) bubble(text, pos.x, pos.y);
+}
+// say([[speaker, text], ...], thenFn): narration the player steps through with Next.
+function say(lines, then) {
+  state.queue = lines.slice();
+  state.after = then || null;
+  nextLine();
+}
+function nextLine() {
+  if (state.queue.length) {
+    const [who, text] = state.queue.shift();
+    caption(who, text);
+    $("next-btn").hidden = state.queue.length === 0 && !state.after;
+    renderExits();
+    return;
+  }
+  const then = state.after;
+  state.after = null;
+  $("next-btn").hidden = true;
+  renderExits();
+  if (then) then();
+}
+const talking = () => state.queue.length > 0 || !!state.after;
+
+// "Now you're May!" card at the start of a scene.
+async function introBanner() {
+  const room = ROOMS[state.room];
+  const key = "met_" + state.room;
+  if (!room.player || state.flags[key] || KIDS[room.player].group) return;
+  state.flags[key] = true;
+  const kid = room.player;
+  const el = document.createElementNS(NS, "g");
+  el.setAttribute("class", "anim");
+  el.innerHTML =
+    '<rect x="240" y="110" width="320" height="200" rx="18" fill="#1f1729" stroke="#f6e7b8" stroke-width="4"/>' +
+    '<use href="#' + kid + '" x="258" y="128" width="110" height="165"/>' +
+    '<text x="462" y="200" text-anchor="middle" font-family="Grenze Gotisch, Georgia, serif" font-size="30" fill="#f6e7b8">Now you\'re</text>' +
+    '<text x="462" y="248" text-anchor="middle" font-family="Patrick Hand, Comic Sans MS, cursive" font-size="46" fill="#c58af0">' + KIDS[kid].name + "!</text>" +
+    (room.playerTbd ? '<text x="462" y="282" text-anchor="middle" font-family="Nunito, sans-serif" font-size="14" fill="#a99cbf">(for now: the kids are still choosing)</text>' : "");
+  $("bubbles").appendChild(el);
+  caption("", "Now you're " + KIDS[kid].name + "!");
+  await pop(el);
+  await wait(1400);
+  await anim(el, [{ opacity: 1 }, { opacity: 0 }], { duration: 300 });
+  el.remove();
+}
+
+// A cutscene plays animations and captions on its own; clicks wait until it ends.
+// If it returns a room name, the game moves there afterwards.
+async function cutscene(fn) {
+  if (state.busy) return;
+  state.busy = true;
+  walkToken++;
+  state.queue = []; state.after = null;
+  $("next-btn").hidden = true;
+  document.body.classList.add("busy");
+  renderExits();
+  let next;
+  try { next = await fn(); } finally {
+    state.busy = false;
+    document.body.classList.remove("busy");
+    renderHot();
+    renderExits();
+    save();
+  }
+  if (typeof next === "string") go(next);
+}
+
+// Jon's speech bubbles come from inside his hideout.
+const JON = { x: 630, y: 262 };      // Jon inside his hole
+const JON_OUT = { x: 730, y: 150 };  // Jon talking from inside the oval in his room
+const BAD = { x: 530, y: 250 };
+const WITCH = { x: 290, y: 238 };
+const APPRENTICE = { x: 146, y: 292 };
+
+// ---------- Rooms ----------
+const ROOMS = {
+  ship: {
+    title: "The kids' spaceship",
+    bg: "spaceship",
+    goal: () => "Go inside the spaceship. Click the ship, or the button below.",
+    exits: [{ label: "Go inside the spaceship ▸", run: () => goInside() }],
+    setup() {},
+    enter() { caption("", "Way out in space, the kids' giant spaceship has stalled. It's not moving at all!"); },
+    hot: [{ id: "ship", label: "The kids' giant spaceship", x: 150, y: 140, w: 450, h: 240, click: () => goInside() }]
+  },
+
+  hideout: {
+    // Inside Jon's portable hole. The hole itself sits in Jon's room (bed2).
+    title: "Inside Jon's portable hole",
+    svg: () => holeSvg(),
+    player: "may",
+    scale: 1.6,
+    start: [200, 432],
+    floor: { x1: 120, x2: 520, y1: 400, y2: 442 },
+    goal: () => ROOMS.kitchen.goal(),
+    exits: [{ label: "Climb out of the hole ▸", run: () => cutscene(async () => { await fadeOut(); return "bed2"; }) }],
+    enter() { caption("", state.flags.gaveCake ? "Jon's cozy round hole. Jon isn't here anymore." : "May climbs inside Jon's portable hole. It's a cozy round room!"); },
+    onPlayer() { talk("May", "Hmm... how do I get Jon out of here?", "player"); },
+    hot: [
+      { id: "jon", label: "Jon", x: 560, y: 258, w: 130, h: 176, stand: [500, 432], show: () => !state.flags.gaveCake, click() {
+          const f = state.flags; f.talk = (f.talk || 0) + 1;
+          cutscene(async () => {
+            talk("May", f.talk === 1 ? "Jon! Git out of there!!" : "Come ON, Jon. Git out!", "player");
+            await hopPlayer();
+            await wait(500);
+            talk("Jon", "No ma'am!", JON);
+            await wait(1300);
+            talk("Jon", "I know who I'm hiding from... but I'm NOT telling!", JON);
+            await wait(2200);
+            thought("It's the bad guys...", JON.x, JON.y + 10);
+            caption("Jon (thinking)", "It's the bad guys...");
+            await wait(1800);
+            caption("", "Jon won't budge. Maybe the crew knows what's going on...");
+          });
+        },
+        use: { cake: () => giveCake() } },
+      { id: "egg", label: "A mystery egg with a ?", x: 300, y: 354, w: 60, h: 64, stand: [250, 432], click() {
+          cutscene(async () => {
+            talk("May", "I can lift that with my mind!", "player");
+            await anim("egg", [{ transform: "translateY(0)" }, { transform: "translateY(-60px) rotate(-10deg)" }, { transform: "translateY(-60px) rotate(10deg)" }, { transform: "translateY(0)" }], { duration: 1400 });
+            caption("", "Telekinesis! May floats the mystery egg up... and sets it back down.");
+          });
+        } },
+      { id: "box", label: "A tall box with a flower on it", x: 114, y: 184, w: 102, h: 192, stand: [230, 432], click() {
+          cutscene(async () => {
+            talk("May", "Nnnngh... this one is HEAVY!", "player");
+            const shake = anim("pInner", [{ transform: "translateX(0)" }, { transform: "translateX(-3px)" }, { transform: "translateX(3px)" }, { transform: "translateX(0)" }], { duration: 1600 });
+            await anim("box", [{ transform: "translateY(0)" }, { transform: "translate(-2px,-14px)" }, { transform: "translate(2px,-18px)" }, { transform: "translate(-2px,-14px)" }, { transform: "translateY(0)" }], { duration: 1600 });
+            await shake;
+            place();
+            caption("", "Heavy things make May try extra hard.");
+          });
+        } }
+    ]
+  },
+
+  splash: {
+    title: "Splashdown",
+    bg: "splash",
+    goal: () => state.flags.splashSeen ? "Swim to shore. Click the water, or the button below." : "",
+    exits: [{ label: "Swim to shore ▸", show: () => state.flags.splashSeen, run: () => swim() }],
+    setup() {
+      if (state.flags.splashSeen) return;
+      ["asteroids", "shipFall", "bubAhh", "shipSplash", "splashDrops", "bubShucks"].forEach((id) => pose(id, { opacity: 0 }));
+    },
+    enter() {
+      if (state.flags.splashSeen) return caption("", "Everyone is soaking wet. Time to swim to shore!");
+      cutscene(async () => {
+        pose("shipFall", { opacity: 1 });
+        caption("", "Uh oh... asteroids!");
+        await anim("asteroids", [{ transform: "translate(-280px,-220px)", opacity: 1 }, { transform: "translate(0,0)", opacity: 1 }], { duration: 1000, easing: "ease-in" });
+        await shakeScene();
+        caption("Everyone", "AHHHHH!");
+        await Promise.all([
+          anim("shipFall", [{ transform: "translateY(-50px) rotate(0deg)" }, { transform: "translateY(50px) rotate(30deg)" }], { duration: 1300, easing: "ease-in" }),
+          pop("bubAhh")
+        ]);
+        caption("", "Down, down, down...");
+        await anim("shipSplash", [{ transform: "translateY(-330px)", opacity: 1 }, { transform: "translateY(0)", opacity: 1 }], { duration: 900, easing: "ease-in" });
+        caption("", "SPLASH!");
+        await anim("splashDrops", [{ transform: "translateY(50px) scale(0.3)", opacity: 0 }, { transform: "translateY(-14px) scale(1.15)", opacity: 1 }, { transform: "translateY(0) scale(1)", opacity: 1 }], { duration: 500 });
+        caption("Everyone", "Shucks!");
+        await pop("bubShucks");
+        await wait(600);
+        state.flags.splashSeen = true;
+        caption("", "Everyone is soaking wet. Time to swim to shore!");
+      });
+    },
+    hot: [
+      { id: "water", label: "The water", x: 400, y: 330, w: 400, h: 120, show: () => state.flags.splashSeen, click: () => swim() },
+      { id: "rocks", label: "The asteroids", x: 64, y: 28, w: 232, h: 128, show: () => state.flags.splashSeen, click() { caption("", "Those asteroids knocked the ship right out of space!"); } }
+    ]
+  },
+
+  pingpong: {
+    title: "The creepy ping-pong station",
+    bg: "pingpong",
+    // Dandy: every kid is playable here. Pick a kid, then press "Special move" (picking never does the move).
+    team: true,
+    get player() { return state.flags.ppKid || "olivia"; },
+    scale: 1,
+    get start() { return PP_HOME[state.flags.ppKid || "olivia"]; },
+    floor: { x1: 20, x2: 440, y1: 405, y2: 440 },
+    goal: () => {
+      const f = state.flags, step = f.combo || 0;
+      if (f.ko) return "You won! Go find the witch.";
+      if (step === 0) return "He's about to attack! Pick a kid and use a Special move to keep everyone safe.";
+      if (step === 1) return "Everyone's safe for a moment! Quick, hit him before he's ready again.";
+      if (step === 2) return "He's attacking again! Get everyone up out of his reach.";
+      return "Everyone's floating! Now grab his ping-pong stick... without touching it.";
+    },
+    exits: [{ label: "Go find the witch ▸", show: () => state.flags.ko, run: () => cutscene(async () => { await fadeOut(); return "swamp"; }) }],
+    setup() {
+      const f = state.flags;
+      if (!has("ball")) state.items.push("ball");
+      hideUse("standing", ROOMS.pingpong.player);
+      setFx("oliviaSpin", !!f.spun && ROOMS.pingpong.player !== "olivia");
+      if (f.spun) { hideUse("floaters", ROOMS.pingpong.player); hideUse("floaters", "olivia"); }
+      if (f.ko) document.querySelector("#badguy use")?.setAttribute("href", "#pingpong2");
+      setFx("standing", !f.spun); setFx("spinfx", !!f.spun); setFx("ko", !!f.ko);
+      if (f.spun) $("floaters")?.classList.add("bob");
+      if (f.ko) pose("badguy", { transform: "rotate(80deg)" });
+    },
+    enter() {
+      const f = state.flags;
+      if (f.ko) return caption("", "The ping-pong bad guy is knocked out. Zzz...");
+      if (f.spun) return caption("", "Everyone is floating out of reach!");
+      if (f.ppIntro) return caption("", "Now you're " + KIDS[ROOMS.pingpong.player].name + ". Press Special move to use " + KIDS[ROOMS.pingpong.player].name + "'s power!");
+      cutscene(async () => {
+        f.ppIntro = true;
+        caption("", "The kids run into the creepy ping-pong station...");
+        P.x = -40; place();
+        await Promise.all([
+          anim("standing", [{ transform: "translateX(-280px)" }, { transform: "translateX(0)" }], { duration: 1400, easing: "ease-out" }),
+          walkTo(226, 430, { speed: 190 })
+        ]);
+        talk("Ping-pong bad guy", "Nobody gets past MY ping-pong station!", BAD);
+        await swing();
+        caption("", "WHOOSH! Look out!");
+      });
+    },
+    onPlayer() { talk(KIDS[ROOMS.pingpong.player].name, "Ready! Press Special move!", "player"); },
+    hot: [
+      { id: "badguy", label: "The ping-pong bad guy", x: 470, y: 250, w: 120, h: 164, stand: [430, 430], click() {
+          const f = state.flags;
+          if (f.ko) return caption("", "Zzz... He's knocked out cold.");
+          cutscene(async () => { caption("", "WHOOSH!"); await swing(); caption("", "Use the kids' special moves together to beat him!"); });
+        } }
+    ]
+  },
+
+  swamp: {
+    title: "The witch's swamp",
+    bg: "witchhouse",
+    // Dandy: no single kid here. Point and click, and the whole group moves together.
+    player: "group",
+    scale: 1,
+    start: [690, 398],
+    floor: { x1: 600, x2: 700, y1: 392, y2: 440 },
+    goal: () => {
+      const f = state.flags;
+      if (f.caged && !has("disguise")) return "Explore around the witch's house. Click the house.";
+      if (f.caged) return "Get in the creepy jeep.";
+      if (f.down) return "Lock the witch in a cage.";
+      if (f.wand) return "Click the soccer ball in your item drawer, then click the witch!";
+      return "Look around, then walk away.";
+    },
+    exits: [
+      { label: "Walk away ▸", show: () => !state.flags.wand, run: () => witchAttack() },
+      { label: "Lock her in a cage ▸", show: () => state.flags.down && !state.flags.caged, run: () => cageWitch() },
+      { label: "Get in the creepy jeep ▸", show: () => state.flags.caged && has("disguise"), run: () => cutscene(async () => { await fadeOut(); return "jeep"; }) }
+    ],
+    setup() {
+      const f = state.flags;
+      if (!has("ball")) state.items.push("ball");
+      setFx("swampKids", false);
+      setFx("witch", f.wand && !f.caged);
+      setFx("cage", !!f.caged);
+      if (f.down) pose("witchBody", { transform: "rotate(72deg)" });
+    },
+    enter() {
+      cutscene(async () => {
+        await introBanner();
+        caption("", "A creepy swamp near the wizard's castle. A house stands in it on big chicken feet!");
+      });
+    },
+    onPlayer() { talk("Jasin", "I've got my soccer ball, just in case.", "player"); },
+    hot: [
+      { id: "house", label: "The witch's house on chicken feet", x: 276, y: 40, w: 232, h: 360, stand: [570, 420], click() {
+          const f = state.flags;
+          if (f.caged && !has("disguise")) {
+            return cutscene(async () => {
+              caption("", "The kids explore around the witch's house...");
+              await wait(900);
+              await burst(400, 300, "FOUND!");
+              add("disguise");
+              caption("", "They find priest disguises from the witch's ministry! They're in your item drawer.");
+            });
+          }
+          if (f.caged) return talk("Witch", "Let me OUT of this cage!", { x: 390, y: 262 });
+          caption("", "The witch's crooked house, on big chicken feet. Curly smoke puffs from the chimney.");
+        } },
+      { id: "apprentice", label: "The apprentice in his boat", x: 60, y: 290, w: 170, h: 116, stand: [570, 420], click() {
+          cutscene(async () => {
+            talk("Apprentice", "Um... hi. I'm supposed to be a bad guy...", APPRENTICE);
+            await anim("appr", [{ transform: "rotate(0)" }, { transform: "rotate(-6deg)" }, { transform: "rotate(6deg)" }, { transform: "rotate(0)" }], { duration: 900 });
+            caption("", "He doesn't look so sure about that.");
+          });
+        } },
+      { id: "witch", label: "The witch", x: 230, y: 240, w: 120, h: 156, stand: "here", show: () => state.flags.wand && !state.flags.caged, click() {
+          if (state.flags.down) return talk("Witch", "Oof... my guts...", WITCH);
+          talk("Witch", "You'll be stuck in my swamp forever!", WITCH);
+        },
+        use: {
+          ball() {
+            if (state.flags.down) return caption("", "She's already down. Lock her up!");
+            cutscene(async () => {
+              faceToward(0);
+              talk("Jasin", "Not today!", "player");
+              await kickBall();
+              clearBubble();
+              await burst(290, 320, "OOF!");
+              await anim("witchBody", [{ transform: "rotate(0)" }, { transform: "rotate(72deg)" }], { duration: 600, easing: "ease-in" });
+              state.flags.down = true;
+              caption("", "Right in the guts! The witch falls down.");
+            });
+          }
+        } }
+    ]
+  },
+
+  jeep: {
+    title: "The creepy jeep",
+    bg: "jeep",
+    goal: () => "Drive to the castle. Click the jeep, or the button below.",
+    exits: [{ label: "Drive to the castle ▸", run: () => drive() }],
+    enter() { caption("", "The kids pile into the creepy jeep. The castle is 50 miles away!"); },
+    hot: [
+      { id: "jeep", label: "The creepy jeep", x: 150, y: 266, w: 190, h: 140, click: () => drive() },
+      { id: "window", label: "The lit tower window", x: 656, y: 92, w: 30, h: 34, click() { caption("", "Someone with a flat hat is watching from the tower..."); } }
+    ]
+  },
+
+  castle: {
+    title: "The wizard's castle",
+    bg: "castle",
+    goal: () => "Get to the gigantic front door. Climb the dangerous rocks.",
+    exits: [{ label: "Climb the dangerous rocks ▸", run: () => cutscene(async () => { await fadeOut(); return "rocks"; }) }],
+    enter() {
+      say([["", "The road ends in a vast, barren place high in the mountain."],
+           ["", "The gigantic front door is closed and far away, past very dangerous rocks."],
+           ["", "The kids want to ask the wizard why Jasin's ball glows... but they don't know he's secretly the bad guy."]]);
+    },
+    hot: [
+      { id: "door", label: "The castle door", x: 380, y: 330, w: 48, h: 56, click() { caption("", "The gigantic door is far away, past the dangerous rocks."); } },
+      { id: "flag", label: "The purple flag", x: 146, y: 16, w: 62, h: 58, click() { caption("", "The wizard's purple flag flaps on the tallest tower."); } }
+    ]
+  },
+
+  rocks: {
+    title: "The dangerous rocks",
+    bg: "castle",
+    goal: () => {
+      const f = state.flags;
+      if (f.end) return "To be continued!";
+      if (f.rocksDone) return "Click the priest disguises in your drawer, then click the gigantic door.";
+      return "Click the left, middle, or right rock. Find the safe pattern.";
+    },
+    exits: [{ label: "Play again ↺", show: () => state.flags.end, run: () => restart() }],
+    overlay: () => rocksOverlay(),
+    enter() {
+      if (state.flags.rocksDone) return caption("", "The kids made it to the gigantic front door.");
+      caption("", "Hop from rock to rock. Wobbly rocks send you back to the start!");
+      animateCloud();
+    },
+    hot: [
+      { id: "rockL", label: "Left rock", x: 70, y: 300, w: 180, h: 110, show: () => !state.flags.rocksDone, click: () => rockStep("L") },
+      { id: "rockM", label: "Middle rock", x: 310, y: 316, w: 180, h: 110, show: () => !state.flags.rocksDone, click: () => rockStep("M") },
+      { id: "rockR", label: "Right rock", x: 550, y: 300, w: 180, h: 110, show: () => !state.flags.rocksDone, click: () => rockStep("R") },
+      { id: "door", label: "The gigantic front door", x: 380, y: 330, w: 48, h: 56, show: () => state.flags.rocksDone && !state.flags.end, click() {
+          caption("", "KNOCK KNOCK... The gigantic door stays shut. Maybe the kids need a disguise?");
+        },
+        use: {
+          disguise() {
+            cutscene(async () => {
+              removeItem("disguise");
+              state.flags.end = true;
+              caption("", "The kids put on their priest disguises from the witch's ministry...");
+              await wait(1200);
+              await burst(404, 320, "KNOCK!");
+              caption("", "They're going to try to convince the wizard to join them!");
+              await wait(1500);
+              caption("", "To be continued! The kids are still writing what happens next.");
+            });
+          }
+        } }
+    ]
+  }
+};
+
+// ---------- The spaceship's rooms ----------
+// Rooms from the kids: 4 bedrooms, kitchen, living room, bathroom, playroom, cockpit.
+// The furniture is placeholder art until the kids draw the rooms. Crew members are still to come.
+// Dandy: the control room and the cockpit are the same room, at the front of the ship.
+const SHIP_NAMES = { cockpit: "Control room", engine: "Engine room", storage: "Storage", kitchen: "Kitchen", living: "Living room", playroom: "Playroom", bathroom: "Bathroom", bed1: "May's room", bed2: "Jon's room", bed3: "Jasin's room", bed4: "Olivia's room" };
+// Chocolate cake ingredients, one in each person's room plus the bathroom and storage (from the kids).
+const INGREDIENTS = {
+  bed1: { item: "sugar", x: 160, y: 352 },
+  bed4: { item: "flour", x: 160, y: 352 },
+  bed3: { item: "oil", x: 160, y: 352 },
+  bed2: { item: "cacao", x: 160, y: 352 },
+  bathroom: { item: "water", x: 720, y: 352 },
+  storage: { item: "yeast", x: 700, y: 352 }
+};
+const CAKE_PARTS = ["flour", "oil", "sugar", "water", "yeast", "cacao"];
+const SHIP_MAP = [["cockpit"], ["control", "engine", "storage", "bathroom"], ["kitchen", "living", "playroom"], ["bed1", "bed2", "bed3", "bed4"]];
+// The crew is the four kids. Where Olivia and Jasin are, and what they say, are placeholders until the kids decide.
+const CREW = {
+  playroom: { kid: "olivia", x: 680, y: 430, line: "I don't know. I can't tell you unless you bring me my memory pills.", after: "Olivia needs her memory pills. (Where they are: the kids are still deciding.)" },
+  living: { kid: "jasin", x: 640, y: 430, line: "Hi May!" }
+};
+const INK = 'stroke="#2a1f3d" stroke-width="4" stroke-linejoin="round"';
+function shipBase(porthole) {
+  return '<rect width="800" height="450" fill="#3d4a66"/>' +
+    '<g stroke="#33405a" stroke-width="3"><path d="M100 24 V330 M200 24 V330 M300 24 V330 M400 24 V330 M500 24 V330 M600 24 V330 M700 24 V330"/></g>' +
+    '<rect width="800" height="24" fill="#2c364c"/><g fill="#f6e7b8" opacity="0.8"><circle cx="150" cy="12" r="5"/><circle cx="400" cy="12" r="5"/><circle cx="650" cy="12" r="5"/></g>' +
+    '<rect y="330" width="800" height="120" fill="#283247"/><path d="M0 330 H800" stroke="#9aa7c2" stroke-width="4"/>' +
+    '<g stroke="#1f2738" stroke-width="2"><path d="M0 370 H800 M0 410 H800"/></g>' +
+    '<rect x="16" y="160" width="74" height="170" rx="8" fill="#2c364c" stroke="#9aa7c2" stroke-width="4"/><path d="M53 160 V330" stroke="#9aa7c2" stroke-width="2"/>' +
+    (porthole ? '<circle cx="700" cy="120" r="46" fill="#0d0a22" stroke="#9aa7c2" stroke-width="8"/><g fill="#fff"><circle cx="684" cy="104" r="2"/><circle cx="714" cy="130" r="1.5"/><circle cx="700" cy="96" r="1.5"/><circle cx="690" cy="140" r="2"/></g>' : "");
+}
+function bedroomArt(blanket, poster) {
+  return {
+    svg: shipBase(true) +
+      '<g id="it_bed" class="anim" ' + INK + '><rect x="286" y="214" width="22" height="126" rx="4" fill="#6b4a2f"/><rect x="300" y="282" width="260" height="56" rx="6" fill="#6b4a2f"/><rect x="300" y="258" width="260" height="34" rx="10" fill="' + blanket + '"/><ellipse cx="336" cy="258" rx="28" ry="14" fill="#fff"/></g>' +
+      '<g id="it_lamp" class="anim" ' + INK + '><rect x="592" y="290" width="52" height="48" rx="4" fill="#6b4a2f"/><path d="M618 290 V262" fill="none"/><path d="M600 262 L636 262 L628 236 L608 236 Z" fill="#ffd23f"/></g>' +
+      '<rect x="410" y="80" width="96" height="120" rx="4" fill="' + poster + '" ' + INK + '/><path transform="translate(458 140)" d="M0 -22 L6 -6 L22 0 L6 6 L0 22 L-6 6 L-22 0 L-6 -6Z" fill="#fff"/>',
+    hot: [
+      { id: "bed", label: "A bed", x: 280, y: 210, w: 290, h: 132, lift: "heavy", group: "it_bed", desc: "A cozy bed." },
+      { id: "lamp", label: "A little lamp", x: 586, y: 230, w: 64, h: 110, lift: "light", group: "it_lamp", desc: "A little lamp on a table." },
+      { id: "poster", label: "A poster", x: 406, y: 76, w: 104, h: 128, desc: "A poster with a big star on it." }
+    ]
+  };
+}
+const SHIP_ART = {
+  bed1: bedroomArt("#e8669a", "#f6c0d4"), // May
+  bed2: bedroomArt("#3a86c8", "#bfe0f5"), // Jon
+  bed3: bedroomArt("#3fae6a", "#c8ecd2"), // Jasin
+  bed4: bedroomArt("#8b4fd1", "#e3c6ff"), // Olivia
+  kitchen: {
+    svg: shipBase(true) +
+      '<g ' + INK + '><rect x="150" y="250" width="340" height="80" fill="#6b5a8a"/><rect x="144" y="236" width="352" height="18" rx="4" fill="#c9d0d6"/><path d="M263 254 V330 M376 254 V330" fill="none"/></g>' +
+      '<g fill="#f6e7b8"><circle cx="250" cy="292" r="4"/><circle cx="363" cy="292" r="4"/><circle cx="476" cy="292" r="4"/></g><g fill="#2a2a33"><ellipse cx="190" cy="244" rx="22" ry="5"/><ellipse cx="250" cy="244" rx="22" ry="5"/></g>' +
+      '<g id="it_cup" class="anim" stroke="#2a1f3d" stroke-width="3" stroke-linejoin="round"><path d="M420 206 L446 206 L442 236 L424 236 Z" fill="#e8669a"/><path d="M446 212 Q458 220 444 228" fill="none"/></g>' +
+      '<g id="it_fridge" class="anim" ' + INK + '><rect x="530" y="130" width="96" height="200" rx="8" fill="#dfe6f2"/><path d="M530 200 H626 M614 150 V185 M614 214 V260" fill="none"/></g>',
+    hot: [
+      { id: "fridge", label: "The fridge", x: 526, y: 126, w: 104, h: 208, open: "fridge", desc: "A big fridge." },
+      { id: "cup", label: "A cup", x: 414, y: 200, w: 48, h: 40, lift: "light", group: "it_cup", desc: "A pink cup on the counter." },
+      { id: "counter", label: "The kitchen drawers", x: 144, y: 232, w: 352, h: 100, open: "drawers", desc: "The kitchen counter and drawers." }
+    ]
+  },
+  living: {
+    svg: shipBase(true) +
+      '<ellipse cx="350" cy="392" rx="190" ry="34" fill="#b44fd6" opacity="0.5"/>' +
+      '<rect x="420" y="96" width="170" height="104" rx="6" fill="#111" ' + INK + '/><rect x="430" y="106" width="150" height="84" fill="#3a5478"/>' +
+      '<g id="it_couch" class="anim" ' + INK + '><rect x="190" y="236" width="300" height="60" rx="18" fill="#7a6aa8"/><rect x="180" y="284" width="320" height="50" rx="12" fill="#8a7ab8"/><rect x="164" y="262" width="40" height="76" rx="14" fill="#7a6aa8"/><rect x="476" y="262" width="40" height="76" rx="14" fill="#7a6aa8"/></g>' +
+      '<g id="it_pillow" class="anim" stroke="#2a1f3d" stroke-width="3"><rect x="220" y="262" width="54" height="34" rx="10" fill="#ffd23f"/></g>',
+    hot: [
+      { id: "pillow", label: "A pillow", x: 214, y: 256, w: 66, h: 46, lift: "light", group: "it_pillow", desc: "A yellow pillow." },
+      { id: "couch", label: "The couch", x: 284, y: 232, w: 236, h: 108, lift: "heavy", group: "it_couch", desc: "A big comfy couch." },
+      { id: "tv", label: "The TV", x: 416, y: 92, w: 178, h: 112, desc: "A big TV on the wall. It's off right now." }
+    ]
+  },
+  bathroom: {
+    svg: shipBase(true) +
+      '<g id="it_tub" class="anim" ' + INK + '><path d="M170 260 H440 V300 Q440 334 400 334 H210 Q170 334 170 300 Z" fill="#f4f4f8"/><path d="M420 260 V226 Q420 214 432 214 H440" fill="none" stroke="#9aa7c2" stroke-width="5"/></g>' +
+      '<g id="it_toilet" class="anim" ' + INK + '><rect x="490" y="226" width="56" height="50" rx="6" fill="#f4f4f8"/><path d="M482 276 H556 Q556 304 532 308 L528 334 H510 L506 308 Q482 304 482 276 Z" fill="#f4f4f8"/></g>' +
+      '<g ' + INK + '><rect x="600" y="170" width="70" height="60" rx="8" fill="#bfe0f5"/><path d="M596 256 H676 Q676 284 636 286 Q596 284 596 256 Z" fill="#f4f4f8"/><path d="M636 286 V334" fill="none" stroke-width="6"/></g>',
+    hot: [
+      { id: "tub", label: "The bathtub", x: 166, y: 210, w: 278, h: 128, lift: "heavy", group: "it_tub", desc: "A bathtub." },
+      { id: "toilet", label: "The toilet", x: 478, y: 222, w: 82, h: 116, lift: "nope", desc: "The toilet." },
+      { id: "mirror", label: "The mirror", x: 594, y: 164, w: 82, h: 126, desc: "May checks her buns in the mirror. Looking good!" }
+    ]
+  },
+  playroom: {
+    svg: shipBase(true) +
+      '<g id="it_blocks" class="anim" stroke="#2a1f3d" stroke-width="3"><rect x="190" y="290" width="40" height="40" fill="#e04e39"/><rect x="232" y="290" width="40" height="40" fill="#3a86c8"/><rect x="210" y="250" width="40" height="40" fill="#ffd23f"/></g>' +
+      '<g id="it_rocket" class="anim" stroke="#2a1f3d" stroke-width="3" stroke-linejoin="round"><path d="M360 330 L360 262 Q376 226 392 262 L392 330 Z" fill="#f4e9ff"/><path d="M360 300 L344 330 L360 330 Z M392 300 L408 330 L392 330 Z" fill="#e8669a"/><circle cx="376" cy="276" r="7" fill="#5a2a8a"/></g>' +
+      '<g id="it_beanbag" class="anim" ' + INK + '><path d="M470 334 Q450 280 500 262 Q560 250 590 290 Q604 334 560 334 Z" fill="#38b2ac"/></g>',
+    hot: [
+      { id: "blocks", label: "Toy blocks", x: 184, y: 244, w: 94, h: 90, lift: "light", group: "it_blocks", desc: "A stack of toy blocks." },
+      { id: "rocket", label: "A toy rocket", x: 340, y: 224, w: 72, h: 110, lift: "light", group: "it_rocket", desc: "A toy rocket." },
+      { id: "beanbag", label: "A beanbag", x: 452, y: 250, w: 156, h: 88, lift: "heavy", group: "it_beanbag", desc: "A squishy beanbag." }
+    ]
+  },
+  control: {
+    svg: shipBase(true) +
+      '<g ' + INK + '><rect x="140" y="70" width="140" height="90" rx="6" fill="#111"/><rect x="300" y="70" width="140" height="90" rx="6" fill="#111"/><rect x="460" y="70" width="140" height="90" rx="6" fill="#111"/></g>' +
+      '<g fill="#3fae6a" opacity="0.85"><rect x="150" y="80" width="120" height="70"/></g><g fill="#3a86c8" opacity="0.85"><rect x="310" y="80" width="120" height="70"/></g><g fill="#e8669a" opacity="0.85"><rect x="470" y="80" width="120" height="70"/></g>' +
+      '<path d="M160 120 L190 100 L220 130 L250 95" fill="none" stroke="#fff" stroke-width="3"/><circle cx="370" cy="115" r="22" fill="none" stroke="#fff" stroke-width="3"/>' +
+      '<path d="M130 250 H620 V330 H130 Z" fill="#2c364c" ' + INK + '/>' +
+      '<g stroke="#2a1f3d" stroke-width="2"><circle class="blinky" cx="170" cy="280" r="8" fill="#ffd23f"/><circle cx="200" cy="280" r="8" fill="#e04e39"/><circle class="blinky" cx="230" cy="280" r="8" fill="#3fae6a"/></g>' +
+      '<g id="it_lever" class="anim" ' + INK + '><path d="M480 290 L500 236" fill="none" stroke-width="6"/><circle cx="502" cy="232" r="10" fill="#e04e39"/></g>',
+    hot: [
+      { id: "screens", label: "The screens", x: 136, y: 66, w: 468, h: 98, desc: "Big screens with charts and maps of space." },
+      { id: "buttons", label: "The control panel", x: 130, y: 246, w: 300, h: 86, desc: "Rows and rows of blinking buttons." },
+      { id: "lever", label: "A red lever", x: 466, y: 218, w: 50, h: 76, desc: "A big red lever. May decides not to pull it." }
+    ]
+  },
+  engine: {
+    svg: shipBase(false) +
+      '<g ' + INK + '><path d="M120 60 H680 M120 60 V250 M680 60 V250" fill="none" stroke="#6b7d8a" stroke-width="12"/></g>' +
+      '<g id="it_core" class="anim"><rect x="310" y="70" width="180" height="260" rx="40" fill="#5a2a8a" ' + INK + '/><rect class="blinky" x="340" y="100" width="120" height="200" rx="30" fill="#c58af0"/><rect x="340" y="100" width="120" height="200" rx="30" fill="none" stroke="#e3c6ff" stroke-width="4"/></g>' +
+      '<g ' + INK + '><rect x="150" y="250" width="110" height="80" rx="8" fill="#6b7d8a"/><rect x="540" y="250" width="110" height="80" rx="8" fill="#6b7d8a"/><circle cx="205" cy="290" r="18" fill="#9aa7c2"/><circle cx="595" cy="290" r="18" fill="#9aa7c2"/></g>' +
+      '<g id="it_wrench" class="anim" stroke="#2a1f3d" stroke-width="3"><path d="M600 352 L660 352" stroke="#9aa7c2" stroke-width="8" stroke-linecap="round"/><circle cx="664" cy="352" r="9" fill="#9aa7c2"/></g>',
+    hot: [
+      { id: "core", label: "The glowing engine", x: 306, y: 66, w: 188, h: 268, lift: "heaviest", desc: "The ship's huge engine, humming and glowing purple." },
+      { id: "pumps", label: "The engine pumps", x: 146, y: 246, w: 118, h: 88, desc: "Pumps that go whirr, whirr, whirr." },
+      { id: "wrench", label: "A wrench", x: 592, y: 338, w: 82, h: 28, lift: "light", group: "it_wrench", desc: "A wrench someone left on the floor." }
+    ]
+  },
+  storage: {
+    svg: shipBase(true) +
+      '<g ' + INK + '><path d="M130 120 H420 M130 210 H420" fill="none" stroke="#7a5230" stroke-width="10"/><path d="M140 110 V330 M410 110 V330" fill="none" stroke="#7a5230" stroke-width="8"/></g>' +
+      '<g stroke="#2a1f3d" stroke-width="3"><rect x="160" y="84" width="50" height="34" fill="#c9a46a"/><rect x="230" y="92" width="40" height="26" fill="#e8669a"/><rect x="300" y="180" width="60" height="28" fill="#3a86c8"/></g>' +
+      '<g id="it_crate" class="anim" ' + INK + '><rect x="470" y="220" width="130" height="110" fill="#a07a48"/><path d="M470 220 L600 330 M600 220 L470 330" fill="none" stroke-width="3"/></g>' +
+      '<g id="it_box" class="anim" stroke="#2a1f3d" stroke-width="3"><rect x="180" y="290" width="54" height="40" fill="#c9a46a"/><path d="M180 304 H234" fill="none"/></g>',
+    hot: [
+      { id: "crate", label: "A big crate", x: 466, y: 216, w: 138, h: 118, lift: "heavy", group: "it_crate", desc: "A big wooden crate." },
+      { id: "box", label: "A small box", x: 174, y: 284, w: 66, h: 50, lift: "light", group: "it_box", desc: "A small cardboard box." },
+      { id: "shelves", label: "The shelves", x: 130, y: 80, w: 290, h: 136, desc: "Shelves full of boxes and supplies." }
+    ]
+  },
+  cockpit: {
+    svg: shipBase(false) +
+      '<rect x="90" y="40" width="620" height="190" rx="30" fill="#0d0a22" stroke="#9aa7c2" stroke-width="10"/>' +
+      '<g fill="#fff"><circle cx="160" cy="80" r="2"/><circle cx="240" cy="150" r="1.5"/><circle cx="320" cy="70" r="2"/><circle cx="400" cy="180" r="1.5"/><circle cx="460" cy="90" r="2"/><circle cx="660" cy="190" r="1.5"/><circle cx="200" cy="200" r="2"/></g>' +
+      '<circle cx="580" cy="120" r="44" fill="#e8669a"/><ellipse cx="580" cy="120" rx="70" ry="12" fill="none" stroke="#f6c0d4" stroke-width="5" transform="rotate(-14 580 120)"/>' +
+      '<path d="M110 250 H690 L660 320 H140 Z" fill="#2c364c" ' + INK + '/>' +
+      '<g stroke="#2a1f3d" stroke-width="2"><circle class="blinky" cx="200" cy="280" r="9" fill="#e04e39"/><circle cx="240" cy="280" r="9" fill="#ffd23f"/><circle class="blinky" cx="280" cy="280" r="9" fill="#3fae6a"/><rect x="540" y="268" width="80" height="26" rx="4" fill="#7fc4f0"/></g>' +
+      '<g id="it_chair" class="anim" ' + INK + '><rect x="372" y="300" width="70" height="60" rx="12" fill="#b44fd6"/><rect x="384" y="350" width="46" height="14" fill="#6b5a8a"/><path d="M407 364 V392" fill="none" stroke-width="6"/></g>',
+    hot: [
+      { id: "window", label: "The big window", x: 90, y: 40, w: 620, h: 190, desc: "Out the big window: stars, and a pink planet with a ring." },
+      { id: "console", label: "The controls", x: 110, y: 246, w: 250, h: 76, desc: "So many blinking buttons! May had better not touch them." },
+      { id: "screen", label: "The screen", x: 536, y: 262, w: 88, h: 38, desc: "A screen that says: SHIP STALLED. ENGINE OFFLINE." },
+      { id: "chair", label: "The pilot's chair", x: 366, y: 296, w: 82, h: 100, lift: "heavy", group: "it_chair", desc: "The pilot's chair." }
+    ]
+  }
+};
+async function liftThing(group, kind) {
+  if (kind === "light") {
+    talk("May", "Easy!", "player");
+    await anim(group, [{ transform: "translateY(0)" }, { transform: "translateY(-60px) rotate(-12deg)" }, { transform: "translateY(-60px) rotate(12deg)" }, { transform: "translateY(0)" }], { duration: 1400 });
+    caption("", "Telekinesis! May floats it up with her mind... and sets it back down.");
+    return;
+  }
+  talk("May", "Nnnngh... this one is HEAVY!", "player");
+  const strain = anim("pInner", [{ transform: "translateX(0)" }, { transform: "translateX(-3px)" }, { transform: "translateX(3px)" }, { transform: "translateX(0)" }], { duration: 1600 });
+  await anim(group, [{ transform: "translateY(0)" }, { transform: "translate(-2px,-14px)" }, { transform: "translate(2px,-18px)" }, { transform: "translate(-2px,-14px)" }, { transform: "translateY(0)" }], { duration: 1600 });
+  await strain;
+  place();
+  caption("", "Heavy things make May try extra hard.");
+}
+function shipThing(h) {
+  cutscene(async () => {
+    caption("", h.desc);
+    if (h.lift === "light" || h.lift === "heavy") { await wait(600); await liftThing(h.group, h.lift); }
+    else if (h.lift === "heaviest") {
+      // May can lift things up to 20,000 pounds, but it makes her try extremely hard.
+      await wait(600);
+      talk("May", "NNNNNNNNGH!!!", "player");
+      await Promise.all([
+        anim("pInner", [{ transform: "translateX(0)" }, { transform: "translateX(-5px)" }, { transform: "translateX(5px)" }, { transform: "translateX(-5px)" }, { transform: "translateX(0)" }], { duration: 2000 }),
+        anim("it_core", [{ transform: "translateY(0)" }, { transform: "translateY(-6px)" }, { transform: "translateY(-8px)" }, { transform: "translateY(0)" }], { duration: 2000 })
+      ]);
+      place();
+      caption("", "Even May has to try extremely hard to lift something that heavy!");
+    }
+    else if (h.lift === "nope") { await wait(600); talk("May", "Nope. Not lifting THAT with my mind.", "player"); await wait(1300); }
+  });
+}
+// ---------- Scene 1 puzzle chain (from the kids) ----------
+// fridge → can of tuna → engine room key → engine room → memory pills → Olivia.
+// Moldy cheese → a mouse → engine room map. Still to decide: how May opens the tuna, and where the mouse is.
+const FRIDGE = [
+  { id: "mango", name: "Mango", say: "A juicy mango.", icon: '<ellipse cx="20" cy="22" rx="12" ry="10" fill="#f2994a" stroke="#2a1f3d" stroke-width="2.5"/><path d="M20 12 Q24 6 28 8" fill="none" stroke="#3fae6a" stroke-width="3"/>' },
+  { id: "apple", name: "Apple", say: "A shiny red apple.", icon: '<circle cx="20" cy="23" r="11" fill="#e04e39" stroke="#2a1f3d" stroke-width="2.5"/><path d="M20 12 V8 M20 10 Q26 6 28 10" fill="none" stroke="#3fae6a" stroke-width="3"/>' },
+  { id: "cheese", name: "Moldy cheese", take: "cheese", say: "Moldy cheese. Pee-yew! May takes it anyway.", icon: '<path d="M6 30 L34 30 L34 18 L6 26 Z" fill="#f2c94c" stroke="#2a1f3d" stroke-width="2.5" stroke-linejoin="round"/><circle cx="16" cy="27" r="2.5" fill="#6fa35a"/><circle cx="27" cy="24" r="3" fill="#6fa35a"/>' },
+  { id: "garlic", name: "Garlic", say: "Garlic. Stinky!", icon: '<path d="M20 8 Q32 18 28 30 Q20 36 12 30 Q8 18 20 8 Z" fill="#f4f0e6" stroke="#2a1f3d" stroke-width="2.5"/><path d="M20 12 V32 M15 16 Q14 26 16 31 M25 16 Q26 26 24 31" fill="none" stroke="#c9c2b0" stroke-width="1.5"/>' },
+  { id: "herring", name: "Pickled herring", say: "A jar of pickled herring. Fishy!", icon: '<rect x="11" y="10" width="18" height="24" rx="4" fill="#bfe0f5" stroke="#2a1f3d" stroke-width="2.5"/><path d="M14 22 Q20 17 26 22 Q20 27 14 22 Z" fill="#9aa7c2"/>' },
+  { id: "kimchi", name: "Kimchi", say: "A jar of spicy kimchi.", icon: '<rect x="11" y="10" width="18" height="24" rx="4" fill="#f6c0d4" stroke="#2a1f3d" stroke-width="2.5"/><path d="M13 22 Q20 16 27 24" fill="none" stroke="#e04e39" stroke-width="4"/>' },
+  { id: "oldmilk", name: "Old milk", say: "This milk is almost expired. Yuck!", icon: '<path d="M12 14 L20 8 L28 14 V34 H12 Z" fill="#d8dcc4" stroke="#2a1f3d" stroke-width="2.5" stroke-linejoin="round"/><text x="20" y="29" text-anchor="middle" font-size="12" font-weight="800" fill="#6fa35a">!</text>' },
+  { id: "milk", name: "Fresh milk", say: "Fresh milk. Not expired.", icon: '<path d="M12 14 L20 8 L28 14 V34 H12 Z" fill="#fff" stroke="#2a1f3d" stroke-width="2.5" stroke-linejoin="round"/><rect x="12" y="20" width="16" height="6" fill="#3a86c8"/>' },
+  { id: "tuna", name: "Can of tuna", take: "tuna", say: "A can of tuna. Something rattles inside it!", icon: '<rect x="7" y="13" width="26" height="16" rx="3" fill="#c9d0d6" stroke="#2a1f3d" stroke-width="2.5"/><path d="M12 21 Q18 16 24 21 Q18 26 12 21 Z M24 21 L29 17 L29 25 Z" fill="#3a86c8"/>' }
+];
+const DRAWERS = [
+  { id: "opener", name: "Can opener", take: "opener", say: "A can opener! May takes it.", icon: '<path d="M8 32 L22 18" stroke="#e04e39" stroke-width="5" stroke-linecap="round"/><circle cx="26" cy="14" r="7" fill="#c9d0d6" stroke="#2a1f3d" stroke-width="2.5"/>' },
+  { id: "knife", name: "Knife", say: "A sharp knife. Careful!", icon: '<path d="M8 32 L16 24" stroke="#7a5230" stroke-width="5" stroke-linecap="round"/><path d="M16 24 L32 8 Q30 18 20 26 Z" fill="#dfe6f2" stroke="#2a1f3d" stroke-width="2"/>' },
+  { id: "scoop", name: "Soup scoop", say: "A soup scoop.", icon: '<path d="M30 6 L18 24" stroke="#9aa7c2" stroke-width="4" stroke-linecap="round"/><path d="M8 24 Q8 34 16 34 Q24 34 24 24 Z" fill="#c9d0d6" stroke="#2a1f3d" stroke-width="2.5"/>' },
+  { id: "corkscrew", name: "Corkscrew", say: "A twisty corkscrew.", icon: '<path d="M8 10 H32" stroke="#7a5230" stroke-width="5" stroke-linecap="round"/><path d="M20 10 Q26 14 20 18 Q14 22 20 26 Q26 30 20 34" fill="none" stroke="#9aa7c2" stroke-width="3"/>' },
+  { id: "bottle", name: "Bottle opener", say: "A bottle opener.", icon: '<rect x="16" y="14" width="8" height="22" rx="3" fill="#9aa7c2" stroke="#2a1f3d" stroke-width="2"/><circle cx="20" cy="11" r="7" fill="#c9d0d6" stroke="#2a1f3d" stroke-width="2.5"/><circle cx="20" cy="11" r="3" fill="#2a1f3d"/>' },
+  { id: "foil", name: "Aluminum foil", say: "A roll of shiny aluminum foil.", icon: '<rect x="6" y="14" width="28" height="12" rx="6" fill="#dfe6f2" stroke="#2a1f3d" stroke-width="2.5"/><path d="M10 26 L12 34 H28 L30 26" fill="#f4f4f8" stroke="#2a1f3d" stroke-width="2"/>' },
+  { id: "whisk", name: "Whisk", say: "A whisk, for whisking.", icon: '<path d="M20 34 V24" stroke="#7a5230" stroke-width="4" stroke-linecap="round"/><path d="M20 24 Q10 14 20 6 Q30 14 20 24 Z M20 24 Q14 14 20 6 Q26 14 20 24 Z" fill="none" stroke="#9aa7c2" stroke-width="2"/>' }
+];
+function openFridge() { openContainer("Inside the fridge", FRIDGE, "May opens the fridge. What's inside?"); }
+function openDrawers() { openContainer("In the kitchen drawers", DRAWERS, "May opens the kitchen drawers. What's in here?"); }
+function openContainer(title, list, intro) {
+  if (state.busy) return;
+  $("container-title").textContent = title;
+  const box = $("fridge-items");
+  box.innerHTML = "";
+  list.forEach((it) => {
+    const taken = it.take && state.flags["took_" + it.id];
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "fridge-item" + (taken ? " taken" : "");
+    b.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true">' + it.icon + "</svg><span>" + it.name + "</span>";
+    b.disabled = !!taken;
+    b.addEventListener("click", () => {
+      if (it.take) {
+        state.flags["took_" + it.id] = true;
+        add(it.take);
+        b.disabled = true; b.classList.add("taken");
+        save();
+      }
+      caption("", it.say + (it.take ? " It goes in your item drawer." : ""));
+    });
+    box.appendChild(b);
+  });
+  $("fridge").hidden = false;
+  caption("", intro);
+}
+// Using one item on another in the drawer.
+function combine(a, b) {
+  const pair = [a, b].sort().join("+");
+  if (pair === "opener+tuna") {
+    removeItem("tuna"); add("key");
+    state.flags.openedTuna = true;
+    renderExits(); save();
+    caption("", "May opens the can of tuna... there's a key inside! It's the engine room key!");
+    return true;
+  }
+  return false;
+}
+function openMap() {
+  if (state.busy) return;
+  const box = $("ship-map");
+  box.innerHTML = "";
+  // Seen from above: front of the ship at the top, the hallway down the middle,
+  // cabins on both sides, the kitchen + living room hub in the center, engineering at the back.
+  const addBtn = (id, label, row, col, cls) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = label;
+    b.className = (cls || "") + (state.room === id ? " here" : "");
+    b.style.gridRow = row; b.style.gridColumn = col;
+    if (id === "engine" && !state.flags.engineOpen) b.textContent = label + " (locked)";
+    b.addEventListener("click", () => {
+      $("map").hidden = true;
+      if (state.room === id) return;
+      state.flags.lastRoom = id === "hallway" ? state.room : id;
+      enterDoor(id);
+    });
+    box.appendChild(b);
+  };
+  addBtn("cockpit", "Control room (front)", "1", "1 / 4", "fore");
+  addBtn("bed4", "Olivia's room", "2", "1");
+  addBtn("hallway", "Hallway", "2 / 4", "2", "hall");
+  addBtn("playroom", "Playroom", "2", "3");
+  addBtn("bed3", "Jasin's room", "3", "1");
+  addBtn("hub", "Kitchen & living room (hub)", "4", "1 / 4", "hub");
+  addBtn("bed1", "May's room", "5", "1");
+  addBtn("hallway", "Hallway", "5 / 7", "2", "hall");
+  addBtn("bed2", "Jon's room", "5", "3");
+  addBtn("bathroom", "Bathroom", "6", "1");
+  addBtn("storage", "Storage", "6", "3");
+  addBtn("engine", "Engine room (back)", "7", "1 / 4", "aft");
+  $("map").hidden = false;
+}
+Object.keys(SHIP_NAMES).forEach((id) => {
+  const art = SHIP_ART[id];
+  const crew = CREW[id];
+  const hot = art.hot.map((h) => Object.assign({}, h, { click: () => (h.open === "fridge" ? openFridge() : h.open === "drawers" ? openDrawers() : shipThing(h)) }));
+  const ing = INGREDIENTS[id];
+  if (ing) {
+    const it = ITEMS[ing.item];
+    hot.push({ id: "ing", label: it.name, x: ing.x - 6, y: ing.y - 6, w: 52, h: 52, show: () => state.flags.gavePills && !state.flags["got_" + ing.item], click() {
+      state.flags["got_" + ing.item] = true; add(ing.item); renderHot();
+      $("ingArt")?.remove();
+      const n = CAKE_PARTS.filter((p) => state.flags["got_" + p]).length;
+      caption("", it.name + " for the chocolate cake! That's " + n + " of 6.");
+      renderExits();
+    } });
+  }
+  if (id === "kitchen") {
+    // Bake the cake on the stove once May has all six ingredients.
+    hot.push({ id: "stove", label: "The stove", x: 160, y: 204, w: 120, h: 44, click() {
+      if (state.flags.bakedCake) return caption("", "The stove. It still smells like chocolate!");
+      if (!state.flags.gavePills) return caption("", "The stove.");
+      const missing = CAKE_PARTS.filter((p) => !has(p));
+      if (missing.length) return caption("", "To bake the chocolate cake, May still needs: " + missing.map((p) => ITEMS[p].name.toLowerCase()).join(", ") + ".");
+      cutscene(async () => {
+        caption("", "May mixes the flour, oil, sugar, a little water, some yeast, and a LOT of cacao...");
+        await burst(220, 200, "MIX!");
+        await burst(220, 200, "STIR!");
+        caption("", "Into the oven it goes...");
+        await wait(1200);
+        await burst(220, 200, "DING!");
+        CAKE_PARTS.forEach((p) => removeItem(p));
+        add("cake"); state.flags.bakedCake = true;
+        talk("May", "A chocolate cake for Jon!", "player");
+        await wait(1400);
+      });
+    } });
+    // The mouse lives in the kitchen. Moldy cheese gets the engine room map from it.
+    hot.push({ id: "mouse", label: "A little mouse", x: 650, y: 380, w: 80, h: 56, stand: [600, 428], click() {
+      if (state.flags.gotMap) return caption("", "The mouse is happily nibbling the moldy cheese.");
+      cutscene(async () => {
+        await anim("mouse", [{ transform: "translateX(0)" }, { transform: "translateX(10px)" }, { transform: "translateX(0)" }], { duration: 400 });
+        talk("Mouse", "Squeak!", { x: 690, y: 386 });
+        await wait(900);
+        caption("", "The mouse is holding a rolled-up paper. It sniffs the air hungrily.");
+      });
+    },
+    use: {
+      cheese() {
+        cutscene(async () => {
+          removeItem("cheese"); state.flags.gotMap = true; add("map");
+          document.querySelector("#mouse rect")?.remove();
+          talk("Mouse", "Squeak squeak!", { x: 690, y: 386 });
+          await anim("mouse", [{ transform: "translateY(0)" }, { transform: "translateY(-14px)" }, { transform: "translateY(0)" }, { transform: "translateY(-14px)" }, { transform: "translateY(0)" }], { duration: 700 });
+          caption("", "The mouse loves the moldy cheese! It trades May a map of the engine room schematics.");
+        });
+      }
+    } });
+  }
+  if (id === "engine") {
+    // Olivia's memory pills are in the engine room. May needs the map to find her way through.
+    hot.push({ id: "pills", label: "A bottle of memory pills", x: 192, y: 322, w: 72, h: 90, show: () => !state.flags.gotPills && has("map"), click() {
+      state.flags.gotPills = true; add("pills"); renderHot();
+      $("pillsArt")?.remove();
+      caption("", "Olivia's memory pills! They go in your item drawer.");
+    } });
+  }
+  if (crew) {
+    const k = KIDS[crew.kid];
+    hot.push({ id: "crew", label: k.name, x: crew.x - 50, y: crew.y - 160, w: 100, h: 160, stand: [crew.x - 90, 428], click() {
+      cutscene(async () => {
+        if (crew.after) { talk("May", "What's going on with Jon?", "player"); await wait(1500); state.flags.askedOlivia = true; }
+        talk(k.name, crew.line, { x: crew.x + (crew.ox || 0), y: crew.y - 160 });
+        await wait(crew.after ? 3200 : 1600);
+        caption("", crew.after || "(The kids are still writing what " + k.name + " tells May.)");
+      });
+    },
+    use: crew.kid === "olivia" ? {
+      pills() {
+        cutscene(async () => {
+          removeItem("pills"); state.flags.gavePills = true;
+          talk("Olivia", "My memory pills!", { x: crew.x, y: crew.y - 140 });
+          await wait(1800);
+          talk("Olivia", "Now I remember! Jon likes chocolate cake a LOT!", { x: crew.x, y: crew.y - 140 });
+          await wait(2600);
+          caption("", "To get Jon out of his hole, May needs to make him a chocolate cake!");
+        });
+      }
+    } : undefined });
+  }
+  const extras = () => {
+    const f = state.flags;
+    if (id === "kitchen") {
+      return '<g id="mouse" class="anim" stroke="#2a1f3d" stroke-width="2.5">' +
+        '<path d="M712 424 Q740 430 744 410" fill="none" stroke="#e8a0b0" stroke-width="3"/>' +
+        '<ellipse cx="692" cy="420" rx="24" ry="15" fill="#a59faa"/><circle cx="668" cy="412" r="11" fill="#a59faa"/>' +
+        '<circle cx="664" cy="400" r="6" fill="#e8a0b0"/><circle cx="676" cy="401" r="6" fill="#e8a0b0"/>' +
+        '<circle cx="664" cy="411" r="2" fill="#2a1f3d" stroke="none"/>' +
+        (f.gotMap ? '' : '<rect x="654" y="418" width="26" height="10" rx="5" fill="#f4f0e6"/>') + "</g>";
+    }
+    if (ing && f.gavePills && !f["got_" + ing.item]) {
+      return '<svg id="ingArt" x="' + ing.x + '" y="' + ing.y + '" width="40" height="40" viewBox="0 0 40 40">' + ITEMS[ing.item].icon.replace(/^<svg[^>]*>|<\/svg>$/g, "") + "</svg>";
+    }
+    if (id === "engine" && !f.gotPills && has("map")) {
+      return '<image id="pillsArt" href="pills.png" x="196" y="326" width="64" height="82"/>';
+    }
+    return "";
+  };
+  ROOMS[id] = {
+    title: SHIP_NAMES[id] + " (spaceship)",
+    svg: () => art.svg + extras() + (crew ? '<use href="#' + crew.kid + '" x="' + (crew.x - KIDS[crew.kid].w * 0.85) + '" y="' + (crew.y - KIDS[crew.kid].h * 1.7) + '" width="' + KIDS[crew.kid].w * 1.7 + '" height="' + KIDS[crew.kid].h * 1.7 + '"/>' : ""),
+    ship: true,
+    player: "may",
+    scale: 1.7,
+    start: [400, 428],
+    floor: { x1: 110, x2: 770, y1: 392, y2: 440 },
+    goal: () => {
+      const f = state.flags;
+      if (f.engineFixed) return "The engine is fixed! (What happens next: the kids are still deciding.)";
+      if (f.gaveCake && !has("map")) return "Jon needs the engine room schematics. Get the map from the mouse in the kitchen!";
+      if (f.gaveCake) return "Jon is in the engine room. Give him the engine room map so he can fix the engine!";
+      if (has("cake")) return "Bring the chocolate cake to Jon's hideout. (Open the Ship map.)";
+      if (f.gavePills) {
+        const n = CAKE_PARTS.filter((p) => f["got_" + p]).length;
+        if (n === 6) return "May has all 6 ingredients! Bake the cake on the kitchen stove.";
+        return "Make a chocolate cake for Jon! Find flour, oil, sugar, water, yeast, and cacao around the ship (" + n + " of 6). Try everyone's rooms.";
+      }
+      if (has("pills")) return "Bring the memory pills to Olivia.";
+      if (f.engineOpen && !has("map")) return "The engine room is a maze. May needs a map. (Is there a mouse around?)";
+      if (f.engineOpen) return "Find Olivia's memory pills in the engine room.";
+      if (has("key")) return "Open the Ship map and go to the engine room. May has the key!";
+      if (has("tuna") && has("opener")) return "Click the can opener in your drawer, then click the can of tuna.";
+      if (has("tuna")) return "Something rattles in the can of tuna! Look for a way to open it. (Try the kitchen drawers.)";
+      if (f.askedOlivia) return "Olivia needs her memory pills. Look around the ship. Maybe check the fridge?";
+      if (!f.talk) return "Jon is hiding in his portable hole. Click the purple oval in his room to go inside and talk to him.";
+      return "Explore the ship. Ask the crew what's going on with Jon.";
+    },
+    exits: [{ label: "Ship map ▸", run: () => openMap() }],
+    enter() {
+      if (id === "engine" && !state.flags.gotPills) {
+        return caption("", has("map")
+          ? "The engine room is a maze of pipes, but May follows the map. There's something on the floor..."
+          : "The engine room is a maze of pipes! May needs a map to find her way through.");
+      }
+      caption("", "May looks around the " + SHIP_NAMES[id].toLowerCase() + ".");
+    },
+    onPlayer() { talk("May", "Hmm... who on the ship knows what Jon needs?", "player"); },
+    hot
+  };
+});
+// ---------- The hub: kitchen and living room joined in the middle of the ship (Dandy) ----------
+(function buildHub() {
+  const kitchen = ROOMS.kitchen, living = ROOMS.living;
+  CREW.living.ox = 800;
+  const shift = (h) => Object.assign({}, h, { x: h.x + 800, stand: Array.isArray(h.stand) ? [h.stand[0] + 800, h.stand[1]] : h.stand });
+  ROOMS.hub = {
+    title: "Kitchen & living room (spaceship)",
+    svg: () => kitchen.svg() + '<g transform="translate(800 0)">' + living.svg() + "</g>" +
+      // an open archway joins the two rooms
+      '<rect x="790" y="24" width="40" height="306" fill="#3d4a66"/><path d="M790 330 V60 Q810 40 830 60 V330" fill="none" stroke="#9aa7c2" stroke-width="5"/>',
+    ship: true,
+    wide: 1600,
+    player: "may",
+    scale: 1.7,
+    start: [200, 428],
+    floor: { x1: 110, x2: 1560, y1: 392, y2: 440 },
+    goal: () => kitchen.goal(),
+    exits: [{ label: "To the hallway ▸", run: () => toHallway() }, { label: "Ship map ▸", run: () => openMap() }],
+    enter() { caption("", "The kitchen and living room, joined together in the middle of the ship."); },
+    onPlayer: kitchen.onPlayer,
+    hot: kitchen.hot.filter((h) => h.id !== "hallDoor").concat(living.hot.filter((h) => h.id !== "hallDoor").map(shift))
+  };
+  ROOMS.hub.hot.unshift({ id: "hallDoor", label: "Door to the hallway", x: 16, y: 160, w: 74, h: 170, stand: [110, 428], click: () => toHallway() });
+})();
+
+// ---------- The hallway down the middle of the ship (kids + Dandy) ----------
+// From the back (engine room) to the front (control room), with the hub in the center.
+const HALL = ["engine", "storage", "bathroom", "bed1", "bed2", "hub", "bed3", "bed4", "playroom", "cockpit"];
+const HALL_W = 120 + HALL.length * 150;
+const doorX = (id) => 120 + HALL.indexOf(id) * 150;
+const roomName = (id) => (id === "hub" ? "Kitchen & living" : SHIP_NAMES[id]);
+function hallwaySvg() {
+  let s = '<rect width="' + HALL_W + '" height="450" fill="#3d4a66"/>' +
+    '<rect width="' + HALL_W + '" height="24" fill="#2c364c"/>' +
+    '<rect y="330" width="' + HALL_W + '" height="120" fill="#283247"/><path d="M0 330 H' + HALL_W + '" stroke="#9aa7c2" stroke-width="4"/>' +
+    '<g stroke="#1f2738" stroke-width="2"><path d="M0 370 H' + HALL_W + ' M0 410 H' + HALL_W + '"/></g>';
+  for (let x = 75; x < HALL_W; x += 150) s += '<circle cx="' + x + '" cy="12" r="5" fill="#f6e7b8" opacity="0.8"/>';
+  HALL.forEach((id) => {
+    const x = doorX(id);
+    const locked = id === "engine" && !state.flags.engineOpen;
+    s += '<g stroke="#2a1f3d" stroke-width="4" stroke-linejoin="round">' +
+      '<rect x="' + x + '" y="150" width="90" height="180" rx="10" fill="' + (id === "hub" ? "#6b5a8a" : "#2c364c") + '" stroke="#9aa7c2"/>' +
+      '<path d="M' + (x + 45) + ' 150 V330" stroke="#9aa7c2" stroke-width="2" fill="none"/>' +
+      '<circle cx="' + (x + 45) + '" cy="200" r="16" fill="#0d0a22" stroke="#9aa7c2" stroke-width="3"/></g>' +
+      '<rect x="' + (x - 18) + '" y="100" width="126" height="34" rx="6" fill="#c9a46a" stroke="#2a1f3d" stroke-width="3"/>' +
+      '<text x="' + (x + 45) + '" y="123" text-anchor="middle" font-family="Patrick Hand, Comic Sans MS, cursive" font-size="17" fill="#2a1f3d">' + roomName(id) + "</text>" +
+      (locked ? '<text x="' + (x + 45) + '" y="268" text-anchor="middle" font-family="Patrick Hand, Comic Sans MS, cursive" font-size="16" fill="#f6e7b8">LOCKED</text>' : "");
+  });
+  return s;
+}
+// Going through a door: the engine room needs the key.
+function enterDoor(id) {
+  if (id === "engine" && !state.flags.engineOpen) {
+    if (!has("key")) return caption("", "The engine room is locked! May needs a key.");
+    state.flags.engineOpen = true; removeItem("key");
+    caption("", "May unlocks the engine room with the key!");
+  }
+  cutscene(async () => { await fadeOut(); return id; });
+}
+function toHallway() {
+  state.flags.lastRoom = state.room;
+  cutscene(async () => { await fadeOut(); return "hallway"; });
+}
+ROOMS.hallway = {
+  title: "Hallway (spaceship)",
+  svg: () => hallwaySvg(),
+  ship: true,
+  wide: HALL_W,
+  player: "may",
+  scale: 1.7,
+  get start() { const r = state.flags.lastRoom; return [HALL.includes(r) ? doorX(r) + 45 : 200, 428]; },
+  floor: { x1: 40, x2: HALL_W - 40, y1: 392, y2: 440 },
+  goal: () => ROOMS.kitchen.goal(),
+  exits: [{ label: "Ship map ▸", run: () => openMap() }],
+  enter() { caption("", "The hallway connects all the rooms on the ship. Walk to a door to go in."); },
+  onPlayer() { talk("May", "So many doors!", "player"); },
+  hot: HALL.map((id) => ({ id: "door_" + id, label: "Door: " + roomName(id), x: doorX(id), y: 150, w: 90, h: 180, stand: [doorX(id) + 45, 428], click: () => enterDoor(id) }))
+};
+// Every room's door goes back out to the hallway.
+Object.keys(SHIP_NAMES).forEach((id) => {
+  ROOMS[id].exits = [{ label: "To the hallway ▸", run: () => toHallway() }, { label: "Ship map ▸", run: () => openMap() }];
+  ROOMS[id].hot.unshift({ id: "hallDoor", label: "Door to the hallway", x: 16, y: 160, w: 74, h: 170, stand: [110, 428], click: () => toHallway() });
+});
+setupJonsRoom();
+
+// ---------- Jon's portable hole (in Jon's room) ----------
+function holeSvg() {
+  return '<defs><radialGradient id="holeBg" cx="50%" cy="40%" r="70%"><stop offset="0" stop-color="#e3c6ff"/><stop offset="1" stop-color="#6d3cb0"/></radialGradient></defs>' +
+    '<rect width="800" height="450" fill="url(#holeBg)"/>' +
+    '<g fill="#fff" opacity="0.7"><circle cx="300" cy="80" r="3"/><circle cx="420" cy="50" r="2.5"/><circle cx="560" cy="90" r="3"/><circle cx="680" cy="60" r="2.5"/><circle cx="200" cy="140" r="2"/><circle cx="740" cy="160" r="2"/></g>' +
+    '<path d="M0 370 Q400 340 800 370 L800 450 L0 450 Z" fill="#5a2a8a" stroke="#2a1f3d" stroke-width="3"/>' +
+    '<g id="box" class="anim" stroke="#2a1f3d" stroke-width="4" stroke-linejoin="round"><rect x="120" y="190" width="90" height="180" rx="6" fill="#f3e3c3"/><path d="M120 236 H210" fill="none"/><circle cx="198" cy="214" r="4" fill="#2a1f3d"/>' +
+    '<g fill="#e8669a" stroke-width="2.5"><circle cx="165" cy="290" r="11"/><circle cx="180" cy="303" r="11"/><circle cx="173" cy="320" r="11"/><circle cx="157" cy="320" r="11"/><circle cx="150" cy="303" r="11"/></g><circle cx="165" cy="306" r="8" fill="#ffd23f" stroke-width="2.5"/></g>' +
+    '<g id="egg" class="anim"><path d="M330 358 C346 358 354 380 354 392 C354 406 344 412 330 412 C316 412 306 406 306 392 C306 380 314 358 330 358 Z" fill="#fff6e6" stroke="#2a1f3d" stroke-width="4"/><text x="330" y="401" text-anchor="middle" font-family="Patrick Hand, Comic Sans MS, cursive" font-size="26" fill="#a24fd6">?</text></g>' +
+    (state.flags.gaveCake ? "" : '<g id="jonH" class="anim"><use href="#jon" x="562" y="262" width="124" height="170"/></g>');
+}
+function setupJonsRoom() {
+  const room = ROOMS.bed2;
+  const baseSvg = room.svg;
+  // The portable hole stands in Jon's room, and the iPad is on his bed.
+  room.svg = () => baseSvg() +
+    '<ellipse cx="730" cy="262" rx="50" ry="112" fill="#b77cf0" opacity="0.25"/>' +
+    '<ellipse cx="730" cy="262" rx="40" ry="100" fill="url(#portalGrad)" stroke="#2a1f3d" stroke-width="4"/>' +
+    '<ellipse cx="722" cy="232" rx="9" ry="46" fill="#fff" opacity="0.3"/>' +
+    '<g stroke="#2a1f3d" stroke-width="3"><rect x="446" y="222" width="52" height="34" rx="5" fill="#2a2a33"/><rect id="ipadScreen" x="451" y="226" width="42" height="26" rx="2" fill="#5b7fa8" stroke="none"/></g>';
+  room.hot.push(
+    { id: "hole", label: "Jon's portable hole (purple oval)", x: 686, y: 156, w: 88, h: 214, stand: [650, 428], click() {
+        cutscene(async () => {
+          caption("", state.flags.gaveCake ? "May climbs into Jon's portable hole." : "May climbs into Jon's portable hole to talk to him...");
+          await walkTo(700, 430, { speed: 160 });
+          await fadeOut();
+          return "hideout";
+        });
+      },
+      use: { cake: () => caption("", "May should bring the cake inside the hole, to Jon.") } },
+    { id: "ipad", label: "Jon's iPad", x: 440, y: 216, w: 64, h: 46, stand: [470, 428], click() {
+        cutscene(async () => {
+          const glow = anim("ipadScreen", [{ fill: "#5b7fa8" }, { fill: "#d6ecff" }, { fill: "#5b7fa8" }, { fill: "#d6ecff" }, { fill: "#5b7fa8" }], { duration: 1400 });
+          caption("", "Jon's iPad. It's saying something about... bad guys.");
+          await glow;
+          talk("May", "Bad guys? Is that why Jon is hiding?", "player");
+          await wait(1400);
+        });
+      } }
+  );
+  room.enter = () => {
+    if (state.flags.metJon) return caption("", "Jon's room. His portable hole stands in the corner.");
+    cutscene(async () => {
+      state.flags.metJon = true;
+      await introBanner();
+      talk("May", "Jon! Git out of there!!", "player");
+      await hopPlayer();
+      await wait(600);
+      talk("Jon", "No ma'am!", JON_OUT);
+      await wait(1300);
+      caption("", "The ship is stalled, and Jon is the engineer. But he's hiding in his portable hole! May can climb inside to talk to him.");
+    });
+  };
+}
+
+// ---------- Jon fixes the engine (from the kids) ----------
+// After the cake, Jon comes out and goes to the engine room. He needs the engine room map (the schematics) to repair the offline engine.
+function setupEngineRoom() {
+  const room = ROOMS.engine;
+  const baseSvg = room.svg;
+  room.svg = () => baseSvg() + (state.flags.gaveCake ? '<g id="jonE" class="anim"><use href="#jon" x="642" y="277" width="112" height="153"/></g>' : "");
+  room.setup = () => {
+    // the engine is offline until Jon fixes it
+    const glow = document.querySelector("#it_core .blinky");
+    if (glow && !state.flags.engineFixed) { glow.classList.remove("blinky"); glow.setAttribute("fill", "#7a6f86"); }
+  };
+  room.hot.push({ id: "jonE", label: "Jon", x: 642, y: 277, w: 112, h: 155, stand: [610, 428], show: () => state.flags.gaveCake, click() {
+      if (state.flags.engineFixed) return talk("Jon", "The engine is fixed!", { x: 700, y: 300 });
+      talk("Jon", "I need the engine room schematics to fix this!", { x: 700, y: 300 });
+    },
+    use: {
+      map() {
+        if (state.flags.engineFixed) return;
+        cutscene(async () => {
+          talk("May", "Here, Jon! The mouse's map of the engine room!", "player");
+          await wait(1800);
+          talk("Jon", "The schematics! Now I can fix it!", { x: 700, y: 300 });
+          await wait(1600);
+          clearBubble();
+          await burst(400, 200, "CLANK!");
+          await burst(400, 200, "BONK!");
+          await burst(400, 200, "WHIRR!");
+          state.flags.engineFixed = true;
+          const glow = document.querySelector("#it_core rect[fill='#7a6f86']");
+          if (glow) { glow.setAttribute("fill", "#c58af0"); glow.classList.add("blinky"); }
+          await anim("it_core", [{ transform: "scale(1)" }, { transform: "scale(1.06)" }, { transform: "scale(1)" }], { duration: 600 });
+          caption("", "The engine is back online! The ship starts moving again...");
+          await wait(1800);
+          // From the kids: right after the engine is fixed, asteroids hit the ship.
+          caption("", "BOOM! Something smashes into the ship!");
+          await shakeScene();
+          await shakeScene();
+          talk("Jon", "Asteroids!!", { x: 700, y: 300 });
+          await wait(1200);
+          await fadeOut();
+          return "splash";
+        });
+      }
+    } });
+}
+setupEngineRoom();
+
+// ---------- Zone 1 on the way to the witch: the crash site on the beach (kids + Dandy) ----------
+ROOMS.beach = {
+  title: "The crash site",
+  svg: () =>
+    '<defs><linearGradient id="beachSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fb2e0"/><stop offset="1" stop-color="#d6ecff"/></linearGradient></defs>' +
+    '<rect width="800" height="450" fill="url(#beachSky)"/>' +
+    '<circle cx="680" cy="70" r="34" fill="#ffe9a8"/>' +
+    '<path d="M0 200 H800 V300 H0 Z" fill="#2f7fb5"/>' +
+    '<path d="M0 230 Q40 222 80 230 T160 230 T240 230 T320 230 T400 230 T480 230 T560 230 T640 230 T720 230 T800 230 M0 266 Q40 258 80 266 T160 266 T240 266 T320 266 T400 266 T480 266 T560 266 T640 266 T720 266 T800 266" fill="none" stroke="#bfe0f5" stroke-width="3"/>' +
+    '<path d="M0 296 Q200 280 400 300 T800 292 L800 450 L0 450 Z" fill="#e8cf96" stroke="#c9a46a" stroke-width="3"/>' +
+    '<g id="wreck" class="anim" transform="rotate(-18 190 300)"><use href="#ship" x="10" y="190" width="330" height="218"/></g>' +
+    '<g fill="#b8b2c0" opacity="0.8"><circle cx="250" cy="200" r="18"/><circle cx="270" cy="170" r="24"/><circle cx="300" cy="140" r="30"/></g>' +
+    '<g stroke="#9a8460" stroke-width="3" fill="none" opacity="0.6"><path d="M360 420 l8 -4 M390 410 l8 -4 M420 420 l8 -4 M450 410 l8 -4 M480 420 l8 -4"/></g>' +
+    '<g stroke="#2a1f3d" stroke-width="3" stroke-linejoin="round"><rect x="740" y="320" width="8" height="90" fill="#6b4a2f"/><path d="M700 316 L770 316 L786 330 L770 344 L700 344 Z" fill="#c9a46a"/></g>' +
+    '<text x="740" y="336" text-anchor="middle" font-family="Patrick Hand, Comic Sans MS, cursive" font-size="16" fill="#2a1f3d">Inland →</text>',
+  player: "group",
+  scale: 1,
+  start: [420, 412],
+  floor: { x1: 360, x2: 660, y1: 392, y2: 440 },
+  goal: () => "Look around the crash site, then head inland. (What's inland, in order: the kids are still deciding.)",
+  exits: [{ label: "Head inland ▸", run: () => cutscene(async () => { await walkTo(660, 420, { speed: 160 }); await fadeOut(); return "pingpong"; }) }],
+  enter() {
+    cutscene(async () => {
+      caption("", "The kids drag themselves out of the water onto the beach. This is the crash site.");
+      await anim("wreck", [{ transform: "translateY(0)" }, { transform: "translateY(6px)" }, { transform: "translateY(0)" }], { duration: 1400 });
+      talk("Everyone", "Shucks...", "player");
+      await wait(1200);
+    });
+  },
+  onPlayer() { talk("May", "We're all soaking wet!", "player"); },
+  hot: [
+    { id: "wreck", label: "The crashed spaceship", x: 30, y: 180, w: 320, h: 200, stand: [380, 420], click() { caption("", "Their giant spaceship, crashed on the beach. It's not going anywhere now."); } },
+    { id: "sea", label: "The water", x: 360, y: 200, w: 300, h: 90, click() { caption("", "The water they fell into, all the way from space."); } },
+    { id: "sign", label: "A sign", x: 700, y: 312, w: 90, h: 100, stand: [660, 420], click() { caption("", "A sign pointing inland."); } }
+  ]
+};
+
+// ---------- Ping-pong fight: pick a kid, then use their special move (from the kids + Dandy) ----------
+const PP_HOME = { may: [70, 430], jon: [121, 430], jasin: [176, 430], olivia: [226, 430] };
+const MOVES = { may: "Telekinesis", jon: "Portal", jasin: "Fireball kick", olivia: "Float spin" };
+function pickKid(kid) {
+  if (state.busy || state.flags.ko || state.flags.ppKid === kid) return;
+  state.flags.ppKid = kid;
+  go("pingpong");
+}
+function specialMove() {
+  if (state.busy) return;
+  const kid = ROOMS.pingpong.player;
+  const f = state.flags;
+  const step = f.combo || 0;
+  // The kids' Team Combo (their updated order):
+  // 1) he attacks → Jon hides everyone in his portal, 2) before they come out → Jasin's fireball,
+  // 3) he attacks again → Olivia spins and lifts everyone up, 4) May grabs his stick with her mind and bonks him.
+  if (kid === "jon") {
+    return cutscene(async () => {
+      talk("Jon", "Quick, everybody in!", "player");
+      await wait(600);
+      const g = $("bubbles");
+      const portal = document.createElementNS(NS, "g");
+      portal.setAttribute("class", "anim");
+      portal.setAttribute("id", "jonPortal");
+      portal.innerHTML = '<ellipse cx="' + (P.x + 60) + '" cy="' + (P.y - 70) + '" rx="38" ry="78" fill="url(#portalGrad)" stroke="#2a1f3d" stroke-width="4"/>';
+      g.insertBefore(portal, g.firstChild);
+      await pop(portal);
+      const hide = ["standing", "player", "floaters"].filter((id) => $(id) && $(id).style.display !== "none");
+      await Promise.all(hide.map((id) => anim(id, [{ opacity: 1 }, { opacity: 0 }], { duration: 600 })));
+      clearBubble();
+      caption("", "Everyone hides inside Jon's portal!");
+      await swing();
+      await burst(440, 300, "MISSED!");
+      if (step === 0) { f.combo = 1; caption("", "He attacks... but he can't hit anyone inside the portal!"); await wait(1200); }
+      await Promise.all(hide.map((id) => anim(id, [{ opacity: 0 }, { opacity: 1 }], { duration: 600 })));
+      await anim(portal, [{ opacity: 1 }, { opacity: 0 }], { duration: 300 });
+      portal.remove();
+      caption("", step === 0 ? "Everyone peeks back out. Quick, before he gets ready again!" : "Everyone pops back out.");
+    });
+  }
+  if (kid === "jasin") {
+    return cutscene(async () => {
+      talk("Jasin", "Fireball kick!", "player");
+      await wait(700);
+      const g = $("bubbles");
+      const ball = document.createElementNS(NS, "g");
+      const sx = P.x + 20, sy = P.y - 20;
+      ball.innerHTML = '<circle cx="' + sx + '" cy="' + sy + '" r="26" fill="#ff8a3d" opacity="0.6"/><circle cx="' + sx + '" cy="' + sy + '" r="16" fill="#ffd23f" opacity="0.8"/><circle cx="' + sx + '" cy="' + sy + '" r="11" fill="#fff" stroke="#2a1f3d" stroke-width="3"/>';
+      g.appendChild(ball);
+      await anim(ball, [{ transform: "translate(0,0)" }, { transform: "translate(" + (520 - sx) + "px," + (320 - sy) + "px)" }], { duration: 600, easing: "ease-in" });
+      ball.remove();
+      await burst(530, 310, "FWOOSH!");
+      await anim("badguy", [{ transform: "rotate(0)" }, { transform: "rotate(14deg)" }, { transform: "rotate(-10deg)" }, { transform: "rotate(0)" }], { duration: 700 });
+      if (step === 1) {
+        f.combo = 2;
+        talk("Ping-pong bad guy", "OW! Now I'm REALLY mad!", BAD);
+        await wait(1400);
+        caption("", "The fireball hits him! Uh oh... he's getting ready to attack again!");
+      } else if (step === 0) {
+        caption("", "He swats the fireball away! He's about to attack. Get everyone safe first!");
+      } else caption("", "The fireball flies!");
+    });
+  }
+  if (kid === "olivia") {
+    if (step < 2) return cutscene(async () => { talk("Olivia", "Not yet... let's wait for the right moment.", "player"); await wait(1500); });
+    if (f.spun) return talk("Olivia", "I'm still spinning! Everyone's floating!", "player");
+    return cutscene(async () => {
+      f.spun = true; f.combo = 3;
+      setFx("standing", false); setFx("spinfx", true);
+      hideUse("floaters", "olivia");
+      pose("floaters", { opacity: 0 }); pose("missed", { opacity: 0 });
+      caption("", "Here he comes again!");
+      talk("Olivia", "Watch this!", "player");
+      await wait(500);
+      await spinPlayer();
+      clearBubble();
+      caption("", "Her tutu glows... and lifts everyone up out of reach!");
+      await anim("floaters", [{ transform: "translateY(130px)", opacity: 1 }, { transform: "translateY(0)", opacity: 1 }], { duration: 1200, easing: "ease-out" });
+      $("floaters").classList.add("bob");
+      talk("Ping-pong bad guy", "Hey! Come back down here!", BAD);
+      await wait(600);
+      await swing();
+      await pop("missed");
+      caption("", "MISSED! He can't reach them.");
+    });
+  }
+  if (kid === "may") {
+    if (step === 3) {
+      return cutscene(async () => {
+        talk("May", "Telekinesis!", "player");
+        await wait(500);
+        clearBubble();
+        // May pulls the ping-pong stick right out of his hand with her mind.
+        document.querySelector("#badguy use")?.setAttribute("href", "#pingpong2");
+        const g = $("bubbles");
+        const stick = document.createElementNS(NS, "g");
+        stick.setAttribute("class", "anim");
+        stick.innerHTML = '<path d="M565 346 L573 337" stroke="#7a5230" stroke-width="5" stroke-linecap="round"/><circle cx="580" cy="330" r="10" fill="#e8542c" stroke="#2a1f3d" stroke-width="2.5"/>';
+        g.appendChild(stick);
+        caption("", "May grabs his ping-pong stick with her mind...");
+        await anim(stick, [{ transform: "translate(0,0) rotate(0)" }, { transform: "translate(-30px,-110px) rotate(-30deg)" }], { duration: 900 });
+        await anim(stick, [{ transform: "translate(-30px,-110px) rotate(-30deg)" }, { transform: "translate(-40px,-50px) rotate(80deg)" }], { duration: 300, easing: "ease-in" });
+        stick.remove();
+        await burst(530, 280, "BONK!");
+        await anim("badguy", [{ transform: "rotate(0)" }, { transform: "rotate(80deg)" }], { duration: 700, easing: "ease-in" });
+        f.ko = true; f.combo = 4;
+        setFx("ko", true);
+        await pop("ko");
+        caption("", "BONK! He's knocked out! Team Combo! Now the kids can get away.");
+      });
+    }
+    return cutscene(async () => {
+      talk("May", "Telekinesis!", "player");
+      await wait(600);
+      clearBubble();
+      await anim("badguy", [{ transform: "rotate(0)" }, { transform: "rotate(-6deg)" }, { transform: "rotate(4deg)" }, { transform: "rotate(0)" }], { duration: 600 });
+      caption("", "May tries to grab his ping-pong stick with her mind... but he's watching her too closely!");
+    });
+  }
+}
+
+// ---------- Cutscenes shared by buttons and clicks ----------
+function goInside() {
+  cutscene(async () => {
+    caption("", "Jon is the ship's engineer. May needs his help!");
+    await anim("shipGroup", [{ transform: "scale(1)", opacity: 1 }, { transform: "scale(2.6)", opacity: 0 }], { duration: 1000, easing: "ease-in" });
+    return "bed2";
+  });
+}
+function giveCake() {
+  cutscene(async () => {
+    removeItem("cake"); state.flags.gaveCake = true;
+    talk("May", "Jon! I made you a chocolate cake!", "player");
+    await wait(1800);
+    talk("Jon", "Chocolate cake?!", JON);
+    await anim("jonH", [{ transform: "translateX(0)" }, { transform: "translateX(-30px)" }, { transform: "translateX(0)" }], { duration: 800 });
+    await wait(700);
+    talk("May", "You can have it if you come out and fix the ship!", "player");
+    await wait(2200);
+    talk("Jon", "Okay! I'll come out and fix the ship!", JON);
+    await anim("jonH", [{ transform: "translateX(0)", opacity: 1 }, { transform: "translateX(-460px)", opacity: 0 }], { duration: 1400 });
+    caption("", "Jon climbs out of his hole and heads to the engine room!");
+    await wait(1200);
+  });
+}
+async function yell() {
+  talk("May", "Jon! Git out of there!!", "player");
+  await hopPlayer();
+  await wait(700);
+  talk("Jon", "No ma'am!", JON);
+  await wait(1100);
+}
+function swim() {
+  cutscene(async () => {
+    caption("", "The kids swim to shore...");
+    await anim("shipSplash", [{ transform: "translateY(0)" }, { transform: "translateY(16px)" }, { transform: "translateY(0)" }], { duration: 900 });
+    await fadeOut();
+    return "beach";
+  });
+}
+const swing = () => anim("badguy", [{ transform: "rotate(0)" }, { transform: "rotate(-16deg)" }, { transform: "rotate(20deg)" }, { transform: "rotate(0)" }], { duration: 700 });
+
+function witchAttack() {
+  cutscene(async () => {
+    caption("", "The kids start to walk away...");
+    await Promise.all([
+      anim("swampKids", [{ transform: "translateX(0)" }, { transform: "translateX(60px)" }], { duration: 1000 }),
+      walkTo(P.x + 60, P.y, { speed: 70 })
+    ]);
+    state.flags.wand = true;
+    setFx("witch", true);
+    caption("", "But the witch sneaks out... so secret... and waves her wand!");
+    await anim("witchBody", [{ transform: "translateY(160px)", opacity: 0 }, { transform: "translateY(0)", opacity: 1 }], { duration: 700, easing: "ease-out" });
+    await anim("witchBody", [{ transform: "rotate(0)" }, { transform: "rotate(-10deg)" }, { transform: "rotate(10deg)" }, { transform: "rotate(0)" }], { duration: 800 });
+    setFx("ripples", true);
+    caption("", "The swamp water swirls and pulls the kids back!");
+    await Promise.all([
+      anim("ripples", [{ transform: "scale(0.2)", opacity: 1 }, { transform: "scale(1.3)", opacity: 0.25 }], { duration: 1000 }),
+      anim("swampKids", [{ transform: "translateX(60px)" }, { transform: "translateX(-30px)" }], { duration: 1000 }),
+      walkTo(P.x - 90, P.y, { speed: 95 })
+    ]);
+    setFx("ripples", false);
+    talk("Witch", "You'll be stuck in my swamp forever!", WITCH);
+  });
+}
+async function kickBall() {
+  const g = $("bubbles");
+  const sx = P.x - 14, sy = P.y - 16;
+  const ball = document.createElementNS(NS, "g");
+  ball.innerHTML = '<circle cx="' + sx + '" cy="' + sy + '" r="22" fill="#ffe066" opacity="0.5"/><circle cx="' + sx + '" cy="' + sy + '" r="12" fill="#fff" stroke="#2a1f3d" stroke-width="3"/>';
+  g.appendChild(ball);
+  const dx = 290 - sx, dy = 320 - sy;
+  await anim(ball, [{ transform: "translate(0,0)" }, { transform: "translate(" + dx / 2 + "px," + (dy - 140) + "px)" }, { transform: "translate(" + dx + "px," + dy + "px)" }], { duration: 800, easing: "ease-out" });
+  ball.remove();
+}
+function cageWitch() {
+  cutscene(async () => {
+    caption("", "The kids carry the witch into her house...");
+    await anim("witch", [{ opacity: 1 }, { opacity: 0 }], { duration: 600 });
+    setFx("witch", false);
+    setFx("cage", true);
+    await anim("cage", [{ transform: "translateY(-220px)" }, { transform: "translateY(0)" }], { duration: 600, easing: "ease-in" });
+    state.flags.caged = true;
+    talk("Witch", "Let me OUT!", { x: 390, y: 262 });
+    await wait(1000);
+    caption("", "Locked in a cage!");
+  });
+}
+function drive() {
+  cutscene(async () => {
+    caption("", "VROOM! The creepy jeep rumbles up the winding road...");
+    await anim("jeepG", [
+      { transform: "translate(0,0) scale(1)" },
+      { transform: "translate(110px,-4px) scale(0.92)", offset: 0.25 },
+      { transform: "translate(160px,-40px) scale(0.8)", offset: 0.5 },
+      { transform: "translate(320px,-92px) scale(0.55)", offset: 0.8 },
+      { transform: "translate(410px,-120px) scale(0.4)", opacity: 0 }
+    ], { duration: 2800 });
+    return "castle";
+  });
+}
+
+// ---------- Dangerous rocks puzzle ----------
+// From the notes: the kids mimic a pattern in the clouds, which keeps changing.
+// Here a cloud drifts over the left, middle, or right part of the sky to show each safe step,
+// and the whole path changes every time the kids slide back to the start.
+const STEPS = 6;
+const ROCK_CENTER = { L: [160, 356], M: [400, 372], R: [640, 356] };
+function newPath() { return Array.from({ length: STEPS }, () => "LMR"[Math.floor(Math.random() * 3)]); }
+function rockStep(choice) {
+  cutscene(async () => {
+    const f = state.flags;
+    if (!f.rockPath) f.rockPath = newPath();
+    f.rockAt = f.rockAt || 0;
+    const safe = choice === f.rockPath[f.rockAt];
+    f.rockLast = choice;
+    renderOverlay();
+    await anim("hoppers", [{ transform: "translateY(-70px)" }, { transform: "translateY(0)" }], { duration: 450, easing: "ease-in" });
+    if (safe) {
+      f.rockAt += 1;
+      if (f.rockAt === STEPS) {
+        f.rocksDone = true;
+        renderOverlay();
+        caption("", "They made it across, right up to the gigantic front door!");
+        return;
+      }
+      renderOverlay();
+      animateCloud();
+      caption("", "Safe! Step " + f.rockAt + " of " + STEPS + ".");
+      return;
+    }
+    caption("", "WOBBLE!");
+    await anim("rock_" + choice, [{ transform: "rotate(0)" }, { transform: "rotate(-9deg)" }, { transform: "rotate(9deg)" }, { transform: "rotate(-6deg)" }, { transform: "rotate(0)" }], { duration: 700 });
+    await anim("hoppers", [{ transform: "translate(0,0)", opacity: 1 }, { transform: "translate(0,70px)", opacity: 0 }], { duration: 500 });
+    f.rockAt = 0; f.rockLast = null;
+    f.rockPath = newPath();
+    f.rockFails = (f.rockFails || 0) + 1;
+    renderOverlay();
+    animateCloud();
+    caption("", f.rockFails >= 3 ? "Back to the start! Psst... look up at the clouds." : "Everyone slides back to the start!");
+  });
+}
+function animateCloud() { anim("cloud", [{ transform: "translateX(-60px)", opacity: 0 }, { transform: "translateX(0)", opacity: 1 }], { duration: 1200, easing: "ease-out" }); }
+function rocksOverlay() {
+  const f = state.flags;
+  if (!f.rockPath) f.rockPath = newPath();
+  const at = f.rockAt || 0;
+  const kidsAt = (x, y) => {
+    const hx = x - 52, hy = y - 100;
+    return '<g id="hoppers" class="anim">' +
+      '<use href="#may" x="' + hx + '" y="' + hy + '" width="26" height="40"/>' +
+      '<use href="#jon" x="' + (hx + 24) + '" y="' + hy + '" width="29" height="40"/>' +
+      '<use href="#jasin" x="' + (hx + 52) + '" y="' + hy + '" width="26" height="40"/>' +
+      '<use href="#olivia" x="' + (hx + 78) + '" y="' + hy + '" width="26" height="40"/></g>';
+  };
+  if (f.rocksDone) return kidsAt(330, 488);
+  const rock = (key) => {
+    const [cx, cy] = ROCK_CENTER[key];
+    return '<g id="rock_' + key + '" class="anim"><path d="M' + (cx - 86) + " " + (cy + 40) + " Q" + (cx - 90) + " " + (cy - 30) + " " + (cx - 30) + " " + (cy - 46) + " Q" + (cx + 30) + " " + (cy - 60) + " " + (cx + 80) + " " + (cy - 20) + " Q" + (cx + 96) + " " + (cy + 20) + " " + (cx + 70) + " " + (cy + 44) + ' Z" fill="#5e5664" stroke="#2a1f3d" stroke-width="4"/></g>';
+  };
+  const spot = f.rockLast ? ROCK_CENTER[f.rockLast] : [56, 340];
+  const cx = ROCK_CENTER[f.rockPath[at]][0];
+  const cloud = '<g id="cloud" class="anim" fill="#e9e4ef" stroke="#2a1f3d" stroke-width="3">' +
+    '<circle cx="' + (cx - 34) + '" cy="96" r="22"/><circle cx="' + cx + '" cy="84" r="30"/><circle cx="' + (cx + 34) + '" cy="98" r="20"/>' +
+    '<rect x="' + (cx - 54) + '" y="96" width="108" height="22" rx="11" stroke="none"/></g>';
+  return cloud +
+    '<rect x="0" y="290" width="800" height="160" fill="#3a3440" opacity="0.85"/>' +
+    rock("L") + rock("M") + rock("R") + kidsAt(spot[0], spot[1]) +
+    '<rect x="300" y="8" width="200" height="40" rx="10" fill="#1f1729" opacity="0.9"/>' +
+    '<text x="400" y="35" text-anchor="middle" font-family="Patrick Hand, Comic Sans MS, cursive" font-size="22" fill="#f6e7b8">Step ' + (at + 1) + " of " + STEPS + "</text>";
+}
+function renderOverlay() {
+  const g = $("overlay");
+  const room = ROOMS[state.room];
+  if (g) g.innerHTML = room && room.overlay ? room.overlay() : "";
+}
+
+// ---------- Rendering ----------
+function go(roomId) {
+  state.room = roomId;
+  state.selected = null;
+  state.queue = []; state.after = null;
+  walkToken++;
+  P = null;
+  const room = ROOMS[roomId];
+  const scene = $("scene");
+  scene.getAnimations().forEach((a) => a.cancel());
+  scene.style.opacity = ""; scene.style.transform = "";
+  $("room-title").textContent = room.title;
+  $("who").textContent = room.player ? "Playing as " + KIDS[room.player].name : "";
+  if (room.player && KIDS[room.player].group) $("who").textContent = "Playing as the whole team";
+  try { speechSynthesis.cancel(); } catch (e) {}
+  $("map").hidden = true;
+  $("fridge").hidden = true;
+  scene.setAttribute("viewBox", "0 0 800 450");
+  scene.innerHTML = (room.svg ? room.svg() : SCENES[room.bg]) + '<g id="overlay"></g><g id="hotspots"></g><g id="actors"></g><g id="bubbles"></g>';
+  if (room.setup) room.setup();
+  if (room.player) spawnPlayer(room.player, room.start[0], room.start[1], room.scale || 1);
+  renderOverlay();
+  renderHot();
+  renderDrawer();
+  renderExits();
+  scene.animate([{ opacity: 0 }, { opacity: 1 }], { duration: T(450) });
+  room.enter();
+}
+
+function svgPoint(e) {
+  const s = $("scene");
+  const pt = s.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  return pt.matrixTransform(s.getScreenCTM().inverse());
+}
+
+function renderHot() {
+  const g = $("hotspots");
+  if (!g) return;
+  const room = ROOMS[state.room];
+  g.innerHTML = "";
+  if (room.floor) {
+    // Click anywhere else to walk there.
+    const floor = document.createElementNS(NS, "rect");
+    Object.entries({ x: 0, y: 0, width: room.wide || 800, height: 450, class: "floor" }).forEach(([k, v]) => floor.setAttribute(k, v));
+    floor.addEventListener("click", (e) => {
+      if (state.busy || !P) return;
+      if (talking()) { state.queue = []; nextLine(); }
+      const p = svgPoint(e);
+      walkTo(p.x, p.y);
+    });
+    g.appendChild(floor);
+  }
+  room.hot.forEach((h) => {
+    if (h.show && !h.show()) return;
+    const r = document.createElementNS(NS, "rect");
+    Object.entries({ x: h.x, y: h.y, width: h.w, height: h.h, rx: 10, class: "hot", tabindex: 0, role: "button", "aria-label": h.label }).forEach(([k, v]) => r.setAttribute(k, v));
+    r.addEventListener("mouseenter", () => { $("hover-label").textContent = state.selected ? "Use " + ITEMS[state.selected].name + " on " + h.label : h.label; });
+    r.addEventListener("mouseleave", () => { $("hover-label").textContent = ""; });
+    const act = () => clickHot(h);
+    r.addEventListener("click", act);
+    r.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); } });
+    g.appendChild(r);
+    const dot = document.createElementNS(NS, "circle");
+    Object.entries({ cx: h.x + h.w / 2, cy: h.y + Math.min(h.h / 2, 40), r: 9, class: "marker" }).forEach(([k, v]) => dot.setAttribute(k, v));
+    g.appendChild(dot);
+  });
+}
+
+// One click does it: the kid walks over, then looks, talks, picks up, or uses the item.
+function clickHot(h) {
+  if (state.busy) return;
+  if (talking()) {
+    if (state.after) { nextLine(); return; }
+    state.queue = [];
+    nextLine();
+  }
+  const item = state.selected;
+  state.selected = null;
+  renderDrawer();
+  const doIt = () => {
+    if (item) {
+      if (h.use && h.use[item]) h.use[item]();
+      else caption("", ITEMS[item].noUse || "That doesn't do anything here.");
+    } else h.click();
+  };
+  const room = ROOMS[state.room];
+  if (P && h.stand !== "here") {
+    const st = h.stand || [h.x + h.w / 2, room.floor.y2];
+    walkTo(st[0], st[1]).then((ok) => { if (!ok) return; faceToward(h.x + h.w / 2); doIt(); });
+  } else doIt();
+}
+
+function clickPlayer() {
+  if (state.busy) return;
+  const room = ROOMS[state.room];
+  if (state.selected) { state.selected = null; renderDrawer(); }
+  if (room.onPlayer) room.onPlayer();
+}
+
+function renderExits() {
+  const box = $("exits");
+  box.innerHTML = "";
+  const room = state.room && ROOMS[state.room];
+  $("goal").textContent = room && room.goal && !state.busy ? room.goal() : "";
+  if (state.busy || state.after || !room) return;
+  (room.exits || []).forEach((ex) => {
+    if (ex.show && !ex.show()) return;
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "ghost"; b.textContent = ex.label;
+    b.addEventListener("click", () => { if (state.busy) return; state.queue = []; ex.run(); });
+    box.appendChild(b);
+  });
+  // Team bar: pick which kid you control, and a separate Special move button.
+  if (room.team && !state.flags.ko) {
+    ["may", "jon", "jasin", "olivia"].forEach((kid) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "ghost kid-pick";
+      b.setAttribute("aria-pressed", String(room.player === kid));
+      b.innerHTML = '<svg viewBox="0 0 220 300" aria-hidden="true"><use href="#' + kid + '"/></svg>' + KIDS[kid].name;
+      b.addEventListener("click", () => pickKid(kid));
+      box.appendChild(b);
+    });
+    const s = document.createElement("button");
+    s.type = "button"; s.className = "special";
+    s.textContent = "Special move: " + MOVES[room.player] + " ✦";
+    s.addEventListener("click", () => specialMove());
+    box.appendChild(s);
+  }
+}
+
+function renderDrawer() {
+  const slots = $("slots");
+  slots.innerHTML = "";
+  for (let i = 0; i < Math.max(4, state.items.length); i++) {
+    const id = state.items[i];
+    const b = document.createElement("button");
+    b.type = "button";
+    if (!id) { b.className = "slot empty"; b.disabled = true; b.setAttribute("aria-label", "Empty slot"); slots.appendChild(b); continue; }
+    b.className = "slot" + (state.selected === id ? " selected" : "");
+    b.innerHTML = ITEMS[id].icon;
+    b.title = ITEMS[id].name;
+    b.setAttribute("aria-label", ITEMS[id].name);
+    b.addEventListener("click", () => {
+      if (state.busy) return;
+      if (state.selected && state.selected !== id) {
+        const first = state.selected;
+        state.selected = null;
+        if (!combine(first, id)) caption("", "Those two don't go together.");
+        renderDrawer();
+        return;
+      }
+      state.selected = state.selected === id ? null : id;
+      renderDrawer();
+    });
+    slots.appendChild(b);
+  }
+  document.body.classList.toggle("using", !!state.selected);
+  $("drawer-hint").textContent = state.selected
+    ? "Now click something in the scene, or another item in your drawer, to use the " + ITEMS[state.selected].name.toLowerCase() + " on it."
+    : "Click an item, then click something in the scene to use it.";
+}
+
+function showTitle() {
+  $("game").hidden = true;
+  $("title-screen").hidden = false;
+  $("who").textContent = "";
+}
+function restart() {
+  resetState();
+  try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+  $("continue-btn").hidden = true;
+  $("start-btn").textContent = "Start";
+  showTitle();
+}
+
+// ---------- Saving ----------
+// The game remembers where you are, so a reload or an update doesn't send you back to the start.
+const SAVE_KEY = "manor-konsz-save-v3";
+function saveData() {
+  if (!state.room) return null;
+  return { room: state.room, items: state.items.slice(), flags: Object.assign({}, state.flags) };
+}
+function save() {
+  const data = saveData();
+  try { if (data) localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
+}
+function loadSaved() {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY) || "null"); } catch (e) { return null; }
+}
+function startGame(data) {
+  resetState();
+  if (data) {
+    state.items = data.items || ["ball"];
+    state.flags = data.flags || {};
+    state.flags.rockLast = state.flags.rockAt ? state.flags.rockLast : null;
+  }
+  $("title-screen").hidden = true;
+  $("game").hidden = false;
+  go(data && ROOMS[data.room] ? data.room : "ship");
+}
+const _go = go;
+go = function (roomId) { _go(roomId); save(); };
+
+// ---------- Buttons ----------
+$("next-btn").addEventListener("click", nextLine);
+$("start-btn").addEventListener("click", () => { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} startGame(null); });
+$("continue-btn").addEventListener("click", () => { const d = loadSaved(); if (d) startGame(d); });
+$("voices-btn").addEventListener("click", () => {
+  voicesOn = !voicesOn;
+  $("voices-btn").setAttribute("aria-pressed", String(voicesOn));
+  if (voicesOn) say_out("Hi! I'm May!", VOICES["May"]);
+  else { try { speechSynthesis.cancel(); } catch (e) {} }
+});
+$("speak-btn").addEventListener("click", () => {
+  speakOn = !speakOn;
+  $("speak-btn").setAttribute("aria-pressed", String(speakOn));
+  if (speakOn) speak($("line").textContent || "Read aloud is on.");
+  else { try { speechSynthesis.cancel(); } catch (e) {} }
+});
+$("full-btn").addEventListener("click", async () => {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else {
+      if ($("game").hidden) { $("full-btn").textContent = "Start the game first"; setTimeout(() => { $("full-btn").textContent = "Full screen"; }, 1500); return; }
+      await $("game").requestFullscreen();
+    }
+  } catch (e) {
+    $("full-btn").textContent = "Full screen isn't available here";
+    setTimeout(() => { $("full-btn").textContent = "Full screen"; }, 2000);
+  }
+});
+document.addEventListener("fullscreenchange", () => {
+  $("full-btn").textContent = document.fullscreenElement ? "Exit full screen" : "Full screen";
+});
+
+// Scene 1 now has to be solved before the story moves on, so testers can jump ahead here.
+$("map-close").addEventListener("click", () => { $("map").hidden = true; });
+$("fridge-close").addEventListener("click", () => { $("fridge").hidden = true; renderExits(); });
+Object.keys(ROOMS).filter((id) => !ROOMS[id].ship).forEach((id) => {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "ghost"; b.textContent = ROOMS[id].title;
+  // skipping to the rocks hands over the disguises the kids would have found at the witch's house
+  b.addEventListener("click", () => startGame({ room: id, items: id === "rocks" ? ["ball", "disguise"] : ["ball"], flags: {} }));
+  $("skip-list").appendChild(b);
+});
+
+function start(hotData) {
+  renderDrawer();
+  if (hotData && hotData.room) { startGame(hotData); return; }
+  const saved = loadSaved();
+  if (saved && saved.room) {
+    $("continue-btn").hidden = false;
+    $("start-btn").textContent = "New game";
+  }
+}
+window.claude?.hot?.snapshot?.(() => saveData() || {});
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+</script>
