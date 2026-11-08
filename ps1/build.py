@@ -1,4 +1,4 @@
-"""Builds the PS1-style test from ps1/template.html.
+"""Builds the game from ps1/template.html (the page) and ps1/src/*.js (the game code).
 
 Pulls the character drawings out of the sketchbook page (they become pixel
 sprites in the browser) and tucks small copies of the kids' scans into the page,
@@ -12,6 +12,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 art = (ROOT / "sample-art" / "manor-konsz-sketchbook.html").read_text()
 template = (ROOT / "ps1" / "template.html").read_text()
+
+# The game code lives in ps1/src/, one file per part, joined in this order.
+# Shared pieces come first, then the chapters, then the parts that start the game.
+SRC_ORDER = ["engine.js", "textures.js", "story.js", "ch1-ship.js", "ch2-crash.js",
+             "ch3-road.js", "ch4-castle.js", "debug.js", "runtime.js"]
+src_dir = ROOT / "ps1" / "src"
+extra = sorted(f.name for f in src_dir.glob("*.js") if f.name not in SRC_ORDER)
+assert not extra, f"add these to SRC_ORDER in build.py: {extra}"
+code = "\n".join((src_dir / name).read_text() for name in SRC_ORDER)
+marker = "// __GAME_CODE__ (ps1/build.py fills this in from ps1/src/)"
+assert marker in template, "game code marker missing from template.html"
+template = template.replace(marker, code)
 
 defs = re.search(r"<defs>.*?</defs>", re.search(r'<svg width="0" height="0".*?</svg>', art, re.S).group(0), re.S).group(0)
 
