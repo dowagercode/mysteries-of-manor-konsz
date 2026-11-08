@@ -147,8 +147,10 @@ LV.hideout = () => {
   put(L, fl, mat({ map: T.holeFloor, rep: [3, 3] }));
   const rim = new THREE.RingGeometry(R - 0.05, R + 0.3, 16); rim.rotateX(-Math.PI / 2);
   put(L, rim, mat({ color: 0x2a1f3d }), 0, 0.01, 0);
-  // the way out: an oval doorway in the wall that shows Jon's room on the other side (live view)
-  const out = group(L, -2.55, 0, -2.85, 0.73, { name: "Climb out to Jon's room", stand: [-2.2, -1.5], go: "jons" });
+  // the way out: an oval doorway in the wall that shows, live, the place the portal was opened from
+  // (Jon's room on the ship; after the crash Jon can open it anywhere, see powers.js)
+  const out = group(L, -2.55, 0, -2.85, 0.73, { name: "Climb out of the portal", stand: [-2.2, -1.5], exit: true,
+    run: () => goLevel(S.flags.portalFrom && LV[S.flags.portalFrom] ? S.flags.portalFrom : "jons", "hideout") });
   const viewRT = new THREE.WebGLRenderTarget(96, 192, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
   const viewCam = new THREE.PerspectiveCamera(78, 0.5, 0.1, 60);
   viewCam.position.set(3.25, 1.25, -0.55); viewCam.lookAt(-0.2, 0.95, -2.9);
@@ -157,12 +159,18 @@ LV.hideout = () => {
   const doorRim = new THREE.RingGeometry(0.97, 1.12, 16); doorRim.scale(0.55, 1.12, 1); doorRim.translate(0, 1.2, 0);
   put(L, doorRim, mat({ color: 0xb77cf0, em: 0.7 }), 0, 0, 0.01, 0, null, out);
   let viewT = 1; L.viewCam = viewCam;
-  L.preRender = (dt) => {   // redraw the view of Jon's room a few times a second
+  L.preRender = (dt) => {   // redraw the view of the outside a few times a second
     viewT += dt; if (viewT < 0.2) return; viewT = 0;
-    const jl = getLevel("jons"), me = jl.player.root, was = me.visible;
-    me.visible = false;   // May is in here, not out there
+    const from = S.flags.portalFrom || "jons", jl = from === "jons" ? getLevel("jons") : built[from];
+    if (!jl) return;
+    if (from === "jons") { viewCam.position.set(3.25, 1.25, -0.55); viewCam.lookAt(-0.2, 0.95, -2.9); }
+    else if (jl.portal) { const c = jl.cams[0].c.position; viewCam.position.set(jl.portal.x, 1.25, jl.portal.z); viewCam.lookAt(c.x, 1.0, c.z); }
+    else return;
+    viewCam.updateMatrixWorld();
+    const kids = [jl.player, ...(jl.crew ? Object.values(jl.crew) : [])], was = kids.map((c) => c.root.visible);
+    kids.forEach((c) => (c.root.visible = false));   // the kids are in here, not out there
     applyLight(jl); renderer.setRenderTarget(viewRT); renderer.render(jl.scene, viewCam);
-    me.visible = was; applyLight(L);
+    kids.forEach((c, i) => (c.root.visible = was[i])); applyLight(L);
   };
   // tall box with a pink flower
   const box = group(L, -0.4, 0, -3.0, 0.15, { name: "Tall box", say: [["", "A tall box with a pink flower on it."]] });
@@ -184,7 +192,7 @@ LV.hideout = () => {
   const jon = addChar(L, "jon", 2.3, -1.5, 1.3, { name: "Jon", stand: [1.2, -0.7] });
   jon.show = () => !S.flags.gaveCake;
   Object.assign(jon.body.userData.hot, { show: jon.show, say: () => jonHoleAct(), use: { cake: giveCake } });
-  L.player = addChar(L, "may", -1.6, 1.4, 1.3);
+  if (S.flags.crashed) crew(L, -1.6, 1.4); else L.player = addChar(L, "may", -1.6, 1.4, 1.3);
   L.walk = [-3, 3, -2.2, 2.4];
   L.start = [-1.6, 1.4]; L.entries = { jons: [-1.6, 1.4] };
   L.onEnter = [["", "May climbs inside Jon's portal. It's a cozy round room!"]];
@@ -434,6 +442,7 @@ LV.jons = () => {
   const rim = new THREE.RingGeometry(0.97, 1.1, 16); rim.scale(0.55, 1.12, 1); rim.translate(0, 1.2, 0);
   put(L, rim, mat({ color: 0xb77cf0, em: 0.6, side: THREE.DoubleSide }), 0, 0, 0.01, 0, null, oval);
   oval.userData.hot.run = () => {
+    S.flags.portalFrom = "jons";
     busy = true; L.player.entering = true; L.player.target = new THREE.Vector2(3.45, -0.75);
     setTimeout(() => { busy = false; goLevel("hideout", "jons"); }, 700);
     setTimeout(() => { const me = built.jons.player; me.entering = false; me.scaleMul = 1; }, 1100);

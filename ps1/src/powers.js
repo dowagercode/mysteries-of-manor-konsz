@@ -19,6 +19,7 @@ function applyLead(lv) {
   const was = lv.player;
   order.forEach((id, i) => { const c = lv.crew[id]; c.follow = i ? lv.crew[order[i - 1]] : null; });
   lv.player = lv.crew[k];
+  lv.crew.jon.body.userData.hot.say = jonTalk;
   if (was && was !== lv.player) { was.target = null; was.onArrive = null; }
   lv.player.target = null;
 }
@@ -62,6 +63,7 @@ function usePowerBtn() {
   if (talking() || busy || !L) return;
   const k = lead();
   if (L.id === "pingpong" && !S.flags.ppKO) { say(doMove(k)); return; }   // the fight: the power goes right at him
+  if (k === "jon") { S.sel = null; renderHud(); say(openPortal()); return; }   // Jon's portal opens right here
   S.sel = S.sel === "power" ? null : "power"; renderHud();
 }
 
@@ -124,4 +126,37 @@ function updatePowerFx(dt) {
     a.f(Math.min(1, a.t));
     if (a.t >= 1) FX_ANIM.splice(i, 1);
   }
+}
+
+// ---------- Jon's portal: after the crash it can be opened anywhere, and the crew can go inside ----------
+// Inside is always the same cozy round room (LV.hideout); climbing out returns to where it was opened.
+function jonTalk() {
+  if (L.id === "pingpong" && !S.flags.ppKO) return kidAct("jon");
+  return [{ choices: [["Open your portal", () => openPortal()], ["Talk", () => [["Jon", "No ma'am!"]]], ["Never mind", () => []]] }];
+}
+function openPortal() {
+  if (L.id === "hideout") return [["Jon", "We're already inside my portal!"]];
+  if (L.portal) return [["Jon", "My portal is already open. Come on in!"]];
+  return [() => makePortal(), ["", "Jon opens his portal. Everyone can climb inside!"]];
+}
+function makePortal() {
+  const lv = L, p = lv.player.pos, spot = clampWalk(p.x + 1.1, p.y - 0.5);
+  const cp = lv.cams[0].c.position, ry = Math.atan2(cp.x - spot.x, cp.z - spot.y);
+  const stand = clampWalk(spot.x + Math.sin(ry) * 0.8, spot.y + Math.cos(ry) * 0.8);
+  const g = group(lv, spot.x, 0, spot.y, ry, { name: "Jon's portal (go inside)", stand: [stand.x, stand.y], run: enterPortal });
+  const disc = new THREE.CircleGeometry(1, 16); disc.scale(0.55, 1.12, 1); disc.translate(0, 1.2, 0);
+  put(lv, disc, mat({ map: T.portal, em: 1, rep: [1.5, 1.5], scroll: [0.05, 0.08], side: THREE.DoubleSide }), 0, 0, 0, 0, null, g);
+  const rim = new THREE.RingGeometry(0.97, 1.1, 16); rim.scale(0.55, 1.12, 1); rim.translate(0, 1.2, 0);
+  put(lv, rim, mat({ color: 0xb77cf0, em: 0.6, side: THREE.DoubleSide }), 0, 0, 0.01, 0, null, g);
+  lv.portal = { x: spot.x, z: spot.y };
+  lv.entries.hideout = [stand.x, stand.y];
+  g.scale.setScalar(0.01);
+  FX_ANIM.push({ t: 0, dur: 0.6, f: (k) => g.scale.setScalar(Math.max(0.01, Math.sin(k * Math.PI / 2))) });
+  renderExits();
+}
+function enterPortal() {
+  S.flags.portalFrom = L.id; save();
+  if (built.hideout && S.flags.crashed && !built.hideout.crew) delete built.hideout;   // rebuild it with the whole crew
+  getLevel("hideout").entries[L.id] = [-1.6, 1.4];
+  goLevel("hideout", L.id);
 }
