@@ -17,10 +17,13 @@ A point-and-click story game designed by Dandy, Addie, and team, with story and 
 
 ## Playing the game (no building needed)
 
+Play online: **https://dowagercode.github.io/mysteries-of-manor-konsz/**
+
+
 `index.html` at the top of the repo is the whole game in one file. It runs offline: the 3D engine, the pixel font, and the kids' drawings are all inside it.
 
 - **On a computer:** download `index.html` and open it in a browser.
-- **On an iPad:** the Files app can't run games from a file. Open the game from a web link instead: the claude.ai link, or GitHub Pages if it's turned on for this repo. To open the debug panel on an iPad, add `#debug` to the end of the link.
+- **On an iPad (or anywhere):** play it at **https://dowagercode.github.io/mysteries-of-manor-konsz/** (the iPad Files app can't run games from a file). To open the debug panel, add `#debug` to the end of the link.
 
 ## Building the game
 
