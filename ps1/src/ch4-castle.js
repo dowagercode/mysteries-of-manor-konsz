@@ -602,7 +602,8 @@ LV.atrium = () => {
   put(L, new THREE.CircleGeometry(9, 20).rotateX(-Math.PI / 2), mat({ map: tx.tiles, rep: [14, 14] }), 0, 0, 0);
   put(L, new THREE.CylinderGeometry(9, 9, 9, 20, 3, true), mat({ map: tx.wall, rep: [20, 6], side: THREE.BackSide }), 0, 4.5, 0);
   put(L, new THREE.CircleGeometry(3, 16).rotateX(Math.PI / 2), mat({ color: 0xd8d8f0, em: 1 }), 0, 8.9, 0);
-  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; put(L, new THREE.CylinderGeometry(0.35, 0.4, 8, 8), mat({ color: 0x8a7a98 }), Math.cos(a) * 7, 4, Math.sin(a) * 7); }
+  for (let i = 0; i < 8; i++) { const a = (i + 0.5) / 8 * Math.PI * 2; if (Math.sin(a) > 0.5) continue;   // no pillars between the camera and the action
+    put(L, new THREE.CylinderGeometry(0.35, 0.4, 8, 8), mat({ color: 0x8a7a98 }), Math.cos(a) * 7, 4, Math.sin(a) * 7); }
   // sparkly bits of broken mirror on the floor
   for (let i = 0; i < 24; i++) put(L, new THREE.CircleGeometry(0.08, 4).rotateX(-Math.PI / 2), mat({ color: 0xd8e8ff, em: 1 }), (rnd() - 0.5) * 10, 0.03, (rnd() - 0.5) * 8);
   const wiz = addChar(L, "wizard", 0, -3.6, 2.0, { name: "Wizard", stand: [0, -1.4], say: () => S.flags.dogsOut ? [] : atriumLines() });
@@ -622,7 +623,7 @@ LV.atrium = () => {
   L.onEnter = () => S.flags.dogsOut ? [] : atriumLines();
   L.light = { amb: 0x7a7090, dir: [0, -1, 0.1], dirCol: 0x8888a0, pts: [[[0, 7, 0], 0xd8d8ff, 14], [[0, 1.5, -3], 0xb08aff, 5], [[0, 0, 0], 0, 1]] };
   L.fog = [0x14101a, 14, 30]; L.bg = 0x14101a;
-  cam(L, [0, 4.6, 9.6], [0, 1.6, -2], 58);
+  cam(L, [0, 4.4, 7.6], [0, 1.3, -2.2], 62);
   L.update = (t) => dogs.forEach((d, i) => (d.yOff = Math.abs(Math.sin(t * 6 + i)) * 0.08));
   return L;
 };
