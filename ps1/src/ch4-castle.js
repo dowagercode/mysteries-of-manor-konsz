@@ -49,7 +49,7 @@ function rockAct(row, col) {
     if (S.rockStep >= 3) return [() => { S.flags.rocksDone = true; save(); L.player.pos.set(0, -16.5); L.player.target = null; }, ["", "May hops from rock to rock, just like the pattern in the clouds... and makes it to the gigantic front door!"]];
     return [];
   }
-  return [() => { newRockPattern(); L.player.pos.set(0, 3); L.player.target = null; S.flags.slipped = true; save(); },
+  return [() => { if (L && L.wobbleRock) L.wobbleRock(row, col); newRockPattern(); L.player.pos.set(0, 3); L.player.target = null; S.flags.slipped = true; save(); },
     ["", "The rock wobbles! May slips and slides back down to the start. Look... the clouds are changing their pattern!"]];
 }
 
@@ -86,15 +86,20 @@ LV.castle = () => {
   put(L, new THREE.RingGeometry(1.4, 2.2, 16, 1, 0.6, 3.6), mat({ color: 0xfff4c8, em: 1, fog: 0 }), 14, 22, -40, 0);
   // the gigantic front door
   const door = group(L, 0, 0, -21.8, 0, { name: "Gigantic front door", exit: true, stand: [0, -17.4], show: () => !!S.flags.rocksDone, run: () => say(doorAct()), use: { robes: doorAct } });
-  put(L, planeG(3.2, 5.2), mat({ map: T.bigDoor }), 0, 0, 0, 0, null, door);
+  put(L, planeG(3.2, 5.2), mat({ color: 0x120c18 }), 0, 0, -0.04, 0, null, door);
+  const doorHinge = new THREE.Group(); doorHinge.position.set(-1.6, 0, 0); door.add(doorHinge);
+  put(L, planeG(3.2, 5.2), mat({ map: T.bigDoor, side: THREE.DoubleSide }), 1.6, 0, 0, 0, null, doorHinge);
   const wiz = addChar(L, "wizard", 0.9, -20.6, 1.9, { name: "Wizard", stand: [0, -17.4], say: () => doorAct() });
   wiz.show = wiz.body.userData.hot.show = () => !!S.flags.wizardOut && !S.flags.inCastle;
   // the dangerous rocks: copy the pattern in the clouds
-  const COLS = [-2.4, 0, 2.4], ROWS = [-1.6, -6.6, -11.6];
+  const COLS = [-2.4, 0, 2.4], ROWS = [-1.6, -6.6, -11.6], rockMeshes = {};
   ROWS.forEach((rz, r) => COLS.forEach((cx, c) => {
     const g = group(L, cx, 0, rz, 0, { name: "Rock", stand: [cx, rz + 0.3], show: () => !S.flags.rocksDone && (S.rockStep || 0) === r, say: () => rockAct(r, c) });
     const m = put(L, new THREE.DodecahedronGeometry(0.8, 0), mat({ color: 0x7a7080 }), 0, 0.25, 0, 0, null, g); m.rotation.set(r + c, c, 0);
+    rockMeshes[r + "_" + c] = g;
   }));
+  let wobKey = "", wobT = -1;
+  L.wobbleRock = (r, c) => { wobKey = r + "_" + c; wobT = 0; };
   [[-6, -9, 2.4], [6.5, -12, 2.8], [-7, -16, 3], [7, -4, 2], [-5.5, -2, 1.6]].forEach(([x, z, s]) => {
     const m = put(L, new THREE.DodecahedronGeometry(s, 0), mat({ color: 0x5a5262 }), x, s * 0.5, z); m.rotation.set(x, z, 0);
   });
@@ -116,8 +121,15 @@ LV.castle = () => {
   L.fog = [0x8a8a98, 18, 70]; L.bg = 0x8a8a98;
   cam(L, [0, 5.5, 11], [0, 2.5, -8], 56, (p) => p.y > -14, 200);
   cam(L, [3.5, 3.0, -11], [0, 2.4, -21], 56, null, 200);
-  L.update = (t) => {
+  L.update = (t, dt) => {
     if (S.flags.rocksDone) { L.walk = [-5, 5, -18, 5.5]; } else { L.walk = [-5, 5, 2.4, 5.5]; if (!S.rockPat) newRockPattern(); }
+    doorHinge.rotation.y += (((S.flags.wizardOut || S.flags.inCastle) ? -0.75 : 0) - doorHinge.rotation.y) * Math.min(1, (dt || 0.016) * 5);
+    if (wobT >= 0) {
+      wobT += dt || 0.016;
+      const rg = rockMeshes[wobKey];
+      if (rg) rg.rotation.z = wobT < 0.7 ? Math.sin(wobT * 28) * 0.35 * (1 - wobT / 0.7) : 0;
+      if (wobT >= 0.7) wobT = -1;
+    }
     // the clouds puff in the order of the safe rocks, then pause, over and over
     const seq = S.rockPat || [0, 1, 2], cyc = t % 4.2, idx = Math.floor(cyc / 0.9);
     clouds.forEach((g, c) => {
@@ -188,9 +200,27 @@ LV.castleKitchen = () => {
 };
 
 // ---------- inside: the reception hall (tea with the wizard) ----------
+function addPoof(L, x, z) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); g.visible = false; L.scene.add(g);
+  const puffs = [0, 1, 2, 3, 4, 5].map((i) => put(L, new THREE.SphereGeometry(0.32, 7, 5), mat({ color: i % 2 ? 0xb06aff : 0xe0b0ff, em: 0.9 }), 0, 0.9, 0, 0, null, g));
+  let poofT = -1;
+  L.poof = () => { poofT = 0; };
+  return (t, dt) => {
+    if (poofT < 0) { g.visible = false; return; }
+    poofT += dt || 0.016;
+    g.visible = poofT < 1.2;
+    puffs.forEach((p, i) => {
+      const a = i / 6 * Math.PI * 2 + poofT * 3, r = poofT * 1.1;
+      p.position.set(Math.cos(a) * r, 0.7 + poofT * 1.4 + (i % 2) * 0.25, Math.sin(a) * r);
+      p.scale.setScalar(Math.max(0.01, (1 - poofT / 1.2) * 1.5));
+    });
+    if (poofT >= 1.2) poofT = -1;
+  };
+}
 function teaLines() {
   const gone = [["Wizard", "Hmm... HMMMM."], ["Wizard", "Everybody in her ministry knows she only drinks TEA!"],
-    ["", "POOF! The wizard disappears in a puff of purple smoke!"], flag("wizardGone"),
+    () => { if (L && L.poof) L.poof(); S.flags.wizardGone = true; save(); },
+    ["", "POOF! The wizard disappears in a puff of purple smoke!"],
     ["", "Where he was sitting, a spiral staircase winds up into the castle..."]];
   return [["", "The wizard pours lemonade and passes around muffins. Everyone is very polite."],
     ["Wizard", "So! How is the witch? Does she ever talk about me?"], ["May", "Um... yes! All the time!"],
@@ -222,6 +252,7 @@ LV.reception = () => {
   const chair = put(L, boxG(0.9, 1.8, 0.4), mat({ color: 0x8a3ac8 }), 0, 0, -2.9);
   const wiz = addChar(L, "wizard", 0, -2.4, 1.9, { name: "Wizard", stand: [0, -0.2], say: () => teaLines() });
   wiz.show = wiz.body.userData.hot.show = () => !S.flags.wizardGone;
+  const stepPoof = addPoof(L, 0, -2.4);
   spiralStairs(L, 4.4, -2.4, 3.6, { name: "Spiral staircase up", exit: true, go: "wheelHall", stand: [3.6, -1.4], show: () => !!S.flags.wizardGone });
   crew(L, 3.8, 1.4);
   L.walk = [-5.3, 5.3, -0.3, 2.9]; L.start = [3.8, 1.4];
@@ -230,6 +261,7 @@ LV.reception = () => {
   L.light = { amb: 0x6a6078, dir: [0.2, -1, -0.5], dirCol: 0x504858, pts: [[[0, 2.4, -1.4], 0xffd890, 6], [[4.4, 3, -2.4], 0xb08aff, 5], [[0, 0, 0], 0, 1]] };
   L.fog = [0x14101a, 12, 28]; L.bg = 0x14101a;
   cam(L, [0, 3.8, 8.2], [0, 1.2, -1.4], 56);
+  L.update = (t, dt) => stepPoof(t, dt);
   return L;
 };
 
@@ -318,7 +350,16 @@ function festivalRoom(n) {
   if (n === "Samhain") {
     const cl = group(L, 3.1, 0, -1.4, -Math.PI / 2, { name: "Closet", stand: [2.4, -1.0], say: () => closetAct() });
     put(L, boxG(1.6, 2.4, 0.6), mat({ color: 0x4a3222 }), 0, 0, 0, 0, null, cl);
-    put(L, planeG(0.7, 2.0), mat({ color: 0x6b4f35 }), -0.38, 0.15, 0.31, 0, null, cl); put(L, planeG(0.7, 2.0), mat({ color: 0x6b4f35 }), 0.38, 0.15, 0.31, 0, null, cl);
+    put(L, planeG(0.9, 0.9), mat({ map: CT().chart, em: 0.4 }), 0, 0.8, 0.31, 0, null, cl);
+    const clL = new THREE.Group(); clL.position.set(-0.73, 0.15, 0.32); cl.add(clL);
+    put(L, planeG(0.7, 2.0), mat({ color: 0x6b4f35, side: THREE.DoubleSide }), 0.35, 0, 0, 0, null, clL);
+    const clR = new THREE.Group(); clR.position.set(0.73, 0.15, 0.32); cl.add(clR);
+    put(L, planeG(0.7, 2.0), mat({ color: 0x6b4f35, side: THREE.DoubleSide }), -0.35, 0, 0, 0, null, clR);
+    L.update = (t, dt) => {
+      const open = S.flags.got_chart ? 1.15 : 0;
+      clL.rotation.y += (-open - clL.rotation.y) * Math.min(1, (dt || 0.016) * 6);
+      clR.rotation.y += (open - clR.rotation.y) * Math.min(1, (dt || 0.016) * 6);
+    };
   }
   crew(L, -2.6, 1.4);
   L.walk = [-3.4, 3.4, -1.3, 2.4]; L.start = [-2.6, 1.4];
@@ -450,6 +491,9 @@ LV.pastRoom = () => {
   const book = group(L, 4.2, 0, 1.6, 0.3, { name: "Giant picture book", show: () => !S.flags.got_book, say: () => [() => add("book", "got_book"), ["", "A big, heavy picture book. Toddler May can just barely carry it. It goes in your item drawer."]] });
   put(L, boxG(1.1, 0.3, 0.8), mat({ color: 0xc82828 }), 0, 0, 0, 0, null, book);
   put(L, boxG(1.0, 0.26, 0.74), mat({ color: 0xf4f0e4 }), 0.03, 0.02, 0, 0, null, book);
+  const placedBook = new THREE.Group(); placedBook.position.set(-0.4, 0, -0.05); L.scene.add(placedBook);
+  put(L, boxG(1.1, 0.3, 0.8), mat({ color: 0xc82828 }), 0, 0, 0, 0, null, placedBook);
+  put(L, boxG(1.0, 0.26, 0.74), mat({ color: 0xf4f0e4 }), 0.03, 0.02, 0, 0, null, placedBook);
   const toy = (name, x, z, line1, build) => { const g = group(L, x, 0, z, 0, { name, say: [["", line1]] }); build(g); };
   toy("Giant teddy bear", -4.4, -2.6, "A teddy bear as big as a house! It's soft... but it won't help reach the cookie.", (g) => {
     put(L, new THREE.SphereGeometry(1.0, 8, 6), mat({ color: 0xb8864a }), 0, 1.0, 0, 0, null, g);
@@ -469,9 +513,14 @@ LV.pastRoom = () => {
   L.light = { amb: 0x8a8090, dir: [0.2, -1, -0.5], dirCol: 0x686070, pts: [[[0, 5, 0], 0xffe8c8, 12], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0x201a24, 14, 30]; L.bg = 0x201a24;
   cam(L, [0, 4.0, 9.0], [0.4, 2.0, -1.5], 58);
-  L.update = () => {
-    const f = S.flags;
-    if (f.chairMoved) { chair.position.set(-0.4, 0, -1.1); chair.rotation.y = 0; }
+  L.update = (t, dt) => {
+    const f = S.flags, s = Math.min(1, (dt || 0.016) * 4);
+    if (f.chairMoved) {
+      chair.position.x += (-0.4 - chair.position.x) * s;
+      chair.position.z += (-1.1 - chair.position.z) * s;
+      chair.rotation.y += (0 - chair.rotation.y) * s;
+    }
+    placedBook.visible = done();
     cookie.visible = !done();
   };
   return L;
@@ -488,7 +537,7 @@ function owlAct() {
   if (S.flags.got_middle || S.flags.got_trumpet) return [["Owl", "Hoo! Good luck, kids."]];
   const wrong = () => [["Owl", "Hoo-hoo! No, that's not it. Think about it..."]];
   return [["Owl", "Hoo! Answer my riddle, and I'll give you something special."], ["Owl", "The more you take, the more you leave behind. What am I?"],
-    { choices: [["Footsteps!", () => [["Owl", "Hoo! Footsteps! That's right!"], ...gotPiece("middle", "The owl drops a piece of crystal: the middle section of the trumpet!")]],
+    { choices: [["Footsteps!", () => [["Owl", "Hoo! Footsteps! That's right!"], () => { if (L && L.dropMiddle) L.dropMiddle(); }, ...gotPiece("middle", "The owl drops a piece of crystal: the middle section of the trumpet!")]],
       ["Cookies", wrong], ["Naps", wrong], ["Socks", wrong]] }];
 }
 LV.presentRoom = () => {
@@ -503,6 +552,9 @@ LV.presentRoom = () => {
   put(L, boxG(2.0, 0.2, 0.3), mat({ color: 0x4a3222 }), 1.2, 3.2, 0.6, 0, null, trunk);
   const owl = addChar(L, "owl", 1.5, -5.3, 0.8, { name: "Owl", stand: [1.0, -3.6], say: () => owlAct() });
   owl.yOff = 3.4; owl.show = owl.body.userData.hot.show = () => !!S.flags.fogClear;
+  const midDrop = put(L, new THREE.CylinderGeometry(0.08, 0.08, 0.45, 8), mat({ color: 0xb8f0ff, em: 1 }), 1.4, -5, -4.5);
+  let dropT = -1;
+  L.dropMiddle = () => { dropT = 0; };
   const fog = group(L, 0, 0, 0.4, 0, { name: "Thick fog", stand: [0, 1.4], show: () => !S.flags.fogClear, say: () => fogAct(), use: { flashlight: fogAct } });
   [-4, -1.4, 1.4, 4].forEach((x, i) => { const s = new THREE.SphereGeometry(2.0, 8, 5); s.scale(1.2, 0.9, 0.7); put(L, s, mat({ color: 0xe0e4e8, em: 0.6, alpha: 0.85 }), x, 1.2 + (i % 2) * 0.3, 0, 0, null, fog); });
   crew(L, -3.8, 3.0);
@@ -512,10 +564,16 @@ LV.presentRoom = () => {
   L.light = { amb: 0x8a9098, dir: [-0.3, -1, -0.4], dirCol: 0x606870, pts: [[[0, 4, -4], 0xfff0c0, 8], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0xc8d0d8, 3, 12]; L.bg = 0xc8d0d8;
   cam(L, [0, 3.6, 10], [0, 2.4, -3], 56, null, 200);
-  L.update = () => {
+  L.update = (t, dt) => {
     const clear = !!S.flags.fogClear;
     L.walk[2] = clear ? -4.2 : 1.2;
     L.fog[1] = clear ? 10 : 3; L.fog[2] = clear ? 34 : 12; G.uFog.value.set(L.fog[1], L.fog[2]);
+    if (dropT >= 0) {
+      dropT += (dt || 0.016) * 1.3;
+      midDrop.position.y = 3.4 - Math.min(1, dropT) * 2.4;
+      midDrop.rotation.z = dropT * 5;
+      if (dropT > 1.2) { dropT = -1; midDrop.position.y = -5; }
+    }
   };
   return L;
 };
@@ -531,7 +589,7 @@ function placeStone(who, item) {
   if (st[1] !== item) return [["", "Hmm... that doesn't seem to belong to this statue."]];
   const last = STATUES.filter(([k]) => k !== who).every(([k]) => f["placed_" + k]);
   return [() => remove(item), ["", `May puts the stone ${st[3]} on the statue. It fits! The statue glows.`], flag("placed_" + who),
-    ...(last ? [["", "All four statues glow at once... and a crystal bell floats down from the ceiling!"], ...gotPiece("bell", "It's the bell of the crystal trumpet!")] : [])];
+    ...(last ? [() => { if (L && L.dropBell) L.dropBell(); }, ["", "All four statues glow at once... and a crystal bell floats down from the ceiling!"], ...gotPiece("bell", "It's the bell of the crystal trumpet!")] : [])];
 }
 LV.futureRoom = () => {
   const L = newLevel("futureRoom", "The Future Room");
@@ -557,6 +615,9 @@ LV.futureRoom = () => {
     if (id === "stoneBall") put(L, new THREE.SphereGeometry(0.22, 8, 6), sm, 0, 0.22, 0, 0, null, g);
     if (id === "stoneTutu") put(L, new THREE.CylinderGeometry(0.12, 0.38, 0.2, 10), sm, 0, 0.1, 0, 0, null, g);
   });
+  const bellDrop = put(L, new THREE.ConeGeometry(0.28, 0.45, 10), mat({ color: 0xb8f0ff, em: 1 }), 0, -5, -1.2);
+  let bellT = -1;
+  L.dropBell = () => { bellT = 0; };
   crew(L, -3.8, 2.6);
   L.walk = [-5.2, 5.2, -1.6, 3.4]; L.start = [-3.8, 2.6];
   L.entries = { mirrors: [-4.6, 2.4] };
@@ -566,11 +627,17 @@ LV.futureRoom = () => {
   L.light = { amb: 0x101018, dir: [0, -1, 0], dirCol: 0x000000, pts: [[[0, 2, 0], 0xfff0c0, 7], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0x000000, 6, 16]; L.bg = 0x000000;
   cam(L, [0, 3.8, 8.8], [0, 1.6, -1.6], 58);
-  L.update = () => {
+  L.update = (t, dt) => {
     const p = L.player.pos;
     G.uPt.value[0].set(p.x, 2.2, p.y - 1.2); G.uPtCol.value[0].set(lit() ? 0xfff0c0 : 0x000000); G.uPtR.value[0] = 9;
     G.uAmb.value.set(lit() ? 0x30303c : 0x08080c);
     L.chars.forEach((c) => { if (c.glow) c.glow.visible = !!S.flags["placed_" + c.key]; });
+    if (bellT >= 0) {
+      bellT += (dt || 0.016) * 0.9;
+      bellDrop.position.y = 4.2 - Math.min(1, bellT) * 2.8;
+      bellDrop.rotation.y = bellT * 4;
+      if (bellT > 1.4) { bellT = -1; bellDrop.position.y = -5; }
+    }
   };
   return L;
 };
@@ -578,7 +645,8 @@ LV.futureRoom = () => {
 // ---------- the atrium: the wizard, and the dogs of darkness ----------
 let CUT = null;
 function atriumLines() {
-  const fight = [["Wizard", "You little twerps, you think you can fight us? Try to defeat these dogs of darkness!"], flag("dogsOut"),
+  const fight = [["Wizard", "You little twerps, you think you can fight us? Try to defeat these dogs of darkness!"],
+    () => { if (L && L.poof) L.poof(); S.flags.dogsOut = true; save(); },
     ["", "POOF! The wizard vanishes!"], () => swampCutscene()];
   return [["", "The mirrors are gone. The kids are standing in a huge atrium... and the wizard is laughing at them!"], ["Wizard", "HA HA HA HA HA!"],
     ["Jasin", "Mr. Wizard! Why are our things glowing? My ball, and Olivia's tutu?"],
@@ -608,12 +676,18 @@ LV.atrium = () => {
   for (let i = 0; i < 24; i++) put(L, new THREE.CircleGeometry(0.08, 4).rotateX(-Math.PI / 2), mat({ color: 0xd8e8ff, em: 1 }), (rnd() - 0.5) * 10, 0.03, (rnd() - 0.5) * 8);
   const wiz = addChar(L, "wizard", 0, -3.6, 2.0, { name: "Wizard", stand: [0, -1.4], say: () => S.flags.dogsOut ? [] : atriumLines() });
   wiz.show = wiz.body.userData.hot.show = () => !S.flags.dogsOut;
-  const dogs = [[-2.2, -2.4], [0, -3.4], [2.2, -2.4]].map(([x, z]) => {
+  const stepPoof = addPoof(L, 0, -3.6);
+  const dogHomes = [[-2.2, -2.4], [0, -3.4], [2.2, -2.4]];
+  const dogs = dogHomes.map(([x, z]) => {
     const d = addChar(L, "dog", x, z, 1.1, { name: "Dog of darkness", stand: [0, -0.6], say: () => dogLines() });
     d.body.material.uniforms.uColor.value.set(0x4a3a48); d.body.material.uniforms.uEm.value = 0.25;
     d.show = d.body.userData.hot.show = () => !!S.flags.dogsOut && CUT !== "swamp";
     return d;
   });
+  const dogZzz = dogHomes.map(([x, z]) => put(L, planeG(0.6, 0.26), mat({ map: label(["Zzz"], 32, 14, "#14101a", "#ffffff", "#14101a"), em: 1 }), x + 0.3, 0.8, z, 0));
+  const emptyCan = new THREE.Group(); emptyCan.position.set(0, 0.14, -2.2); emptyCan.rotation.z = Math.PI / 2; L.scene.add(emptyCan);
+  put(L, new THREE.CylinderGeometry(0.14, 0.14, 0.28, 10), mat({ color: 0xc83a3a }), 0, 0, 0, 0, null, emptyCan);
+  const chaseBall = put(L, new THREE.IcosahedronGeometry(0.2, 1), mat({ color: 0xfff27a, em: 1 }), -4.2, 0.22, -3.2);
   const back = group(L, 0, 0, 5.6, Math.PI, { name: "Door back to the sphinx", go: "castleUp", stand: [0, 4.4] });
   put(L, planeG(1.3, 2.4), mat({ map: doorC("#d8b070") }), 0, 0, 0, 0, null, back);
   addSlide(L);
@@ -624,7 +698,31 @@ LV.atrium = () => {
   L.light = { amb: 0x7a7090, dir: [0, -1, 0.1], dirCol: 0x8888a0, pts: [[[0, 7, 0], 0xd8d8ff, 14], [[0, 1.5, -3], 0xb08aff, 5], [[0, 0, 0], 0, 1]] };
   L.fog = [0x14101a, 14, 30]; L.bg = 0x14101a;
   cam(L, [0, 4.4, 7.6], [0, 1.3, -2.2], 62);
-  L.update = (t) => dogs.forEach((d, i) => (d.yOff = Math.abs(Math.sin(t * 6 + i)) * 0.08));
+  L.update = (t, dt) => {
+    stepPoof(t, dt);
+    const fed = !!S.flags.dogsFed, ball = !!S.flags.ballThrown;
+    emptyCan.visible = fed;
+    chaseBall.visible = ball;
+    if (ball) chaseBall.position.set(-3.8 + Math.cos(t * 2.5) * 1.1, 0.22 + Math.abs(Math.sin(t * 6)) * 0.18, -3.2 + Math.sin(t * 2.5) * 0.9);
+    dogs.forEach((d, i) => {
+      dogZzz[i].visible = fed;
+      dogZzz[i].position.y = 0.75 + Math.sin(t * 2 + i) * 0.08;
+      if (fed) {
+        d.pos.set(dogHomes[i][0], dogHomes[i][1]);
+        d.body.rotation.z = Math.PI / 2 * 0.85;
+        d.yOff = 0.15;
+      } else if (ball) {
+        const a = t * 2.5 - 0.5 - i * 0.55;
+        d.pos.set(-3.8 + Math.cos(a) * 1.1, -3.2 + Math.sin(a) * 0.9);
+        d.body.rotation.z = 0;
+        d.yOff = Math.abs(Math.sin(t * 8 + i)) * 0.16;
+      } else {
+        d.pos.set(dogHomes[i][0], dogHomes[i][1]);
+        d.body.rotation.z = 0;
+        d.yOff = Math.abs(Math.sin(t * 6 + i)) * 0.08;
+      }
+    });
+  };
   return L;
 };
 

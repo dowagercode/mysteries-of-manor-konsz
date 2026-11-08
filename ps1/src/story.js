@@ -3,7 +3,7 @@
 
 // ---------- the game: items, puzzles, goals (story from the kids' notes) ----------
 const SAVE_KEY = "manorkonsz-ps1-save";
-const S = { items: [], flags: {}, room: "mays", sel: null };
+const S = { items: [], flags: {}, room: "hall", sel: null };
 try { const d = JSON.parse(localStorage.getItem(SAVE_KEY) || "null"); if (d) Object.assign(S, d, { sel: null }); } catch {}
 const ITEMS = {
   tuna: ["🥫", "Can of tuna"], opener: ["🔧", "Can opener"], key: ["🗝️", "Engine room key"], cheese: ["🧀", "Moldy cheese"],
@@ -23,7 +23,11 @@ function save() {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify({ items: S.items, flags: S.flags, room: S.room })); } catch {}
   renderHud();
 }
-function add(id, flag) { if (!has(id)) S.items.push(id); if (flag) S.flags[flag] = true; save(); }
+function add(id, flag) {
+  if (!has(id)) { S.items.push(id); if (typeof itemCue === "function") itemCue(); }
+  if (flag) S.flags[flag] = true;
+  save();
+}
 function remove(id) { S.items = S.items.filter((i) => i !== id); if (S.sel === id) S.sel = null; save(); }
 const flag = (f) => () => { S.flags[f] = true; save(); };
 const take = (id) => [() => add(id, "got_" + id), ["", ITEMS[id][1] + "! It goes in your item drawer."]];

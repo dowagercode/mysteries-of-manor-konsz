@@ -4,13 +4,85 @@
 // ---------- game state ----------
 const TEX = {}, RAW = {};
 const built = {};
-let L = null, curCam = null, ps1 = true, castOpen = false, busy = false;
+let L = null, curCam = null, ps1 = true, castOpen = false, busy = false, spaceCut = false;
+
+const SPARKLE_HOTS = {
+  Sugar: () => !S.flags.got_sugar, Oil: () => !S.flags.got_oil, Flour: () => !S.flags.got_flour, Cacao: () => !S.flags.got_cacao,
+  Yeast: () => !S.flags.got_yeast, "Space flower": () => !S.flags.got_flower, "Pile of papers": () => !S.flags.gotBoxKey,
+  "Olivia's memory pills": () => S.flags.gotMap && !S.flags.gotPills, "Locked box": () => !S.flags.gotKeycard && has("boxKey"),
+  Flashlight: () => !S.flags.got_flashlight, Squeegee: () => !S.flags.got_squeegee,
+  "Windshield washer container": () => !S.flags.got_momStone, "Magazine rack": () => !S.flags.got_dadStone,
+  "Sink cupboard": () => !S.flags.got_wifeStone, Toilet: () => L && L.id === "gasRest" && !S.flags.got_marketKey,
+  "Mac and cheese box": () => !S.flags.macMoved, "Straw hat": () => S.flags.ladyFree && !S.flags.got_hat,
+  "Old shirt": () => !S.flags.got_shirt, "Bundle of twigs": () => !S.flags.got_twigs,
+  "Big tree with a hole": () => !S.flags.got_head, Straw: () => !S.flags.got_straw, Clothesline: () => !S.flags.got_robes,
+  Closet: () => !S.flags.got_chart, "Giant picture book": () => !S.flags.got_book,
+  "Stone hair bow": () => has("flashlight") && !S.flags.got_stoneBow, "Stone portal disk": () => has("flashlight") && !S.flags.got_stoneDisk,
+  "Stone soccer ball": () => has("flashlight") && !S.flags.got_stoneBall, "Stone tutu": () => has("flashlight") && !S.flags.got_stoneTutu,
+  "Can of dog food": () => !S.flags.got_dogFood, "Map of notes": () => !S.flags.got_songMap,
+};
+function addRoomSparkles(lv) {
+  const sg = new THREE.OctahedronGeometry(0.065, 0), sm = mat({ color: 0xffe860, em: 1 });
+  const list = [];
+  lv.hots.forEach((o) => {
+    const h = o.userData.hot, check = h && SPARKLE_HOTS[h.name];
+    if (!check) return;
+    const wp = o.getWorldPosition(new THREE.Vector3());
+    const g = new THREE.Group(); g.position.set(wp.x, Math.max(0.35, wp.y + 0.45), wp.z); lv.scene.add(g);
+    const a = new THREE.Mesh(sg, sm), b = new THREE.Mesh(sg, sm);
+    g.add(a, b); list.push({ g, a, b, o, check, seed: list.length * 1.7 });
+  });
+  const burstG = new THREE.OctahedronGeometry(0.07, 0), burstM = mat({ color: 0xfff27a, em: 1 });
+  const burst = Array.from({ length: 6 }, () => { const m = new THREE.Mesh(burstG, burstM); m.visible = false; lv.scene.add(m); return m; });
+  lv.sparkles = { list, burst, burstT: -1, burstPos: new THREE.Vector3() };
+}
+function itemCue() {
+  if (!L || !L.player) return;
+  L.player.hopT = 0.36;
+  if (L.sparkles) {
+    L.sparkles.burstT = 0;
+    const p = L.player.root.position;
+    L.sparkles.burstPos.set(p.x, p.y + 0.7, p.z);
+  }
+}
+function updateSparkles(t, dt) {
+  if (!L || !L.sparkles) return;
+  const sp = L.sparkles;
+  sp.list.forEach((s) => {
+    const h = s.o.userData.hot;
+    const show = (!h.show || h.show()) && s.check();
+    s.g.visible = !!show;
+    if (!show) return;
+    const wp = s.o.getWorldPosition(new THREE.Vector3());
+    s.g.position.set(wp.x, Math.max(0.35, wp.y + 0.42), wp.z);
+    const a1 = t * 2.6 + s.seed;
+    s.a.position.set(Math.cos(a1) * 0.22, Math.sin(t * 3.4 + s.seed) * 0.1, Math.sin(a1) * 0.22);
+    s.b.position.set(-Math.cos(a1) * 0.18, 0.14 + Math.cos(t * 3.1 + s.seed) * 0.08, -Math.sin(a1) * 0.18);
+    const sc = 0.6 + 0.5 * Math.abs(Math.sin(t * 4 + s.seed));
+    s.a.scale.setScalar(sc); s.b.scale.setScalar(1.1 - sc * 0.5);
+    s.a.rotation.y = t * 3; s.b.rotation.x = t * 3;
+  });
+  if (sp.burstT >= 0) {
+    sp.burstT += dt * 1.8;
+    const k = sp.burstT;
+    sp.burst.forEach((m, i) => {
+      if (k >= 1) { m.visible = false; return; }
+      m.visible = true;
+      const ang = (i / 6) * Math.PI * 2 + k * 2;
+      m.position.set(sp.burstPos.x + Math.cos(ang) * k * 0.65, sp.burstPos.y + Math.sin(k * Math.PI) * 0.65 + k * 0.3, sp.burstPos.z + Math.sin(ang) * k * 0.65);
+      m.scale.setScalar(1 - k * 0.7);
+      m.rotation.y = k * 8;
+    });
+    if (k >= 1) sp.burstT = -1;
+  }
+}
 
 function getLevel(id) {
   if (!built[id]) {
     const lv = LV[id]();
     if (!lv.player) lv.player = addChar(lv, "may", ...lv.start, 1.3);
     if (["hub", "mays", "jasins", "olivias", "jons", "hideout", "hall", "engine", "storage", "bath", "playroom", "control"].includes(id)) addClueTrail(lv);
+    addRoomSparkles(lv);
     built[id] = lv;
   }
   return built[id];
@@ -103,6 +175,12 @@ function next() {
   }
   const [n, t] = dq.shift();
   box.hidden = false; boxName.textContent = n; fullText = t; boxText.textContent = ""; boxMore.hidden = true;
+  if (L && n) {
+    const who = n.toLowerCase();
+    L.chars.forEach((c) => {
+      if (who === "everyone" || (who.startsWith("jon") && c.key.startsWith("jon")) || (who.startsWith("ping-pong") && c.key === "pingpong") || (who.startsWith("shopkeeper") && c.key === "lady") || c.key === who) c.hopT = 0.26;
+    });
+  }
   speak(n, t);
   let i = 0; clearInterval(typing);
   typing = setInterval(() => { i += 2; boxText.textContent = t.slice(0, i); if (i >= t.length) finishType(); }, 28);
@@ -209,14 +287,16 @@ function stepChar(c, dt, t) {
   const y = L.groundY ? L.groundY(c.pos.x, c.pos.y) : 0;
   c.root.position.set(c.pos.x, y, c.pos.y);
   const squash = moving ? 0.05 * Math.sin(c.walkT * 22) : 0.012 * Math.sin(t * 2.2 + c.phase);
-  c.body.position.y = (moving ? Math.abs(Math.sin(c.walkT * 11)) * 0.1 : 0) + (c.yOff || 0);
+  let hop = 0;
+  if (c.hopT > 0) { c.hopT = Math.max(0, c.hopT - dt); hop = Math.sin(Math.min(1, c.hopT / 0.3) * Math.PI) * 0.22; }
+  c.body.position.y = (moving ? Math.abs(Math.sin(c.walkT * 11)) * 0.1 : 0) + (c.yOff || 0) + hop;
   const sm = c.scaleMul ?? 1;
   c.body.scale.set(c.face * (1 + squash * 0.6) * sm, (1 - squash) * sm, 1);
   c.body.rotation.y = Math.atan2(curCam.position.x - c.pos.x, curCam.position.z - c.pos.y);
 }
 const tagV = new THREE.Vector3(), tagC = new THREE.Vector3();
 function placeTags() {
-  const hideAll = talking() || !$("title").hidden;
+  const hideAll = talking() || !$("title").hidden || spaceCut;
   const pp = L.player.pos;
   TAGS.forEach((g) => {
     const h = g.o.userData.hot;
@@ -286,6 +366,7 @@ function frame(now) {
   L.hots.forEach((o) => { const h = o.userData.hot; if (h.show) o.visible = !!h.show(); });
   L.chars.forEach((c) => { if (c.show) c.root.visible = !!c.show(); stepChar(c, dt, t); });
   updateClue(t);
+  updateSparkles(t, dt);
   placeTags();
   if (ps1) {
     renderer.setRenderTarget(rt); renderer.render(L.scene, curCam);
@@ -317,13 +398,24 @@ $("restartBtn").onclick = (e) => {
   location.reload();
 };
 ["fullscreenchange", "webkitfullscreenchange"].forEach((ev) => document.addEventListener(ev, () => setTimeout(resize, 50)));
-const INTRO = [["", "The kids are flying their giant spaceship to Woolley Mountain... but the ship is stalled in space, and it can't move."],
-  ["", "Jon is the engineer, but he's hiding in his secret hole!"], ["", "May is in her room. Help May get Jon out so he can fix the ship."]];
+const INTRO = [
+  () => { spaceCut = true; },
+  ["", "The kids are flying their giant spaceship to Woolley Mountain..."],
+  ["", "...but the ship is stalled in space, and it can't move!"],
+  ["", "Jon is the engineer, but he's hiding in his secret hole!"],
+  () => { spaceCut = false; },
+  ["", "May is in the hallway. Help May get Jon out so he can fix the ship."],
+];
 function beginGame(fresh) {
   $("title").hidden = true;
-  if (fresh) { S.items = []; S.flags = {}; S.room = "mays"; save(); }
-  goLevel(S.room && LV[S.room] ? S.room : "mays");
-  if (fresh || !S.flags.started) { S.flags.started = true; save(); setTimeout(() => say(INTRO), 450); }
+  if (fresh) { S.items = []; S.flags = {}; S.room = "hall"; save(); }
+  const isIntro = fresh || !S.flags.started;
+  goLevel(S.room && LV[S.room] ? S.room : "hall");
+  if (isIntro) {
+    spaceCut = true;
+    S.flags.started = true; save();
+    setTimeout(() => { spaceCut = true; say(INTRO); }, 450);
+  }
 }
 
 // ---------- start ----------
@@ -513,7 +605,7 @@ async function start() {
   $("newBtn").onclick = (e) => { e.stopPropagation(); beginGame(true); };
   initDebug();
   if (SHOT && LV[SHOT]) { $("title").hidden = true; goLevel(SHOT); }
-  if (SHOT) window.__mk = { doMove, kidAct, ownerAct, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
+  if (SHOT) window.__mk = { doMove, kidAct, ownerAct, beginGame, get spaceCut() { return spaceCut; }, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
   requestAnimationFrame(frame);
 }
 start().catch((e) => { msg.hidden = false; msg.textContent = "Something went wrong: " + e.message; console.error(e); });

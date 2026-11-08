@@ -4,7 +4,7 @@
 // ---------- debug: travel to points in the story (Shift+D, or #debug in the address) ----------
 const CHECKPOINTS = (() => {
   const steps = [
-    ["Ch1: start", "mays", {}, []],
+    ["Ch1: start", "hall", {}, []],
     ["Ch1: Olivia wants her pills", "hub", { metJon: 1, askedOlivia: 1 }, []],
     ["Ch1: engine room, with the map", "engine", { got_tuna: 1, got_opener: 1, got_cheese: 1, engineOpen: 1, gotMap: 1 }, ["map"]],
     ["Ch1: bake the cake", "hub", { gotPills: 1, gavePills: 1, got_flour: 1, got_oil: 1, got_sugar: 1, got_water: 1, got_yeast: 1, got_cacao: 1 }, ["map", "flour", "oil", "sugar", "water", "yeast", "cacao"]],
@@ -41,7 +41,7 @@ const CHECKPOINTS = (() => {
   return steps.map(([name, room, add, items]) => { flags = { ...flags, ...add }; return { name, room, flags: { ...flags }, items }; });
 })();
 function debugJump(room, flags, items) {
-  stopSpeaking(); dq = []; box.hidden = true; choosing = false;
+  stopSpeaking(); dq = []; box.hidden = true; choosing = false; spaceCut = false;
   if (flags) {
     S.flags = {}; Object.entries(flags).forEach(([k, v]) => (S.flags[k] = v === 1 ? true : v));
     S.items = items.slice(); S.sel = null; S.rockPat = null; S.rockStep = 0;

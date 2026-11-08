@@ -17,14 +17,7 @@ LV.beach = () => {
   // the smiling spaceship, nose-first in the water
   const ship = group(L, 4.5, -0.7, -8.5, -0.35, { name: "The spaceship", stand: [3.2, -2.2],
     say: () => S.flags.crashed ? [["Everyone", "Shucks!"], ["", "The ship is stuck in the water now."]] : [["Everyone", "AHHHHH!"], ["Everyone", "Shucks!"]] });
-  const body = new THREE.SphereGeometry(1, 14, 9); body.scale(3.4, 1.8, 2.0);
-  const sb = put(L, body, mat({ map: T.shipBody }), 0, 1.0, 0, 0, null, ship); sb.rotation.z = -0.28;
-  const finM = mat({ color: 0xa24fd6 });
-  const fin1 = put(L, boxG(1.6, 0.12, 1.0), finM, -3.2, 2.4, 0, 0, null, ship); fin1.rotation.z = 0.3;
-  const fin2 = put(L, boxG(1.6, 0.12, 1.0), finM, -3.4, 1.6, 0, 0, null, ship); fin2.rotation.z = -0.5;
-  const lad = mat({ color: 0x2a1f3d });
-  put(L, boxG(0.06, 1.6, 0.06), lad, -0.3, -0.9, 1.4, 0, null, ship); put(L, boxG(0.06, 1.6, 0.06), lad, 0.2, -0.9, 1.4, 0, null, ship);
-  for (let i = 0; i < 4; i++) put(L, boxG(0.5, 0.05, 0.05), lad, -0.05, -0.8 + i * 0.38, 1.4, 0, null, ship);
+  buildSpaceship(L, ship, -0.28);
   // rocks
   [[-7, -1.8, 0.7], [-5.6, -2.6, 0.4], [9, 0.5, 0.9], [-9.5, 4, 0.6], [7.5, 5, 0.5]].forEach(([rx, rz, r]) => {
     const m = put(L, new THREE.DodecahedronGeometry(r, 0), mat({ color: 0x8a8090 }), rx, gy(rx, rz) + r * 0.4, rz);
@@ -168,16 +161,22 @@ LV.pingpong = () => {
   const bad = addChar(L, "pingpong", 2.9, -2.4, 1.75, { name: "Ping-pong bad guy", stand: [1.0, -0.6],
     say: () => S.flags.ppKO ? [["", "The ping-pong bad guy is knocked out. Zzz..."]] : [["Ping-pong bad guy", "Nobody gets past MY ping-pong station!"], ["", "Click a kid to use their special move."]] });
   const zzz = put(L, planeG(0.7, 0.3), mat({ map: label(["Zzz"], 32, 14, "#2a2420", "#ffffff", "#2a2420"), em: 1 }), 3.3, 0.9, -2.2, -0.3);
+  // 3D ping-pong paddle (held by bad guy, knocked away by fireball, lifted by May to bonk him)
+  const paddle = new THREE.Group(); L.scene.add(paddle);
+  const padHead = new THREE.CylinderGeometry(0.22, 0.22, 0.04, 10); padHead.rotateX(Math.PI / 2);
+  put(L, padHead, mat({ color: 0xe04e39 }), 0, 0.22, 0, 0, null, paddle);
+  put(L, boxG(0.06, 0.22, 0.04), mat({ color: 0xd8b078 }), 0, 0, 0, 0, null, paddle);
+  const padGlow = put(L, new THREE.RingGeometry(0.24, 0.32, 10), mat({ color: 0xd88aff, em: 1, side: THREE.DoubleSide }), 0, 0.22, 0.03, 0, null, paddle);
   // effects
   const portalG = new THREE.CircleGeometry(1, 16); portalG.scale(0.6, 1.1, 1); portalG.translate(0, 1.2, 0);
   const portal = put(L, portalG, mat({ map: T.portal, em: 1, rep: [1.5, 1.5], scroll: [0.05, 0.08], side: THREE.DoubleSide }), -2.2, 0, 0.6, 0.3);
   const ball = put(L, new THREE.IcosahedronGeometry(0.2, 1), mat({ color: 0xff9a30, em: 1 }), 0, -5, 0);
   const team = crew(L, -2.6, 1.0);
   const kids = [team.may, team.jon, team.jasin, team.olivia];
-  let fireT = -1, bonkT = -1;
+  let fireT = -1, bonkT = -1, flyT = -1;
   PP.fx = {
     portal: (on) => { S.flags.ppHidden = on; },
-    fireball: () => { fireT = 0; },
+    fireball: () => { fireT = 0; flyT = 0; },
     float: (on) => { S.flags.ppFloat = on; },
     bonk: () => { bonkT = 0; },
   };
@@ -209,11 +208,28 @@ LV.pingpong = () => {
       ball.position.set(-1.6 + 4.4 * k, 0.6 + Math.sin(k * Math.PI) * 1.2, 0.8 - 3.0 * k);
       if (k >= 1) { fireT = -1; ball.position.y = -5; }
     }
+    if (flyT >= 0) { flyT += dt * 1.4; if (flyT > 1) flyT = -1; }
+    padGlow.visible = bonkT >= 0;
+    if (bonkT >= 0) {
+      bonkT += dt;
+      const k = Math.min(1, bonkT / 0.6);
+      paddle.position.set(1.2 + (2.9 - 1.2) * k, 0.2 + Math.sin(k * Math.PI) * 1.8, -0.6 + (-2.3 + 0.6) * k);
+      paddle.rotation.set(-0.4, 0, -k * Math.PI * 1.5);
+      if (bonkT > 0.6) bonkT = -1;
+    } else if (flyT >= 0) {
+      paddle.position.set(2.4 - 1.2 * flyT, 1.0 * (1 - flyT) + Math.sin(flyT * Math.PI) * 1.1 + 0.06, -2.2 + 1.6 * flyT);
+      paddle.rotation.set(flyT * 4, flyT * 3, flyT * 6);
+    } else if ((f.ppPhase || 0) >= 2 || f.ppKO) {
+      paddle.position.set(1.2, 0.06, -0.6);
+      paddle.rotation.set(Math.PI / 2, 0.4, 0);
+    } else {
+      paddle.position.set(2.35, 0.95 + Math.sin(t * 5) * 0.08, -2.2);
+      paddle.rotation.set(0, 0, Math.sin(t * 6) * 0.5 + 0.3);
+    }
     bad.body.rotation.z = f.ppKO ? Math.PI / 2 * 0.9 : 0;
     bad.yOff = f.ppKO ? 0.3 : 0;
     zzz.visible = !!f.ppKO;
     zzz.position.y = 0.9 + Math.sin(t * 2) * 0.08;
-    if (bonkT >= 0) { bonkT += dt; if (bonkT > 0.6) bonkT = -1; }
   };
   return L;
 };
@@ -247,7 +263,9 @@ LV.gas = () => {
   const washer = group(L, 3.4, 0, -0.5, 0, { name: "Windshield washer container",
     say: () => S.flags.got_momStone ? [["", "Just blue windshield washer fluid."]] : [["", "A container of blue windshield washer fluid. Something is sitting at the bottom... too deep to reach with your hand."]],
     use: { squeegee: () => S.flags.got_momStone ? [["", "Nothing else in there."]] : [() => { remove("squeegee"); add("momStone", "got_momStone"); }, ["", "May fishes around with the squeegee... and pulls out a stone! It has a picture of a skeleton lady on it. His mom?"]] } });
-  put(L, new THREE.CylinderGeometry(0.3, 0.26, 0.7, 8), mat({ color: 0x3a8ad8, em: 0.15 }), 0, 0.35, 0, 0, null, washer);
+  put(L, new THREE.CylinderGeometry(0.3, 0.26, 0.7, 8), mat({ color: 0x3a8ad8, em: 0.15, alpha: 0.75 }), 0, 0.35, 0, 0, null, washer);
+  const washerStone = put(L, new THREE.DodecahedronGeometry(0.11, 0), mat({ color: 0xd8d0b8, em: 0.4 }), 0, 0.12, 0, 0, null, washer);
+  addChaseSpot(L, "gas", 4.5, 4.2, -0.4, [3.2, 4.2]);
   // three old cars; one is the creepy jeep
   const car = (x, z, c, name, line) => {
     const g = group(L, x, 0, z, 0.2, { name, say: [["", line]] });
@@ -285,6 +303,10 @@ LV.gas = () => {
   L.fog = [0x1a1430, 12, 45]; L.bg = 0x1a1430;
   cam(L, [-2, 5, 12], [0.5, 0.5, -1.5], 52, (p) => p.x < 4.5, 200);
   cam(L, [11, 3.2, 8], [5, 0.6, -1], 54, null, 200);
+  L.update = (t, dt) => {
+    washerStone.visible = !S.flags.got_momStone;
+    if (L.chaseUpd) L.chaseUpd(t, dt);
+  };
   return L;
 };
 function driveAway() {
@@ -311,6 +333,11 @@ LV.gasShop = () => {
   const counter = group(L, 0.6, 0, -2.3, 0, { name: "Counter", say: () => ownerAct(), use: Object.fromEntries(STONES.map(([id]) => [id, ownerAct])) });
   put(L, boxG(2.6, 1.0, 0.8), mat({ color: 0x8a6a4a }), 0, 0, 0, 0, null, counter);
   put(L, boxG(2.7, 0.06, 0.86), mat({ color: 0xc8b890 }), 0, 1.0, 0, 0, null, counter);
+  // three stone-shaped spots on the counter, and the three stones when placed
+  const counterStones = [-0.45, 0, 0.45].map((sx) => {
+    put(L, new THREE.CylinderGeometry(0.13, 0.13, 0.02, 8), mat({ color: 0x6a5a40 }), sx, 1.06, 0.1, 0, null, counter);
+    return put(L, new THREE.DodecahedronGeometry(0.11, 0), mat({ color: 0xd8d0b8, em: 0.3 }), sx, 1.14, 0.1, 0, null, counter);
+  });
   const owner = addChar(L, "skeleton", 0.6, -2.95, 1.55, { name: "Skeleton owner", stand: [0.6, -1.3], say: () => ownerAct(),
     use: Object.fromEntries(STONES.map(([id]) => [id, ownerAct])) });
   const shelf = group(L, -2.2, 0, -2.6, 0, { name: "Old snacks", say: [["", "Old snacks. Everything here is a little bit old. Nothing looks good to eat."]] });
@@ -327,6 +354,10 @@ LV.gasShop = () => {
   L.light = { amb: 0x6a6a5a, dir: [0.3, -1, -0.5], dirCol: 0x605848, pts: [[[0, 2.9, 0], 0xfff0b0, 7], [[0.6, 1.6, -2.4], 0xb0ffb0, 2.5], [[0, 0, 0], 0, 1]] };
   L.fog = [0x14120c, 10, 24]; L.bg = 0x14120c;
   cam(L, [0.4, 3.1, 6.4], [0.2, 1.1, -1.4], 52);
+  L.update = (t) => {
+    counterStones.forEach((s) => (s.visible = !!S.flags.gotJeep));
+    if (S.flags.gotJeep) owner.yOff = Math.abs(Math.sin(t * 3)) * 0.08;
+  };
   return L;
 };
 LV.gasRest = () => {
@@ -342,11 +373,16 @@ LV.gasRest = () => {
   const sink = group(L, -0.9, 0, -2.2, 0, { name: "Sink cupboard", say: () => S.flags.got_wifeStone ? [["", "The cupboard under the sink is empty now."]] : [["", "May opens the cupboard under the sink..."], () => add("wifeStone", "got_wifeStone"), ["", "A stone! It has a picture of a skeleton lady with a flower. His wife?"]] });
   put(L, boxG(0.9, 0.8, 0.5), mat({ color: 0x8a7a5a }), 0, 0, 0, 0, null, sink);
   put(L, boxG(0.9, 0.12, 0.5), white, 0, 0.8, 0, 0, null, sink);
+  const cupDoor = new THREE.Group(); cupDoor.position.set(-0.4, 0.08, 0.26); sink.add(cupDoor);
+  put(L, boxG(0.8, 0.64, 0.04), mat({ color: 0x6b5a40 }), 0.4, 0, 0, 0, null, cupDoor);
   onWall(L, "back", R, T.mirror, 0.7, 0.8, -0.9, 1.3, { name: "Mirror", say: [["", "A dusty mirror."]] }, 0x8a8a90);
   L.player = addChar(L, "may", 0, 1.0, 1.3);
   L.walk = [-2.4, 2.4, -1.0, 1.8];
   L.start = [0, 1.0]; L.entries = { gasShop: [-1.8, 0.6] };
-  L.update = () => { tag.visible = !S.flags.got_marketKey; };
+  L.update = (t, dt) => {
+    tag.visible = !S.flags.got_marketKey;
+    cupDoor.rotation.y += ((S.flags.got_wifeStone ? -1.2 : 0) - cupDoor.rotation.y) * Math.min(1, (dt || 0.016) * 8);
+  };
   L.light = { amb: 0x6a7078, dir: [0.3, -1, -0.5], dirCol: 0x606870, pts: [[[0, 2.9, 0], 0xe8f0ff, 6], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0x101418, 9, 22]; L.bg = 0x101418;
   cam(L, [0.6, 2.9, 5.2], [0, 1.0, -1.2], 54);

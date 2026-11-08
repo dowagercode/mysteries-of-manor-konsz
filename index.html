@@ -53783,7 +53783,7 @@ function makeTextures2() {
 
 // ---------- the game: items, puzzles, goals (story from the kids' notes) ----------
 const SAVE_KEY = "manorkonsz-ps1-save";
-const S = { items: [], flags: {}, room: "mays", sel: null };
+const S = { items: [], flags: {}, room: "hall", sel: null };
 try { const d = JSON.parse(localStorage.getItem(SAVE_KEY) || "null"); if (d) Object.assign(S, d, { sel: null }); } catch {}
 const ITEMS = {
   tuna: ["🥫", "Can of tuna"], opener: ["🔧", "Can opener"], key: ["🗝️", "Engine room key"], cheese: ["🧀", "Moldy cheese"],
@@ -53803,7 +53803,11 @@ function save() {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify({ items: S.items, flags: S.flags, room: S.room })); } catch {}
   renderHud();
 }
-function add(id, flag) { if (!has(id)) S.items.push(id); if (flag) S.flags[flag] = true; save(); }
+function add(id, flag) {
+  if (!has(id)) { S.items.push(id); if (typeof itemCue === "function") itemCue(); }
+  if (flag) S.flags[flag] = true;
+  save();
+}
 function remove(id) { S.items = S.items.filter((i) => i !== id); if (S.sel === id) S.sel = null; save(); }
 const flag = (f) => () => { S.flags[f] = true; save(); };
 const take = (id) => [() => add(id, "got_" + id), ["", ITEMS[id][1] + "! It goes in your item drawer."]];
@@ -54065,7 +54069,8 @@ LV.hideout = () => {
   ] }];
   const papers = group(L, -1.7, 0, -2.3, 0.4, { name: "Pile of papers",
     say: () => S.flags.gotBoxKey ? [["", "Just a messy pile of papers."]] : [["", "A messy pile of papers..."], () => add("boxKey", "gotBoxKey"), ["", "Underneath: a little key! It goes in your item drawer."]] });
-  [0, 0.06, 0.12, 0.18, 0.24].forEach((py, i) => { const sh = put(L, boxG(0.6, 0.05, 0.45), mat({ color: i % 2 ? 0xf4f0e4 : 0xffffff }), 0, py, 0, 0, null, papers); sh.rotation.y = i * 0.35; });
+  const keyUnder = put(L, boxG(0.18, 0.04, 0.08), mat({ color: 0xffd23f, em: 0.7 }), 0.05, 0.01, 0.05, 0.4, null, papers);
+  const sheets = [0, 0.06, 0.12, 0.18, 0.24].map((py, i) => { const sh = put(L, boxG(0.6, 0.05, 0.45), mat({ color: i % 2 ? 0xf4f0e4 : 0xffffff }), 0, py, 0, 0, null, papers); sh.rotation.y = i * 0.35; return sh; });
   // Jon, hiding
   const jon = addChar(L, "jon", 2.3, -1.5, 1.3, { name: "Jon", stand: [1.2, -0.7] });
   jon.show = () => !S.flags.gaveCake;
@@ -54078,6 +54083,10 @@ LV.hideout = () => {
   L.fog = [0x2a1450, 9, 22]; L.bg = 0x2a1450;
   cam(L, [0.8, 2.7, 4.6], [0, 0.9, -1.2], 58);
   L.update = (t, dt) => {
+    keyUnder.visible = !S.flags.gotBoxKey;
+    sheets.forEach((sh, i) => {
+      if (S.flags.gotBoxKey && i >= 2) { sh.position.x = (i - 1) * 0.18; sh.position.z = (i % 2 ? 1 : -1) * 0.14; }
+    });
     if (egg.floatT != null) {
       egg.floatT += dt / 1.6;
       const k = Math.min(1, egg.floatT);
@@ -54114,6 +54123,17 @@ const signTex = (text, color) => label([text], Math.max(56, text.length * 8 + 12
 const toHall = (name) => ({ name: name || "Door to the hallway", go: "hall", stand: [-3.3, -1.3] });
 const standIn = (what) => [["", `The kids haven't drawn the ${what} yet, so this one is a stand-in.`]];
 
+function buildSpaceship(L, ship, tilt = -0.28, fog = 1, em = 0) {
+  const body = new THREE.SphereGeometry(1, 14, 9); body.scale(3.4, 1.8, 2.0);
+  const sb = put(L, body, mat({ map: T.shipBody, fog, em }), 0, 1.0, 0, 0, null, ship); sb.rotation.z = tilt;
+  const finM = mat({ color: 0xa24fd6, fog, em });
+  const fin1 = put(L, boxG(1.6, 0.12, 1.0), finM, -3.2, 2.4, 0, 0, null, ship); fin1.rotation.z = 0.3;
+  const fin2 = put(L, boxG(1.6, 0.12, 1.0), finM, -3.4, 1.6, 0, 0, null, ship); fin2.rotation.z = -0.5;
+  const lad = mat({ color: 0x2a1f3d, fog, em });
+  put(L, boxG(0.06, 1.6, 0.06), lad, -0.3, -0.9, 1.4, 0, null, ship); put(L, boxG(0.06, 1.6, 0.06), lad, 0.2, -0.9, 1.4, 0, null, ship);
+  for (let i = 0; i < 4; i++) put(L, boxG(0.5, 0.05, 0.05), lad, -0.05, -0.8 + i * 0.38, 1.4, 0, null, ship);
+}
+
 LV.hall = () => {
   const L = newLevel("hall", "Hallway");
   const RW = 4, RD = 32, R = [RW, RD];
@@ -54127,14 +54147,35 @@ LV.hall = () => {
   });
   onWall(L, "front", R, T.engineDoor, 1.6, 2.4, 0, 0, { name: "Door to the engine room", run: engineDoor, stand: [0, 15.2] }, 0x3a3f5a);
   onWall(L, "back", R, doorTex("#8a8f9a", "#f6f6f8"), 1.4, 2.4, 0, 0, { name: "Door to the control room", go: "control", stand: [0, -15.2] });
+  // Opening cutscene: the smiling spaceship stalled in space (rendered when spaceCut is true)
+  const spGroup = new THREE.Group(); spGroup.position.set(0, 28, 0); L.scene.add(spGroup);
+  put(L, planeG(42, 28), mat({ map: T.stars, em: 1, fog: 0, rep: [6, 4], scroll: [0.008, 0] }), 0, -12, -10, 0, null, spGroup);
+  put(L, planeG(22, 9.2), mat({ map: T.space, em: 1, fog: 0 }), 0, -3.8, -8.5, 0, null, spGroup);
+  const spShip = new THREE.Group(); spShip.position.set(0.4, -0.4, -1.2); spGroup.add(spShip);
+  buildSpaceship(L, spShip, 0.05, 0, 0.75);
+  const puffs = [0, 1, 2, 3].map((i) => put(L, new THREE.SphereGeometry(0.28, 6, 4), mat({ color: i % 2 ? 0xd8b0ff : 0xb0b4c8, em: 0.9, fog: 0 }), -3.8, 1.4, 0, 0, null, spShip));
   L.entries.engine = [0, 14.6]; L.entries.control = [0, -14.6];
   L.walk = [-1.1, 1.1, -15.3, 15.3];
   L.start = [0, 9];
   L.light = { amb: 0x7a7c98, dir: [0.2, -1, -0.2], dirCol: 0x606070, pts: [[[0, 2.9, 10], 0xfff0d0, 9], [[0, 2.9, 0], 0xe0e0ff, 9], [[0, 2.9, -10], 0xfff0d0, 9]] };
   L.fog = [0x14162a, 8, 26]; L.bg = 0x14162a;
+  cam(L, [0, 28.6, 6.8], [0, 28.2, -2], 50, () => spaceCut, 100);
   cam(L, [-1.3, 2.8, 4.5], [0.4, 0.9, 15], 62, (p) => p.y >= 9.5);
   cam(L, [0, 9, 0], [0, 0, 0], 50, (p) => p.y >= -9.5, 60, (c, p) => { c.position.set(0.5, 7.2, p.y + 3.0); c.lookAt(0, 0.4, p.y - 0.6); });
   cam(L, [1.2, 2.85, -3.5], [-0.3, 0.9, -15.5], 62);
+  L.update = (t) => {
+    spGroup.visible = spaceCut;
+    if (spaceCut) {
+      spShip.position.y = -0.4 + Math.sin(t * 1.5) * 0.22;
+      spShip.rotation.z = Math.sin(t * 1.1) * 0.06;
+      spShip.rotation.y = Math.PI + 0.25 + Math.sin(t * 0.7) * 0.08;
+      puffs.forEach((m, i) => {
+        const k = (t * 0.9 + i / 4) % 1;
+        m.position.set(-3.8 - k * 2.2, 1.5 + Math.sin(k * 6 + i) * 0.25, (i - 1.5) * 0.15);
+        m.scale.setScalar(0.5 + (1 - k) * 0.9);
+      });
+    }
+  };
   return L;
 };
 
@@ -54155,17 +54196,23 @@ LV.hub = () => {
   const fridge = group(L, -7.1, 0, -2.85, 0, { name: "Fridge", say: () => fridgeMenu() });
   put(L, boxG(1.1, 2.3, 0.9), mat({ map: T.greenFridge }), 0, 0, 0, 0, null, fridge);
   put(L, planeG(0.6, 0.83), mat({ map: TEX.kids }), -0.1, 0.5, 0.46, 0, null, fridge);
+  const fridgeDoor = new THREE.Group(); fridgeDoor.position.set(-0.55, 0, 0.45); fridge.add(fridgeDoor);
+  put(L, boxG(1.08, 1.35, 0.05), mat({ color: 0x3fae4a }), 0.54, 0.05, 0, 0, null, fridgeDoor);
   const tv = group(L, -7.1, 2.3, -2.85, 0, { name: "Old TV", say: [["", "An old TV on top of the fridge."]] });
   put(L, boxG(0.8, 0.55, 0.55), mat({ color: 0x3fae6a }), 0, 0, 0, 0, null, tv);
   put(L, planeG(0.6, 0.4), mat({ map: TEX.oldTv, em: 0.7 }), 0, 0.08, 0.28, 0, null, tv);
   line(L, lineG([new THREE.Vector3(0.2, 0.55, 0), new THREE.Vector3(0.45, 0.95, 0)]), 0x2a1f3d, tv);
   const stove = group(L, -5.6, 0, -3.0, 0, { name: "Stove", say: () => stoveAct(), use: Object.fromEntries(CAKE.map((c) => [c, stoveAct])) });
   put(L, boxG(1.2, 1.0, 0.8), mat({ color: 0xe8559a }), 0, 0, 0, 0, null, stove);
-  put(L, planeG(1.2, 1.0), mat({ map: T.oven }), 0, 0, 0.41, 0, null, stove);
+  const ovenFront = put(L, planeG(1.2, 1.0), mat({ map: T.oven }), 0, 0, 0.41, 0, null, stove);
   put(L, boxG(1.1, 0.02, 0.7), mat({ map: T.stove }), 0, 1.0, 0, 0, null, stove);
+  const stoveCake = new THREE.Group(); stoveCake.position.set(0, 1.02, 0); stoveCake.visible = false; stove.add(stoveCake);
+  put(L, new THREE.CylinderGeometry(0.24, 0.24, 0.18, 10), mat({ color: 0x5a3218 }), 0, 0.09, 0, 0, null, stoveCake);
+  put(L, new THREE.CylinderGeometry(0.25, 0.25, 0.05, 10), mat({ color: 0xf06aa8 }), 0, 0.19, 0, 0, null, stoveCake);
   const drawers = group(L, -4.2, 0, -3.0, 0, { name: "Kitchen drawers", say: () => drawerMenu() });
   put(L, boxG(1.4, 0.95, 0.8), mat({ map: T.drawers }), 0, 0, 0, 0, null, drawers);
   put(L, boxG(1.5, 0.06, 0.86), mat({ color: 0xf6e8f0 }), 0, 0.95, 0, 0, null, drawers);
+  const openDrw = put(L, boxG(0.62, 0.22, 0.45), mat({ color: 0xd9c7a6 }), -0.34, 0.56, 0.2, 0, null, drawers);
   const win = group(L, -5.6, 1.5, -3.47, 0, { name: "Window", say: [["", "A window with pink curtains. Outside: stars. The ship is stalled in space."]] });
   put(L, planeG(1.3, 1.1), mat({ map: T.stars, em: 1, rep: [1.5, 1.2], scroll: [0.01, 0] }), 0, 0, 0.02, 0, null, win);
   const curtain = mat({ color: 0xf06aa8 });
@@ -54191,6 +54238,7 @@ LV.hub = () => {
   put(L, new THREE.CircleGeometry(0.22, 8, 0, Math.PI), mat({ color: 0x050308, em: 1 }), 0, 0.01, 0.01, 0, null, hole);
   const mg = new THREE.PlaneGeometry(0.4, 0.24); mg.translate(0, 0.12, 0);
   const mouse = put(L, mg, mat({ map: SPR.mouse.tex, em: 0.4, side: THREE.DoubleSide }), -1.0, 0.01, -3.35);
+  const mouseCheese = put(L, new THREE.ConeGeometry(0.09, 0.12, 4), mat({ color: 0x9ad85a, em: 0.3 }), -0.58, 0.06, -3.28);
 
   // REC ROOM
   const bigTv = group(L, 4.2, 1.15, -3.45, 0, { name: "TV", say: [["", "A soccer game is on the TV. \"Les go!\" ... \"Skor!!!!\""]] });
@@ -54222,8 +54270,18 @@ LV.hub = () => {
   cam(L, [-2.6, 3.3, 6.4], [-4.6, 0.9, -1.4], 52, (p) => p.x < 0);
   cam(L, [2.4, 3.1, 6.6], [4.4, 0.9, -1.2], 52);
   L.update = (t) => {
-    const peek = Math.max(0, Math.sin(t * 0.7)) ** 3;
-    mouse.position.x = -1.0 + peek * 0.4; mouse.visible = peek > 0.02;
+    const fed = !!S.flags.gotMap;
+    const peek = fed ? 1 : Math.max(0, Math.sin(t * 0.7)) ** 3;
+    mouse.position.x = -1.0 + peek * 0.35;
+    mouse.position.y = fed ? 0.01 + Math.abs(Math.sin(t * 9)) * 0.03 : 0.01;
+    mouse.visible = peek > 0.02;
+    mouseCheese.visible = fed;
+    flower.rotation.z = Math.sin(t * 2.2) * 0.08;
+    fridgeDoor.rotation.y = L.fridgeOpen ? -1.1 : 0;
+    openDrw.position.z = L.drawerOpen ? 0.46 : 0.2;
+    ovenFront.material.uniforms.uEm.value = L.bakeT > 0 ? 0.6 + 0.3 * Math.sin(t * 10) : 0;
+    stoveCake.visible = !!(L.bakeT > 0);
+    if (L.bakeT > 0) L.bakeT = Math.max(0, L.bakeT - 0.02);
   };
   return L;
 };
@@ -54328,9 +54386,10 @@ LV.control = () => {
   const top = put(L, planeG(5.2, 0.7), mat({ map: T.buttons, em: 0.5 }), 0, 0.85, 0.45, 0, null, panel); top.rotation.x = -1.1;
   onWall(L, "left", R, T.greyPanel, 0.6, 0.6, -1.4, 1.0, { name: "Small grey panel",
     say: [["", "A small grey panel with a knob. (What's inside? Ask the kids!)"]] }, 0x6a6e80);
-  onWall(L, "right", R, T.armoryDoor, 1.2, 2.3, -0.6, 0, { name: "Armory door", stand: [4.2, -0.6], run: armoryDoor }, 0x6a6e80);
-  onWall(L, "right", R, T.cardReader, 0.22, 0.34, 0.25, 1.0, { name: "Keycard reader", stand: [4.2, 0.2],
-    say: [["", "A keycard reader. It needs the keycard."]] }, 0x2a2a32);
+  const armDoorG = onWall(L, "right", R, T.armoryDoor, 1.2, 2.3, -0.6, 0, { name: "Armory door", stand: [4.2, -0.6], run: armoryDoor }, 0x6a6e80);
+  const readerG = onWall(L, "right", R, T.cardReader, 0.22, 0.34, 0.25, 1.0, { name: "Keycard reader", stand: [4.2, 0.2],
+    say: () => S.flags.armoryOpen ? [["", "The keycard reader is blinking green. The armory is unlocked!"]] : [["", "A keycard reader. It needs the keycard."]],
+    use: { keycard: () => { armoryDoor(); return []; } } }, 0x2a2a32);
   onWall(L, "back", R, doorTex("#8a8f9a", "#f6f6f8"), 1.15, 2.1, -4.1, 0, { name: "Door to the hallway", go: "hall", stand: [-4.0, -1.2] });
   onWall(L, "back", R, TEX.control, 0.9, 1.24, 4.0, 1.4, { name: "The kids' drawing", say: [["", "The kids' drawing of the control room. This 3D room is built from it."]] }, 0x8a6a4a);
   L.player = addChar(L, "may", -1.5, 1.2, 1.3);
@@ -54339,6 +54398,11 @@ LV.control = () => {
   L.light = { amb: 0x707490, dir: [0.2, -1, -0.5], dirCol: 0x606070, pts: [[[0, 1.6, -2.4], 0x9ab8ff, 5], [[0, 2.9, 1], 0xe0e0f0, 8], [[4, 1.2, -0.6], 0xff6050, 2]] };
   L.fog = [0x0c0d1a, 10, 24]; L.bg = 0x0c0d1a;
   cam(L, [-0.8, 3.0, 6.4], [0.4, 1.1, -1.4], 54);
+  L.update = (t) => {
+    top.material.uniforms.uEm.value = 0.45 + 0.25 * Math.sin(t * 3);
+    armDoorG.position.z = S.flags.armoryOpen ? -1.1 : -0.6;
+    readerG.children[1].material.uniforms.uEm.value = S.flags.armoryOpen ? 0.9 : 0.2;
+  };
   return L;
 };
 
@@ -54404,7 +54468,8 @@ LV.engine = () => {
   put(L, new THREE.CylinderGeometry(0.11, 0.11, 0.28, 7), mat({ color: 0x3a6ad8 }), 0, 0.14, 0, 0, null, pills);
   put(L, new THREE.CylinderGeometry(0.12, 0.12, 0.08, 7), mat({ color: 0xb0b0b8 }), 0, 0.32, 0, 0, null, pills);
   const lock = group(L, -0.6, 0, -2.5, 0.15, { name: "Locked box", say: () => lockAct(), use: { boxKey: lockAct } });
-  put(L, boxG(0.7, 0.5, 0.5), mat({ color: 0x6a5a3a }), 0, 0, 0, 0, null, lock);
+  put(L, boxG(0.7, 0.42, 0.5), mat({ color: 0x6a5a3a }), 0, 0, 0, 0, null, lock);
+  const lockLid = put(L, boxG(0.72, 0.1, 0.52), mat({ color: 0x7a6844 }), 0, 0.42, -0.25, 0, null, lock);
   put(L, boxG(0.16, 0.18, 0.04), mat({ color: 0xffd23f }), 0, 0.18, 0.26, 0, null, lock);
   // RIGHT BAY: blue pipes into the big bubbly blue tank (it leaks until the engine is fixed)
   put(L, boxG(0.16, 1.2, 0.16), blue, 2.2, 2.2, -2.6); put(L, boxG(1.2, 0.16, 0.16), blue, 2.8, 2.2, -2.6);
@@ -54446,6 +54511,7 @@ LV.engine = () => {
     });
     eng.position.y = fixed ? Math.sin(t * 8) * 0.015 : 0;
     engM.uniforms.uEm.value = fixed ? 0.5 + 0.3 * Math.sin(t * 6) : 0;
+    lockLid.rotation.x = S.flags.gotKeycard ? -0.9 : 0;
   };
   return L;
 };
@@ -54591,25 +54657,29 @@ function updateClue(t) {
 const FRIDGE = [["Mango", "Just a mango."], ["Apple", "Just an apple."], ["Moldy cheese", null, "cheese"], ["Garlic", "Garlic. Stinky!"],
   ["Pickled herring", "Pickled herring."], ["Kimchi", "Kimchi."], ["Milk (expired)", "This milk is expired. Yuck!"], ["Milk", "This milk is still good."], ["Can of tuna", null, "tuna"]];
 function fridgeMenu() {
+  if (L) L.fridgeOpen = true;
   return [["", "May opens the fridge. What should she check?"], { choices: FRIDGE.map(([n, line, item]) => [n, () => {
+    if (L) L.fridgeOpen = false;
     if (!item) return [["", line]];
     if (S.flags["got_" + item]) return [["", "May already took that."]];
     return [() => add(item, "got_" + item), ["", item === "tuna" ? "A can of tuna. Something rattles inside it! It goes in your item drawer." : "Moldy cheese! It goes in your item drawer."]];
-  }]).concat([["Close the fridge", () => []]]) }];
+  }]).concat([["Close the fridge", () => { if (L) L.fridgeOpen = false; return []; }]]) }];
 }
 const DRAWER = [["Can opener", null], ["Knife", "A knife. Careful!"], ["Soup scoop", "A soup scoop."], ["Corkscrew", "A corkscrew."],
   ["Bottle opener", "A bottle opener."], ["Aluminum foil", "Some aluminum foil."], ["Whisk", "A whisk."]];
 function drawerMenu() {
+  if (L) L.drawerOpen = true;
   return [["", "May opens the kitchen drawers."], { choices: DRAWER.map(([n, line]) => [n, () => {
+    if (L) L.drawerOpen = false;
     if (line) return [["", line]];
     if (S.flags.got_opener) return [["", "May already took the can opener."]];
     return [() => add("opener", "got_opener"), ["", "A can opener! It goes in your item drawer."]];
-  }]).concat([["Close the drawers", () => []]]) }];
+  }]).concat([["Close the drawers", () => { if (L) L.drawerOpen = false; return []; }]]) }];
 }
 function stoveAct() {
   if (S.flags.gotCake) return [["", "The pink stove."]];
   const n = CAKE.filter(has).length;
-  if (n === 6) return [["", "May mixes flour, oil, sugar, a little water, some yeast, and a LOT of cacao..."],
+  if (n === 6) return [() => { if (L) L.bakeT = 1.6; }, ["", "May mixes flour, oil, sugar, a little water, some yeast, and a LOT of cacao..."],
     () => { CAKE.forEach(remove); add("cake", "gotCake"); }, ["", "A chocolate cake! It goes in your item drawer."]];
   return [["", n ? `The pink stove. May has ${n} of the 6 cake ingredients.` : "The pink stove."]];
 }
@@ -54628,7 +54698,9 @@ function oliviaAct() {
 }
 function giveCake() {
   return [() => remove("cake"), ["May", "Jon! I made you a chocolate cake!"], ["Jon", "Chocolate cake?!"],
-    ["May", "You can have it if you come out and fix the ship!"], ["Jon", "Okay! I'll come out and fix the ship!"],
+    ["May", "You can have it if you come out and fix the ship!"],
+    () => { const j = L && L.chars.find((c) => c.key === "jon"); if (j) { j.hopT = 0.45; j.target = new THREE.Vector2(-2.2, -1.5); } },
+    ["Jon", "Okay! I'll come out and fix the ship!"],
     flag("gaveCake"), ["", "Jon climbs out of his hole and heads to the engine room!"]];
 }
 function jonHoleAct() {
@@ -54641,7 +54713,9 @@ function jonEngineAct() {
   const f = S.flags;
   if (f.fixed) return [["Jon", "The engine is fixed!"]];
   if (!has("map")) return [["Jon", "I need the engine room schematics to fix this!"]];
-  return [() => remove("map"), ["May", "Here, Jon! The mouse's map of the engine room!"], ["Jon", "The schematics! Now I can fix it!"],
+  return [() => remove("map"), ["May", "Here, Jon! The mouse's map of the engine room!"],
+    () => { const j = L && L.chars.find((c) => c.key === "jon"); if (j) { j.hopT = 0.4; j.target = new THREE.Vector2(-2.1, -1.5); } },
+    ["Jon", "The schematics! Now I can fix it!"],
     ["", "CLANK! BONK! WHIRR!"], flag("fixed"), ["", "The engine is back online! The ship starts moving again... on to Woolley Mountain!"],
     () => shake(), ["", "BOOM! Something smashes into the ship!"], ["Jon", "Asteroids!!"],
     ["May", "Quick! Everybody to the ship's blasters! Shoot them!"],
@@ -54775,14 +54849,7 @@ LV.beach = () => {
   // the smiling spaceship, nose-first in the water
   const ship = group(L, 4.5, -0.7, -8.5, -0.35, { name: "The spaceship", stand: [3.2, -2.2],
     say: () => S.flags.crashed ? [["Everyone", "Shucks!"], ["", "The ship is stuck in the water now."]] : [["Everyone", "AHHHHH!"], ["Everyone", "Shucks!"]] });
-  const body = new THREE.SphereGeometry(1, 14, 9); body.scale(3.4, 1.8, 2.0);
-  const sb = put(L, body, mat({ map: T.shipBody }), 0, 1.0, 0, 0, null, ship); sb.rotation.z = -0.28;
-  const finM = mat({ color: 0xa24fd6 });
-  const fin1 = put(L, boxG(1.6, 0.12, 1.0), finM, -3.2, 2.4, 0, 0, null, ship); fin1.rotation.z = 0.3;
-  const fin2 = put(L, boxG(1.6, 0.12, 1.0), finM, -3.4, 1.6, 0, 0, null, ship); fin2.rotation.z = -0.5;
-  const lad = mat({ color: 0x2a1f3d });
-  put(L, boxG(0.06, 1.6, 0.06), lad, -0.3, -0.9, 1.4, 0, null, ship); put(L, boxG(0.06, 1.6, 0.06), lad, 0.2, -0.9, 1.4, 0, null, ship);
-  for (let i = 0; i < 4; i++) put(L, boxG(0.5, 0.05, 0.05), lad, -0.05, -0.8 + i * 0.38, 1.4, 0, null, ship);
+  buildSpaceship(L, ship, -0.28);
   // rocks
   [[-7, -1.8, 0.7], [-5.6, -2.6, 0.4], [9, 0.5, 0.9], [-9.5, 4, 0.6], [7.5, 5, 0.5]].forEach(([rx, rz, r]) => {
     const m = put(L, new THREE.DodecahedronGeometry(r, 0), mat({ color: 0x8a8090 }), rx, gy(rx, rz) + r * 0.4, rz);
@@ -54926,16 +54993,22 @@ LV.pingpong = () => {
   const bad = addChar(L, "pingpong", 2.9, -2.4, 1.75, { name: "Ping-pong bad guy", stand: [1.0, -0.6],
     say: () => S.flags.ppKO ? [["", "The ping-pong bad guy is knocked out. Zzz..."]] : [["Ping-pong bad guy", "Nobody gets past MY ping-pong station!"], ["", "Click a kid to use their special move."]] });
   const zzz = put(L, planeG(0.7, 0.3), mat({ map: label(["Zzz"], 32, 14, "#2a2420", "#ffffff", "#2a2420"), em: 1 }), 3.3, 0.9, -2.2, -0.3);
+  // 3D ping-pong paddle (held by bad guy, knocked away by fireball, lifted by May to bonk him)
+  const paddle = new THREE.Group(); L.scene.add(paddle);
+  const padHead = new THREE.CylinderGeometry(0.22, 0.22, 0.04, 10); padHead.rotateX(Math.PI / 2);
+  put(L, padHead, mat({ color: 0xe04e39 }), 0, 0.22, 0, 0, null, paddle);
+  put(L, boxG(0.06, 0.22, 0.04), mat({ color: 0xd8b078 }), 0, 0, 0, 0, null, paddle);
+  const padGlow = put(L, new THREE.RingGeometry(0.24, 0.32, 10), mat({ color: 0xd88aff, em: 1, side: THREE.DoubleSide }), 0, 0.22, 0.03, 0, null, paddle);
   // effects
   const portalG = new THREE.CircleGeometry(1, 16); portalG.scale(0.6, 1.1, 1); portalG.translate(0, 1.2, 0);
   const portal = put(L, portalG, mat({ map: T.portal, em: 1, rep: [1.5, 1.5], scroll: [0.05, 0.08], side: THREE.DoubleSide }), -2.2, 0, 0.6, 0.3);
   const ball = put(L, new THREE.IcosahedronGeometry(0.2, 1), mat({ color: 0xff9a30, em: 1 }), 0, -5, 0);
   const team = crew(L, -2.6, 1.0);
   const kids = [team.may, team.jon, team.jasin, team.olivia];
-  let fireT = -1, bonkT = -1;
+  let fireT = -1, bonkT = -1, flyT = -1;
   PP.fx = {
     portal: (on) => { S.flags.ppHidden = on; },
-    fireball: () => { fireT = 0; },
+    fireball: () => { fireT = 0; flyT = 0; },
     float: (on) => { S.flags.ppFloat = on; },
     bonk: () => { bonkT = 0; },
   };
@@ -54967,11 +55040,28 @@ LV.pingpong = () => {
       ball.position.set(-1.6 + 4.4 * k, 0.6 + Math.sin(k * Math.PI) * 1.2, 0.8 - 3.0 * k);
       if (k >= 1) { fireT = -1; ball.position.y = -5; }
     }
+    if (flyT >= 0) { flyT += dt * 1.4; if (flyT > 1) flyT = -1; }
+    padGlow.visible = bonkT >= 0;
+    if (bonkT >= 0) {
+      bonkT += dt;
+      const k = Math.min(1, bonkT / 0.6);
+      paddle.position.set(1.2 + (2.9 - 1.2) * k, 0.2 + Math.sin(k * Math.PI) * 1.8, -0.6 + (-2.3 + 0.6) * k);
+      paddle.rotation.set(-0.4, 0, -k * Math.PI * 1.5);
+      if (bonkT > 0.6) bonkT = -1;
+    } else if (flyT >= 0) {
+      paddle.position.set(2.4 - 1.2 * flyT, 1.0 * (1 - flyT) + Math.sin(flyT * Math.PI) * 1.1 + 0.06, -2.2 + 1.6 * flyT);
+      paddle.rotation.set(flyT * 4, flyT * 3, flyT * 6);
+    } else if ((f.ppPhase || 0) >= 2 || f.ppKO) {
+      paddle.position.set(1.2, 0.06, -0.6);
+      paddle.rotation.set(Math.PI / 2, 0.4, 0);
+    } else {
+      paddle.position.set(2.35, 0.95 + Math.sin(t * 5) * 0.08, -2.2);
+      paddle.rotation.set(0, 0, Math.sin(t * 6) * 0.5 + 0.3);
+    }
     bad.body.rotation.z = f.ppKO ? Math.PI / 2 * 0.9 : 0;
     bad.yOff = f.ppKO ? 0.3 : 0;
     zzz.visible = !!f.ppKO;
     zzz.position.y = 0.9 + Math.sin(t * 2) * 0.08;
-    if (bonkT >= 0) { bonkT += dt; if (bonkT > 0.6) bonkT = -1; }
   };
   return L;
 };
@@ -55005,7 +55095,9 @@ LV.gas = () => {
   const washer = group(L, 3.4, 0, -0.5, 0, { name: "Windshield washer container",
     say: () => S.flags.got_momStone ? [["", "Just blue windshield washer fluid."]] : [["", "A container of blue windshield washer fluid. Something is sitting at the bottom... too deep to reach with your hand."]],
     use: { squeegee: () => S.flags.got_momStone ? [["", "Nothing else in there."]] : [() => { remove("squeegee"); add("momStone", "got_momStone"); }, ["", "May fishes around with the squeegee... and pulls out a stone! It has a picture of a skeleton lady on it. His mom?"]] } });
-  put(L, new THREE.CylinderGeometry(0.3, 0.26, 0.7, 8), mat({ color: 0x3a8ad8, em: 0.15 }), 0, 0.35, 0, 0, null, washer);
+  put(L, new THREE.CylinderGeometry(0.3, 0.26, 0.7, 8), mat({ color: 0x3a8ad8, em: 0.15, alpha: 0.75 }), 0, 0.35, 0, 0, null, washer);
+  const washerStone = put(L, new THREE.DodecahedronGeometry(0.11, 0), mat({ color: 0xd8d0b8, em: 0.4 }), 0, 0.12, 0, 0, null, washer);
+  addChaseSpot(L, "gas", 4.5, 4.2, -0.4, [3.2, 4.2]);
   // three old cars; one is the creepy jeep
   const car = (x, z, c, name, line) => {
     const g = group(L, x, 0, z, 0.2, { name, say: [["", line]] });
@@ -55043,6 +55135,10 @@ LV.gas = () => {
   L.fog = [0x1a1430, 12, 45]; L.bg = 0x1a1430;
   cam(L, [-2, 5, 12], [0.5, 0.5, -1.5], 52, (p) => p.x < 4.5, 200);
   cam(L, [11, 3.2, 8], [5, 0.6, -1], 54, null, 200);
+  L.update = (t, dt) => {
+    washerStone.visible = !S.flags.got_momStone;
+    if (L.chaseUpd) L.chaseUpd(t, dt);
+  };
   return L;
 };
 function driveAway() {
@@ -55069,6 +55165,11 @@ LV.gasShop = () => {
   const counter = group(L, 0.6, 0, -2.3, 0, { name: "Counter", say: () => ownerAct(), use: Object.fromEntries(STONES.map(([id]) => [id, ownerAct])) });
   put(L, boxG(2.6, 1.0, 0.8), mat({ color: 0x8a6a4a }), 0, 0, 0, 0, null, counter);
   put(L, boxG(2.7, 0.06, 0.86), mat({ color: 0xc8b890 }), 0, 1.0, 0, 0, null, counter);
+  // three stone-shaped spots on the counter, and the three stones when placed
+  const counterStones = [-0.45, 0, 0.45].map((sx) => {
+    put(L, new THREE.CylinderGeometry(0.13, 0.13, 0.02, 8), mat({ color: 0x6a5a40 }), sx, 1.06, 0.1, 0, null, counter);
+    return put(L, new THREE.DodecahedronGeometry(0.11, 0), mat({ color: 0xd8d0b8, em: 0.3 }), sx, 1.14, 0.1, 0, null, counter);
+  });
   const owner = addChar(L, "skeleton", 0.6, -2.95, 1.55, { name: "Skeleton owner", stand: [0.6, -1.3], say: () => ownerAct(),
     use: Object.fromEntries(STONES.map(([id]) => [id, ownerAct])) });
   const shelf = group(L, -2.2, 0, -2.6, 0, { name: "Old snacks", say: [["", "Old snacks. Everything here is a little bit old. Nothing looks good to eat."]] });
@@ -55085,6 +55186,10 @@ LV.gasShop = () => {
   L.light = { amb: 0x6a6a5a, dir: [0.3, -1, -0.5], dirCol: 0x605848, pts: [[[0, 2.9, 0], 0xfff0b0, 7], [[0.6, 1.6, -2.4], 0xb0ffb0, 2.5], [[0, 0, 0], 0, 1]] };
   L.fog = [0x14120c, 10, 24]; L.bg = 0x14120c;
   cam(L, [0.4, 3.1, 6.4], [0.2, 1.1, -1.4], 52);
+  L.update = (t) => {
+    counterStones.forEach((s) => (s.visible = !!S.flags.gotJeep));
+    if (S.flags.gotJeep) owner.yOff = Math.abs(Math.sin(t * 3)) * 0.08;
+  };
   return L;
 };
 LV.gasRest = () => {
@@ -55100,11 +55205,16 @@ LV.gasRest = () => {
   const sink = group(L, -0.9, 0, -2.2, 0, { name: "Sink cupboard", say: () => S.flags.got_wifeStone ? [["", "The cupboard under the sink is empty now."]] : [["", "May opens the cupboard under the sink..."], () => add("wifeStone", "got_wifeStone"), ["", "A stone! It has a picture of a skeleton lady with a flower. His wife?"]] });
   put(L, boxG(0.9, 0.8, 0.5), mat({ color: 0x8a7a5a }), 0, 0, 0, 0, null, sink);
   put(L, boxG(0.9, 0.12, 0.5), white, 0, 0.8, 0, 0, null, sink);
+  const cupDoor = new THREE.Group(); cupDoor.position.set(-0.4, 0.08, 0.26); sink.add(cupDoor);
+  put(L, boxG(0.8, 0.64, 0.04), mat({ color: 0x6b5a40 }), 0.4, 0, 0, 0, null, cupDoor);
   onWall(L, "back", R, T.mirror, 0.7, 0.8, -0.9, 1.3, { name: "Mirror", say: [["", "A dusty mirror."]] }, 0x8a8a90);
   L.player = addChar(L, "may", 0, 1.0, 1.3);
   L.walk = [-2.4, 2.4, -1.0, 1.8];
   L.start = [0, 1.0]; L.entries = { gasShop: [-1.8, 0.6] };
-  L.update = () => { tag.visible = !S.flags.got_marketKey; };
+  L.update = (t, dt) => {
+    tag.visible = !S.flags.got_marketKey;
+    cupDoor.rotation.y += ((S.flags.got_wifeStone ? -1.2 : 0) - cupDoor.rotation.y) * Math.min(1, (dt || 0.016) * 8);
+  };
   L.light = { amb: 0x6a7078, dir: [0.3, -1, -0.5], dirCol: 0x606870, pts: [[[0, 2.9, 0], 0xe8f0ff, 6], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0x101418, 9, 22]; L.bg = 0x101418;
   cam(L, [0.6, 2.9, 5.2], [0, 1.0, -1.2], 54);
@@ -55167,12 +55277,13 @@ LV.roadmap = () => {
   const L = newLevel("roadmap", "Road Map");
   put(L, new THREE.SphereGeometry(90, 12, 8), mat({ map: T.sky, em: 1, fog: 0, side: THREE.BackSide }));
   put(L, floorG(26, 18, 13, 9), mat({ map: T.worldMap }), 0, 0, 0);
+  let swampHouse = null;
   const lm = {
     gas: (g) => { put(L, boxG(0.8, 0.5, 0.6), mat({ color: 0xc82020 }), 0, 0, 0, 0, null, g); put(L, boxG(1.0, 0.08, 0.8), mat({ color: 0xf0e8d0 }), 0, 0.7, 0, 0, null, g); },
     mansion: (g) => { put(L, boxG(1.0, 0.8, 0.7), mat({ color: 0x3a2a3a }), 0, 0, 0, 0, null, g); put(L, new THREE.ConeGeometry(0.75, 0.6, 4), mat({ color: 0x2a1a2a }), 0, 1.1, 0, 0, null, g); },
     market: (g) => { put(L, boxG(1.1, 0.6, 0.7), mat({ color: 0xd8c8a0 }), 0, 0, 0, 0, null, g); put(L, boxG(1.1, 0.2, 0.05), mat({ color: 0xe04e39 }), 0, 0.55, 0.36, 0, null, g); },
     forest: (g) => { [[-0.4, 0], [0.3, -0.3], [0.1, 0.4], [-0.1, -0.5]].forEach(([a, b]) => { put(L, new THREE.ConeGeometry(0.35, 1.1, 6), mat({ color: 0x1e3a1e }), a, 0.55, b, 0, null, g); }); },
-    swamp: (g) => { const d = new THREE.CircleGeometry(0.8, 10); d.rotateX(-Math.PI / 2); put(L, d, mat({ color: 0x3a6a5a }), 0, 0.02, 0, 0, null, g); put(L, boxG(0.5, 0.4, 0.4), mat({ color: 0x5a4a3a }), 0, 0.4, 0, 0, null, g); },
+    swamp: (g) => { const d = new THREE.CircleGeometry(0.8, 10); d.rotateX(-Math.PI / 2); put(L, d, mat({ color: 0x3a6a5a }), 0, 0.02, 0, 0, null, g); swampHouse = put(L, boxG(0.5, 0.4, 0.4), mat({ color: 0x5a4a3a }), 0, 0.4, 0, 0, null, g); },
     castle: (g) => { [[-0.35, 1.3], [0.35, 1.0], [0, 1.6]].forEach(([a, h]) => { put(L, new THREE.CylinderGeometry(0.15, 0.2, h, 6), mat({ color: 0x6a6070 }), a, h / 2, 0, 0, null, g); put(L, new THREE.ConeGeometry(0.2, 0.5, 6), mat({ color: 0x8a3ac8 }), a, h + 0.25, 0, 0, null, g); }); },
   };
   Object.entries(MAP_NODES).forEach(([id, n]) => {
@@ -55199,6 +55310,7 @@ LV.roadmap = () => {
       jeep.rotation.y = -Math.atan2(mapDrive.to.y - mapDrive.from.y, mapDrive.to.x - mapDrive.from.x);
       if (mapDrive.t >= 1) { const d = mapDrive.done; mapDrive = null; d(); }
     } else jeep.position.set(at[0], 0, at[1] + 0.9);
+    if (swampHouse) swampHouse.visible = !S.flags.houseGone;
     chaseUpd(t);
   };
   return L;
@@ -55262,7 +55374,8 @@ LV.marketIn = () => {
   }
   const mac = group(L, 1.4, 0, -1.5, 0.3, { name: "Mac and cheese box", show: () => !S.flags.macMoved,
     say: () => [["", "Just one box of mac and cheese, sitting on the pile."], { choices: [["Move the box", () => [flag("macMoved"), ["", "May moves the mac and cheese box... there's someone under the ramen! It's the shopkeeper lady!"], ["Shopkeeper lady", "Help! Get me out of here!"]]], ["Leave it", () => []]] }] });
-  put(L, boxG(0.5, 0.36, 0.14), mat({ map: label(["MAC", "CHEESE"], 32, 24, "#f2b830", "#2a6ad8", "#f2b830") }), 0, 0.5, 0, 0, null, mac);
+  const macBox = put(L, boxG(0.5, 0.36, 0.14), mat({ map: label(["MAC", "CHEESE"], 32, 24, "#f2b830", "#2a6ad8", "#f2b830") }), 0, 0.5, 0, 0, null, mac);
+  const macMovedBox = put(L, boxG(0.5, 0.36, 0.14), mat({ map: label(["MAC", "CHEESE"], 32, 24, "#f2b830", "#2a6ad8", "#f2b830") }), 2.3, 0, -1.2, 0.8);
   const lady = addChar(L, "lady", 0.6, -1.9, 1.45, { name: "Shopkeeper lady", stand: [0.6, -0.7], say: () => ladyAct() });
   lady.show = () => !!S.flags.macMoved;
   lady.body.userData.hot.show = lady.show;
@@ -55280,7 +55393,8 @@ LV.marketIn = () => {
   let lift = -1;
   PP.lift = () => { lift = 0; };
   L.update = (t, dt) => {
-    lady.yOff = S.flags.ladyFree ? 0 : -0.95;
+    macMovedBox.visible = !!S.flags.macMoved;
+    lady.yOff = S.flags.ladyFree ? Math.abs(Math.sin(t * 2.5)) * 0.05 : -0.95;
     if (lift >= 0) lift += dt;
     pieces.forEach((m, i) => {
       if (S.flags.ladyFree && lift < 0) { m.visible = false; return; }
@@ -55352,6 +55466,7 @@ LV.forest = () => {
   const face = put(L, planeG(1.2, 1.0), mat({ map: T.woodyFace, em: 0.6 }), 0, 2.7, 0.78, 0, null, woody);
   const armL = put(L, boxG(0.25, 2.2, 0.25), mat({ color: 0x5a3a22 }), -0.9, 2.6, 0, 0, null, woody); armL.rotation.z = 0.9;
   const armR = put(L, boxG(0.25, 2.2, 0.25), mat({ color: 0x5a3a22 }), 0.9, 2.6, 0, 0, null, woody); armR.rotation.z = -0.9;
+  const woodyFlower = put(L, new THREE.SphereGeometry(0.22, 8, 6), mat({ color: 0xff7ae0, em: 0.9 }), 1.45, 3.3, 0.2, 0, null, woody);
   const woodyEyes = put(L, planeG(0.8, 0.22), mat({ map: T.eyes, em: 1 }), -2.4, 3.0, -5.7, 0.2);
   // things to find for the scarecrow, and the statue's head
   const shirt = group(L, -4.6, 1.5, -2.8, 0.4, { name: "Old shirt", show: () => !S.flags.got_shirt, say: () => [() => add("shirt", "got_shirt"), ["", "An old shirt hanging on a branch. It goes in your item drawer."]] });
@@ -55362,6 +55477,7 @@ LV.forest = () => {
   put(L, new THREE.CylinderGeometry(0.9, 1.2, 4, 8), mat({ color: 0x4a3222 }), 0, 2, 0, 0, null, bigTree);
   put(L, new THREE.CircleGeometry(0.35, 8), mat({ color: 0x0a0806, em: 1 }), 0, 1.4, 0.92, 0, null, bigTree);
   const head = put(L, new THREE.SphereGeometry(0.22, 7, 5), mat({ color: 0x9a9a90 }), 0, 1.4, 0.95, 0, null, bigTree);
+  addChaseSpot(L, "forest", 2.4, -3.5, 0.25, [1.8, -1.6]);
   crew(L, 0.5, 4);
   L.walk = [-6, 7, -4, 6]; L.start = [0.5, 4];
   L.entries = { roadmap: [2.5, 5], swampField: [-5.4, 4.6] };
@@ -55372,20 +55488,32 @@ LV.forest = () => {
   L.light = { amb: 0x404858, dir: [0.2, -1, -0.3], dirCol: 0x384050, pts: [[[1, 3, 2], 0x90a0ff, 9], [[-2.4, 3, -5], 0x80ff90, 5], [[0, 0, 0], 0, 1]] };
   L.fog = [0x0a0e14, 8, 30]; L.bg = 0x0a0e14;
   cam(L, [1, 4.6, 11.5], [0.5, 1.0, -2.5], 54, null, 200);
-  let woodyT = 0, wakeT = -1;
+  let woodyT = 0, wakeT = -1, headPopT = -1;
+  L.popHead = () => { headPopT = 0; };
   L.update = (t, dt) => {
     const f = S.flags;
     woodyT += dt;
     if (!L.userData.woodyReady && (woodyT > 20 || (L.userData.seen || 0) >= 2)) L.userData.woodyReady = true;
     woodyEyes.visible = !!L.userData.woodyReady && !f.woodyMet;
     face.material.uniforms.uEm.value = 0.5 + 0.2 * Math.sin(t * 2);
+    woodyFlower.visible = !!f.treesAwake;
+    if (f.treesAwake) {
+      armL.rotation.z = 0.9 + Math.sin(t * 3) * 0.25;
+      armR.rotation.z = -0.9 - Math.sin(t * 3) * 0.25;
+    }
     critters.forEach((g) => { g.userData.eyes.visible = !g.userData.seen; g.userData.cr.visible = !!g.userData.seen; g.userData.eyes.scale.y = Math.sin(t * 1.3 + g.position.x) > 0.95 ? 0.1 : 1; });
-    head.visible = !f.got_head;
+    if (headPopT >= 0) {
+      headPopT += dt * 1.8;
+      head.visible = headPopT < 1;
+      head.position.set(0, 1.4 + Math.sin(Math.min(1, headPopT) * Math.PI) * 0.6, 0.95 + headPopT * 1.4);
+      if (headPopT >= 1) headPopT = -1;
+    } else head.visible = !f.got_head;
     if (f.treesAwake && wakeT < 0 && sleepers[0].visible) wakeT = 0;
     if (wakeT >= 0) {
       wakeT += dt;
       sleepers.forEach((g, i) => { const k = Math.min(1, wakeT / 2.5); g.rotation.z = k * Math.PI / 2; g.position.x = g.userData.home.x + (i % 2 ? 1 : -1) * k * 6; g.position.y = k * 1.5; if (k >= 1) g.visible = false; });
     } else if (f.treesAwake) sleepers.forEach((g) => (g.visible = false));
+    if (L.chaseUpd) L.chaseUpd(t, dt);
   };
   return L;
 };
@@ -55393,7 +55521,7 @@ function headAct() {
   if (S.flags.got_head) return [["", "A big tree with an empty hole in it."]];
   return [["", "Something round is stuck in a hole in this big tree. It's a stone head!"], { choices: [
     ["Pull it out", () => [["", "May pulls and pulls... it's stuck tight!"]]],
-    ["Lift it out with telekinesis", () => [["May", "Nnnngh... this one is HEAVY!"], () => add("head", "got_head"), ["", "Pop! The stone head comes free. It goes in your item drawer. Whose head could it be?"]]],
+    ["Lift it out with telekinesis", () => [["May", "Nnnngh... this one is HEAVY!"], () => { if (L && L.popHead) L.popHead(); add("head", "got_head"); }, ["", "Pop! The stone head comes free. It goes in your item drawer. Whose head could it be?"]]],
     ["Never mind", () => []]] }];
 }
 
@@ -55437,9 +55565,9 @@ LV.swampField = () => {
   L.light = { amb: 0x7a8078, dir: [-0.3, -1, -0.4], dirCol: 0x707868, pts: [[[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0xa8b4a8, 10, 40]; L.bg = 0xa8b4a8;
   cam(L, [0.5, 4.4, 11], [0, 0.9, -1.8], 52, null, 200);
-  L.update = (t) => {
+  L.update = (t, dt) => {
     sHead.visible = !!S.flags.statueTold;
-    rider.rotation.y = S.flags.statueTold ? 0.7 : 0;
+    rider.rotation.y += ((S.flags.statueTold ? 0.7 : 0) - rider.rotation.y) * Math.min(1, (dt || 0.016) * 3.5);
     frogs.forEach((g, i) => { g.position.y = Math.max(0, Math.sin(t * 2 + i * 2)) * 0.25; });
   };
   return L;
@@ -55450,7 +55578,7 @@ const SCARE = ["twigs", "shirt", "hat", "straw"];
 const SCARE_WHERE = { twigs: "a bundle of twigs (scary forest)", shirt: "an old shirt (scary forest)", hat: "a straw hat (closed supermarket)", straw: "straw (the field by the swamp)" };
 const scareParts = () => (has("scarecrowKit") ? 4 : SCARE.filter((x) => has(x)).length);
 const scareMissing = () => (has("scarecrowKit") ? [] : SCARE.filter((x) => !has(x)).map((x) => SCARE_WHERE[x]));
-const SCARE_BUILT = [() => { SCARE.forEach(remove); remove("scarecrowKit"); S.flags.scarecrow = true; save(); },
+const SCARE_BUILT = [() => { SCARE.forEach(remove); remove("scarecrowKit"); S.flags.scarecrow = true; if (L && L.scareAppr) L.scareAppr(); save(); },
   ["", "The kids stand the giant scarecrow up on the old post in the fog. Spooky!"],
   ["", "They hide and watch... The apprentice sees the scarecrow looming in the fog!"], ["Apprentice", "AAAH! A monster!"],
   ["", "The apprentice runs away and leaves his boat behind!"]];
@@ -55481,7 +55609,7 @@ function witchAct() {
     ["Jon: hide everyone in the portal", () => [["", "Too late! The spell is already flying!"]]],
     ["Olivia: spin", () => [["", "Olivia spins... but the witch's spell is pulling everyone toward the swamp!"]]],
     ["May: telekinesis", () => [["", "May reaches out with her mind... but the witch's magic is too slippery!"]]],
-    ["Jasin: kick the soccer ball", () => [["", "Jasin hears the witch and kicks his soccer ball right into the witch's guts!"], ["Witch", "Oof... my guts..."], ["", "Jasin kicked so hard, the witch fell down!"],
+    ["Jasin: kick the soccer ball", () => [() => { if (L && L.kickWitch) L.kickWitch(); }, ["", "Jasin hears the witch and kicks his soccer ball right into the witch's guts!"], ["Witch", "Oof... my guts..."], ["", "Jasin kicked so hard, the witch fell down!"],
       ["", "The kids take her into her house and lock her in a cage."], ["Witch", "Let me OUT!"], () => { f.witchCaged = true; f.witchUp = false; save(); }]],
   ] }];
   return [["", "The kids look around the witch's house on its big bird legs... nobody seems to be home."], ["", "As the kids start to walk away, the witch sneaks out and secretly waves her wand!"],
@@ -55507,11 +55635,27 @@ LV.swamp = () => {
   put(L, boxG(0.4, 1.2, 0.4), mat({ color: 0x3a3028 }), -0.8, 4.8, -0.3, 0, null, house);
   put(L, planeG(0.6, 0.9), mat({ color: 0x2a1a10 }), 0, 2.4, 1.01, 0, null, house);
   const smoke = [0, 1, 2, 3, 4].map((i) => put(L, new THREE.SphereGeometry(0.35, 6, 4), mat({ color: 0xc8c8c8, em: 0.3 }), -0.8, 6.2, -0.3, 0, null, house));
+  // empty spot where the house used to stand (after S.flags.houseGone)
+  const emptySpot = group(L, 1.8, 0, -4.0, 0, { name: "Where the witch's house stood", stand: [1.6, -2.8],
+    show: () => !!S.flags.houseGone && CUT !== "swamp",
+    say: () => [["", "The witch's house is gone! Only giant bird footprints and chicken feathers are left in the mud."],
+      ...(S.flags.apprJoined ? [["Apprentice", "Check the road map for chicken feathers and swirling wind!"]]
+        : [["", "The apprentice is sitting in his boat over there. Maybe ask him where the house went!"]])] });
+  [[-0.55, -0.2, 0.2], [0.55, 0.1, -0.15]].forEach(([fx, fz, ry]) => {
+    const tr = new THREE.Group(); tr.position.set(fx, 0.02, fz); tr.rotation.y = ry; emptySpot.add(tr);
+    [-0.35, 0, 0.35].forEach((a) => { const toe = put(L, boxG(0.08, 0.02, 0.45), mat({ color: 0x241c14 }), Math.sin(a) * 0.14, 0, Math.cos(a) * 0.14, a, null, tr); });
+  });
+  [[-0.3, 0.2, 0.4], [0.35, -0.1, -0.7], [0.05, 0.35, 1.1], [-0.45, -0.25, 1.9]].forEach(([fx, fz, r]) => {
+    const f = put(L, planeG(0.18, 0.42), mat({ color: 0xfff8f0, em: 0.5, side: THREE.DoubleSide }), fx, 0.05, fz, r, null, emptySpot); f.rotation.x = -1.3;
+  });
   const cage = group(L, 0.6, 0, -3.6, 0, { name: "Cage", show: () => !!S.flags.witchCaged && !S.flags.witchFree, say: () => [["Witch", "Let me OUT of this cage!"]] });
   put(L, boxG(1.0, 0.1, 1.0), mat({ color: 0x3a3028 }), 0, 0, 0, 0, null, cage);
   for (let i = 0; i < 6; i++) put(L, boxG(0.05, 1.8, 0.05), mat({ color: 0x9a9a90 }), -0.45 + i * 0.18, 0, 0.5, 0, null, cage);
   const witch = addChar(L, "witch", 0.6, -3.6, 1.7, { name: "Witch", stand: [1.6, -2.4], say: () => witchAct() });
   witch.show = witch.body.userData.hot.show = () => !!(S.flags.witchUp || S.flags.witchCaged) && !S.flags.houseGone;
+  const spellG = new THREE.Group(); L.scene.add(spellG);
+  const spellOrbs = [0, 1, 2, 3, 4].map((i) => put(L, new THREE.SphereGeometry(0.12, 6, 4), mat({ color: i % 2 ? 0x7aff7a : 0xc86aff, em: 1 }), 0, 1, 0, 0, null, spellG));
+  const witchBall = put(L, new THREE.IcosahedronGeometry(0.2, 1), mat({ color: 0xfff27a, em: 1 }), 0, -5, 0);
   const wizard = addChar(L, "wizard", 1.9, -2.9, 1.9);
   wizard.show = () => CUT === "swamp" && !S.flags.houseGone;
   // the priest robes, on a clothesline behind the house
@@ -55520,9 +55664,13 @@ LV.swamp = () => {
   line(L, lineG([new THREE.Vector3(-1, 1.75, 0), new THREE.Vector3(1, 1.75, 0)]), 0x2a2a2a, line1);
   const robes = [-0.5, 0.1, 0.6].map((x) => put(L, planeG(0.45, 0.8), mat({ color: 0x2a2440, side: THREE.DoubleSide }), x, 0.95, 0, 0, null, line1));
   // the apprentice in his boat, and the scarecrow spot
+  let apprRunT = -1, witchBallT = -1;
+  L.scareAppr = () => { apprRunT = 0; };
+  L.kickWitch = () => { witchBallT = 0; };
   const appr = addChar(L, "apprentice", -1.8, -6.0, 1.6, { name: "Apprentice", stand: [-1.8, -3.0], say: () => S.flags.dogsBeaten ? apprenticeAct() : S.flags.scarecrow ? [] : [["Apprentice", "Um... hi. I'm supposed to be a bad guy..."], ["", "He's sitting in his boat and won't leave it. Maybe something spooky would scare him off..."]],
     use: Object.fromEntries([...SCARE, "scarecrowKit"].map((x) => [x, () => [["", "He'd only be scared if something spooky popped up in the fog. Try the old post by the water."]]])) });
-  appr.show = appr.body.userData.hot.show = () => !S.flags.scarecrow || (!!S.flags.dogsBeaten && !S.flags.apprJoined && CUT !== "swamp");
+  appr.show = () => !S.flags.scarecrow || apprRunT >= 0 || (!!S.flags.dogsBeaten && !S.flags.apprJoined && CUT !== "swamp");
+  appr.body.userData.hot.show = () => !S.flags.scarecrow || (!!S.flags.dogsBeaten && !S.flags.apprJoined && CUT !== "swamp");
   const boat = group(L, -1.8, -0.1, -6.0, 0.4, { name: "The apprentice's boat", stand: [-1.8, -3.0], show: () => !!S.flags.scarecrow, exit: true,
     run: () => { if (!S.flags.boatTaken) { S.flags.boatTaken = true; save(); } say([["", "The kids hop in the apprentice's boat and row out to the spaceship in the water."], () => goLevel("hub", "swamp")]); } });
   const hull = new THREE.CylinderGeometry(0.5, 0.35, 2.2, 8, 1, false, 0, Math.PI); hull.rotateZ(Math.PI / 2); hull.rotateX(Math.PI);
@@ -55547,7 +55695,14 @@ LV.swamp = () => {
   const jeep = group(L, 7.6, 0, 4.4, -0.4, { name: "Back to the jeep", exit: true, stand: [6.2, 3.6], show: () => !!S.flags.treesAwake,
     run: () => S.flags.witchUp && !S.flags.witchCaged ? say([["Witch", "You'll be stuck in my swamp forever!"], ["", "The witch's spell is pulling the kids back! Who can stop her?"]]) : goLevel("roadmap", "swamp") });
   miniJeep(L, jeep);
-  L.onEnter = () => S.flags.treesAwake
+  const houseGoneLines = () => {
+    S.flags.sawHouseGone = true; save();
+    return [["", "The witch's house is gone! Only giant bird footprints and chicken feathers are left in the mud."],
+      ...(S.flags.apprJoined ? [] : [["", "The apprentice is sitting in his boat, all alone. Maybe ask him where the house went!"]])];
+  };
+  L.onEnter = () => S.flags.houseGone && CUT !== "swamp"
+    ? houseGoneLines()
+    : S.flags.treesAwake
     ? [["", "The jeep rolls up to the swamp. There's the witch's house, standing on big bird legs!"]]
     : [["", "The kids walk to the swamp on foot. It's foggy... There's the witch's house on big bird legs, and her apprentice, sitting in a boat."]];
   L.light = { amb: 0x6a7068, dir: [-0.3, -1, -0.4], dirCol: 0x606858, pts: [[[2.2, 3.5, -8], 0xff9a50, 6], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
@@ -55555,12 +55710,34 @@ LV.swamp = () => {
   cam(L, [0, 4.6, 11], [0.5, 1.4, -4], 54, null, 200);
   L.update = (t, dt) => {
     const f = S.flags;
+    if (f.houseGone && !f.sawHouseGone && CUT !== "swamp" && !busy && !talking()) say(houseGoneLines());
     if (f.houseGone && CUT === "swamp") { house.position.x += (dt || 0.016) * 2.2; house.position.y = Math.abs(Math.sin(t * 6)) * 0.25; }
     smoke.forEach((m, i) => { const k = (t * 0.3 + i / 5) % 1; m.position.set(-0.8 + Math.sin(k * 6 + i) * 0.4, 6.2 + k * 3, -0.3); m.scale.setScalar(0.5 + k * 1.5); });
     scare.visible = !!f.scarecrow;
     robes.forEach((r) => (r.visible = !f.got_robes));
     witch.pos.set(f.witchFree ? 1.0 : f.witchCaged ? 0.6 : 1.6, f.witchFree ? -2.8 : f.witchCaged ? -3.6 : -4.6);
-    appr.yOff = Math.sin(t * 1.5) * 0.06;
+    spellG.visible = !!f.witchUp && !f.witchCaged;
+    if (spellG.visible) {
+      spellOrbs.forEach((o, i) => {
+        const a = t * 4 + i * 1.25, r = 0.7 + Math.sin(t * 3 + i) * 0.2;
+        o.position.set(witch.pos.x + Math.cos(a) * r, 0.9 + Math.sin(t * 5 + i) * 0.35, witch.pos.y + Math.sin(a) * r);
+      });
+    }
+    if (witchBallT >= 0) {
+      witchBallT += (dt || 0.016) * 2.2;
+      const k = Math.min(1, witchBallT);
+      witchBall.position.set(L.player.pos.x + (1.6 - L.player.pos.x) * k, 0.5 + Math.sin(k * Math.PI) * 0.9, L.player.pos.y + (-4.6 - L.player.pos.y) * k);
+      if (witchBallT >= 1) { witchBallT = -1; witchBall.position.y = -5; }
+    }
+    if (apprRunT >= 0) {
+      apprRunT += (dt || 0.016);
+      appr.pos.set(-1.8 - apprRunT * 4.5, -6.0);
+      appr.yOff = Math.abs(Math.sin(apprRunT * 14)) * 0.35;
+      if (apprRunT > 1.8) { apprRunT = -1; appr.pos.set(-1.8, -6.0); }
+    } else {
+      appr.pos.set(-1.8, -6.0);
+      appr.yOff = Math.sin(t * 1.5) * 0.06;
+    }
   };
   return L;
 };
@@ -55711,7 +55888,7 @@ function rockAct(row, col) {
     if (S.rockStep >= 3) return [() => { S.flags.rocksDone = true; save(); L.player.pos.set(0, -16.5); L.player.target = null; }, ["", "May hops from rock to rock, just like the pattern in the clouds... and makes it to the gigantic front door!"]];
     return [];
   }
-  return [() => { newRockPattern(); L.player.pos.set(0, 3); L.player.target = null; S.flags.slipped = true; save(); },
+  return [() => { if (L && L.wobbleRock) L.wobbleRock(row, col); newRockPattern(); L.player.pos.set(0, 3); L.player.target = null; S.flags.slipped = true; save(); },
     ["", "The rock wobbles! May slips and slides back down to the start. Look... the clouds are changing their pattern!"]];
 }
 
@@ -55748,15 +55925,20 @@ LV.castle = () => {
   put(L, new THREE.RingGeometry(1.4, 2.2, 16, 1, 0.6, 3.6), mat({ color: 0xfff4c8, em: 1, fog: 0 }), 14, 22, -40, 0);
   // the gigantic front door
   const door = group(L, 0, 0, -21.8, 0, { name: "Gigantic front door", exit: true, stand: [0, -17.4], show: () => !!S.flags.rocksDone, run: () => say(doorAct()), use: { robes: doorAct } });
-  put(L, planeG(3.2, 5.2), mat({ map: T.bigDoor }), 0, 0, 0, 0, null, door);
+  put(L, planeG(3.2, 5.2), mat({ color: 0x120c18 }), 0, 0, -0.04, 0, null, door);
+  const doorHinge = new THREE.Group(); doorHinge.position.set(-1.6, 0, 0); door.add(doorHinge);
+  put(L, planeG(3.2, 5.2), mat({ map: T.bigDoor, side: THREE.DoubleSide }), 1.6, 0, 0, 0, null, doorHinge);
   const wiz = addChar(L, "wizard", 0.9, -20.6, 1.9, { name: "Wizard", stand: [0, -17.4], say: () => doorAct() });
   wiz.show = wiz.body.userData.hot.show = () => !!S.flags.wizardOut && !S.flags.inCastle;
   // the dangerous rocks: copy the pattern in the clouds
-  const COLS = [-2.4, 0, 2.4], ROWS = [-1.6, -6.6, -11.6];
+  const COLS = [-2.4, 0, 2.4], ROWS = [-1.6, -6.6, -11.6], rockMeshes = {};
   ROWS.forEach((rz, r) => COLS.forEach((cx, c) => {
     const g = group(L, cx, 0, rz, 0, { name: "Rock", stand: [cx, rz + 0.3], show: () => !S.flags.rocksDone && (S.rockStep || 0) === r, say: () => rockAct(r, c) });
     const m = put(L, new THREE.DodecahedronGeometry(0.8, 0), mat({ color: 0x7a7080 }), 0, 0.25, 0, 0, null, g); m.rotation.set(r + c, c, 0);
+    rockMeshes[r + "_" + c] = g;
   }));
+  let wobKey = "", wobT = -1;
+  L.wobbleRock = (r, c) => { wobKey = r + "_" + c; wobT = 0; };
   [[-6, -9, 2.4], [6.5, -12, 2.8], [-7, -16, 3], [7, -4, 2], [-5.5, -2, 1.6]].forEach(([x, z, s]) => {
     const m = put(L, new THREE.DodecahedronGeometry(s, 0), mat({ color: 0x5a5262 }), x, s * 0.5, z); m.rotation.set(x, z, 0);
   });
@@ -55778,8 +55960,15 @@ LV.castle = () => {
   L.fog = [0x8a8a98, 18, 70]; L.bg = 0x8a8a98;
   cam(L, [0, 5.5, 11], [0, 2.5, -8], 56, (p) => p.y > -14, 200);
   cam(L, [3.5, 3.0, -11], [0, 2.4, -21], 56, null, 200);
-  L.update = (t) => {
+  L.update = (t, dt) => {
     if (S.flags.rocksDone) { L.walk = [-5, 5, -18, 5.5]; } else { L.walk = [-5, 5, 2.4, 5.5]; if (!S.rockPat) newRockPattern(); }
+    doorHinge.rotation.y += (((S.flags.wizardOut || S.flags.inCastle) ? -0.75 : 0) - doorHinge.rotation.y) * Math.min(1, (dt || 0.016) * 5);
+    if (wobT >= 0) {
+      wobT += dt || 0.016;
+      const rg = rockMeshes[wobKey];
+      if (rg) rg.rotation.z = wobT < 0.7 ? Math.sin(wobT * 28) * 0.35 * (1 - wobT / 0.7) : 0;
+      if (wobT >= 0.7) wobT = -1;
+    }
     // the clouds puff in the order of the safe rocks, then pause, over and over
     const seq = S.rockPat || [0, 1, 2], cyc = t % 4.2, idx = Math.floor(cyc / 0.9);
     clouds.forEach((g, c) => {
@@ -55850,9 +56039,27 @@ LV.castleKitchen = () => {
 };
 
 // ---------- inside: the reception hall (tea with the wizard) ----------
+function addPoof(L, x, z) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); g.visible = false; L.scene.add(g);
+  const puffs = [0, 1, 2, 3, 4, 5].map((i) => put(L, new THREE.SphereGeometry(0.32, 7, 5), mat({ color: i % 2 ? 0xb06aff : 0xe0b0ff, em: 0.9 }), 0, 0.9, 0, 0, null, g));
+  let poofT = -1;
+  L.poof = () => { poofT = 0; };
+  return (t, dt) => {
+    if (poofT < 0) { g.visible = false; return; }
+    poofT += dt || 0.016;
+    g.visible = poofT < 1.2;
+    puffs.forEach((p, i) => {
+      const a = i / 6 * Math.PI * 2 + poofT * 3, r = poofT * 1.1;
+      p.position.set(Math.cos(a) * r, 0.7 + poofT * 1.4 + (i % 2) * 0.25, Math.sin(a) * r);
+      p.scale.setScalar(Math.max(0.01, (1 - poofT / 1.2) * 1.5));
+    });
+    if (poofT >= 1.2) poofT = -1;
+  };
+}
 function teaLines() {
   const gone = [["Wizard", "Hmm... HMMMM."], ["Wizard", "Everybody in her ministry knows she only drinks TEA!"],
-    ["", "POOF! The wizard disappears in a puff of purple smoke!"], flag("wizardGone"),
+    () => { if (L && L.poof) L.poof(); S.flags.wizardGone = true; save(); },
+    ["", "POOF! The wizard disappears in a puff of purple smoke!"],
     ["", "Where he was sitting, a spiral staircase winds up into the castle..."]];
   return [["", "The wizard pours lemonade and passes around muffins. Everyone is very polite."],
     ["Wizard", "So! How is the witch? Does she ever talk about me?"], ["May", "Um... yes! All the time!"],
@@ -55884,6 +56091,7 @@ LV.reception = () => {
   const chair = put(L, boxG(0.9, 1.8, 0.4), mat({ color: 0x8a3ac8 }), 0, 0, -2.9);
   const wiz = addChar(L, "wizard", 0, -2.4, 1.9, { name: "Wizard", stand: [0, -0.2], say: () => teaLines() });
   wiz.show = wiz.body.userData.hot.show = () => !S.flags.wizardGone;
+  const stepPoof = addPoof(L, 0, -2.4);
   spiralStairs(L, 4.4, -2.4, 3.6, { name: "Spiral staircase up", exit: true, go: "wheelHall", stand: [3.6, -1.4], show: () => !!S.flags.wizardGone });
   crew(L, 3.8, 1.4);
   L.walk = [-5.3, 5.3, -0.3, 2.9]; L.start = [3.8, 1.4];
@@ -55892,6 +56100,7 @@ LV.reception = () => {
   L.light = { amb: 0x6a6078, dir: [0.2, -1, -0.5], dirCol: 0x504858, pts: [[[0, 2.4, -1.4], 0xffd890, 6], [[4.4, 3, -2.4], 0xb08aff, 5], [[0, 0, 0], 0, 1]] };
   L.fog = [0x14101a, 12, 28]; L.bg = 0x14101a;
   cam(L, [0, 3.8, 8.2], [0, 1.2, -1.4], 56);
+  L.update = (t, dt) => stepPoof(t, dt);
   return L;
 };
 
@@ -55980,7 +56189,16 @@ function festivalRoom(n) {
   if (n === "Samhain") {
     const cl = group(L, 3.1, 0, -1.4, -Math.PI / 2, { name: "Closet", stand: [2.4, -1.0], say: () => closetAct() });
     put(L, boxG(1.6, 2.4, 0.6), mat({ color: 0x4a3222 }), 0, 0, 0, 0, null, cl);
-    put(L, planeG(0.7, 2.0), mat({ color: 0x6b4f35 }), -0.38, 0.15, 0.31, 0, null, cl); put(L, planeG(0.7, 2.0), mat({ color: 0x6b4f35 }), 0.38, 0.15, 0.31, 0, null, cl);
+    put(L, planeG(0.9, 0.9), mat({ map: CT().chart, em: 0.4 }), 0, 0.8, 0.31, 0, null, cl);
+    const clL = new THREE.Group(); clL.position.set(-0.73, 0.15, 0.32); cl.add(clL);
+    put(L, planeG(0.7, 2.0), mat({ color: 0x6b4f35, side: THREE.DoubleSide }), 0.35, 0, 0, 0, null, clL);
+    const clR = new THREE.Group(); clR.position.set(0.73, 0.15, 0.32); cl.add(clR);
+    put(L, planeG(0.7, 2.0), mat({ color: 0x6b4f35, side: THREE.DoubleSide }), -0.35, 0, 0, 0, null, clR);
+    L.update = (t, dt) => {
+      const open = S.flags.got_chart ? 1.15 : 0;
+      clL.rotation.y += (-open - clL.rotation.y) * Math.min(1, (dt || 0.016) * 6);
+      clR.rotation.y += (open - clR.rotation.y) * Math.min(1, (dt || 0.016) * 6);
+    };
   }
   crew(L, -2.6, 1.4);
   L.walk = [-3.4, 3.4, -1.3, 2.4]; L.start = [-2.6, 1.4];
@@ -56112,6 +56330,9 @@ LV.pastRoom = () => {
   const book = group(L, 4.2, 0, 1.6, 0.3, { name: "Giant picture book", show: () => !S.flags.got_book, say: () => [() => add("book", "got_book"), ["", "A big, heavy picture book. Toddler May can just barely carry it. It goes in your item drawer."]] });
   put(L, boxG(1.1, 0.3, 0.8), mat({ color: 0xc82828 }), 0, 0, 0, 0, null, book);
   put(L, boxG(1.0, 0.26, 0.74), mat({ color: 0xf4f0e4 }), 0.03, 0.02, 0, 0, null, book);
+  const placedBook = new THREE.Group(); placedBook.position.set(-0.4, 0, -0.05); L.scene.add(placedBook);
+  put(L, boxG(1.1, 0.3, 0.8), mat({ color: 0xc82828 }), 0, 0, 0, 0, null, placedBook);
+  put(L, boxG(1.0, 0.26, 0.74), mat({ color: 0xf4f0e4 }), 0.03, 0.02, 0, 0, null, placedBook);
   const toy = (name, x, z, line1, build) => { const g = group(L, x, 0, z, 0, { name, say: [["", line1]] }); build(g); };
   toy("Giant teddy bear", -4.4, -2.6, "A teddy bear as big as a house! It's soft... but it won't help reach the cookie.", (g) => {
     put(L, new THREE.SphereGeometry(1.0, 8, 6), mat({ color: 0xb8864a }), 0, 1.0, 0, 0, null, g);
@@ -56131,9 +56352,14 @@ LV.pastRoom = () => {
   L.light = { amb: 0x8a8090, dir: [0.2, -1, -0.5], dirCol: 0x686070, pts: [[[0, 5, 0], 0xffe8c8, 12], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0x201a24, 14, 30]; L.bg = 0x201a24;
   cam(L, [0, 4.0, 9.0], [0.4, 2.0, -1.5], 58);
-  L.update = () => {
-    const f = S.flags;
-    if (f.chairMoved) { chair.position.set(-0.4, 0, -1.1); chair.rotation.y = 0; }
+  L.update = (t, dt) => {
+    const f = S.flags, s = Math.min(1, (dt || 0.016) * 4);
+    if (f.chairMoved) {
+      chair.position.x += (-0.4 - chair.position.x) * s;
+      chair.position.z += (-1.1 - chair.position.z) * s;
+      chair.rotation.y += (0 - chair.rotation.y) * s;
+    }
+    placedBook.visible = done();
     cookie.visible = !done();
   };
   return L;
@@ -56150,7 +56376,7 @@ function owlAct() {
   if (S.flags.got_middle || S.flags.got_trumpet) return [["Owl", "Hoo! Good luck, kids."]];
   const wrong = () => [["Owl", "Hoo-hoo! No, that's not it. Think about it..."]];
   return [["Owl", "Hoo! Answer my riddle, and I'll give you something special."], ["Owl", "The more you take, the more you leave behind. What am I?"],
-    { choices: [["Footsteps!", () => [["Owl", "Hoo! Footsteps! That's right!"], ...gotPiece("middle", "The owl drops a piece of crystal: the middle section of the trumpet!")]],
+    { choices: [["Footsteps!", () => [["Owl", "Hoo! Footsteps! That's right!"], () => { if (L && L.dropMiddle) L.dropMiddle(); }, ...gotPiece("middle", "The owl drops a piece of crystal: the middle section of the trumpet!")]],
       ["Cookies", wrong], ["Naps", wrong], ["Socks", wrong]] }];
 }
 LV.presentRoom = () => {
@@ -56165,6 +56391,9 @@ LV.presentRoom = () => {
   put(L, boxG(2.0, 0.2, 0.3), mat({ color: 0x4a3222 }), 1.2, 3.2, 0.6, 0, null, trunk);
   const owl = addChar(L, "owl", 1.5, -5.3, 0.8, { name: "Owl", stand: [1.0, -3.6], say: () => owlAct() });
   owl.yOff = 3.4; owl.show = owl.body.userData.hot.show = () => !!S.flags.fogClear;
+  const midDrop = put(L, new THREE.CylinderGeometry(0.08, 0.08, 0.45, 8), mat({ color: 0xb8f0ff, em: 1 }), 1.4, -5, -4.5);
+  let dropT = -1;
+  L.dropMiddle = () => { dropT = 0; };
   const fog = group(L, 0, 0, 0.4, 0, { name: "Thick fog", stand: [0, 1.4], show: () => !S.flags.fogClear, say: () => fogAct(), use: { flashlight: fogAct } });
   [-4, -1.4, 1.4, 4].forEach((x, i) => { const s = new THREE.SphereGeometry(2.0, 8, 5); s.scale(1.2, 0.9, 0.7); put(L, s, mat({ color: 0xe0e4e8, em: 0.6, alpha: 0.85 }), x, 1.2 + (i % 2) * 0.3, 0, 0, null, fog); });
   crew(L, -3.8, 3.0);
@@ -56174,10 +56403,16 @@ LV.presentRoom = () => {
   L.light = { amb: 0x8a9098, dir: [-0.3, -1, -0.4], dirCol: 0x606870, pts: [[[0, 4, -4], 0xfff0c0, 8], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0xc8d0d8, 3, 12]; L.bg = 0xc8d0d8;
   cam(L, [0, 3.6, 10], [0, 2.4, -3], 56, null, 200);
-  L.update = () => {
+  L.update = (t, dt) => {
     const clear = !!S.flags.fogClear;
     L.walk[2] = clear ? -4.2 : 1.2;
     L.fog[1] = clear ? 10 : 3; L.fog[2] = clear ? 34 : 12; G.uFog.value.set(L.fog[1], L.fog[2]);
+    if (dropT >= 0) {
+      dropT += (dt || 0.016) * 1.3;
+      midDrop.position.y = 3.4 - Math.min(1, dropT) * 2.4;
+      midDrop.rotation.z = dropT * 5;
+      if (dropT > 1.2) { dropT = -1; midDrop.position.y = -5; }
+    }
   };
   return L;
 };
@@ -56193,7 +56428,7 @@ function placeStone(who, item) {
   if (st[1] !== item) return [["", "Hmm... that doesn't seem to belong to this statue."]];
   const last = STATUES.filter(([k]) => k !== who).every(([k]) => f["placed_" + k]);
   return [() => remove(item), ["", `May puts the stone ${st[3]} on the statue. It fits! The statue glows.`], flag("placed_" + who),
-    ...(last ? [["", "All four statues glow at once... and a crystal bell floats down from the ceiling!"], ...gotPiece("bell", "It's the bell of the crystal trumpet!")] : [])];
+    ...(last ? [() => { if (L && L.dropBell) L.dropBell(); }, ["", "All four statues glow at once... and a crystal bell floats down from the ceiling!"], ...gotPiece("bell", "It's the bell of the crystal trumpet!")] : [])];
 }
 LV.futureRoom = () => {
   const L = newLevel("futureRoom", "The Future Room");
@@ -56219,6 +56454,9 @@ LV.futureRoom = () => {
     if (id === "stoneBall") put(L, new THREE.SphereGeometry(0.22, 8, 6), sm, 0, 0.22, 0, 0, null, g);
     if (id === "stoneTutu") put(L, new THREE.CylinderGeometry(0.12, 0.38, 0.2, 10), sm, 0, 0.1, 0, 0, null, g);
   });
+  const bellDrop = put(L, new THREE.ConeGeometry(0.28, 0.45, 10), mat({ color: 0xb8f0ff, em: 1 }), 0, -5, -1.2);
+  let bellT = -1;
+  L.dropBell = () => { bellT = 0; };
   crew(L, -3.8, 2.6);
   L.walk = [-5.2, 5.2, -1.6, 3.4]; L.start = [-3.8, 2.6];
   L.entries = { mirrors: [-4.6, 2.4] };
@@ -56228,11 +56466,17 @@ LV.futureRoom = () => {
   L.light = { amb: 0x101018, dir: [0, -1, 0], dirCol: 0x000000, pts: [[[0, 2, 0], 0xfff0c0, 7], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0x000000, 6, 16]; L.bg = 0x000000;
   cam(L, [0, 3.8, 8.8], [0, 1.6, -1.6], 58);
-  L.update = () => {
+  L.update = (t, dt) => {
     const p = L.player.pos;
     G.uPt.value[0].set(p.x, 2.2, p.y - 1.2); G.uPtCol.value[0].set(lit() ? 0xfff0c0 : 0x000000); G.uPtR.value[0] = 9;
     G.uAmb.value.set(lit() ? 0x30303c : 0x08080c);
     L.chars.forEach((c) => { if (c.glow) c.glow.visible = !!S.flags["placed_" + c.key]; });
+    if (bellT >= 0) {
+      bellT += (dt || 0.016) * 0.9;
+      bellDrop.position.y = 4.2 - Math.min(1, bellT) * 2.8;
+      bellDrop.rotation.y = bellT * 4;
+      if (bellT > 1.4) { bellT = -1; bellDrop.position.y = -5; }
+    }
   };
   return L;
 };
@@ -56240,7 +56484,8 @@ LV.futureRoom = () => {
 // ---------- the atrium: the wizard, and the dogs of darkness ----------
 let CUT = null;
 function atriumLines() {
-  const fight = [["Wizard", "You little twerps, you think you can fight us? Try to defeat these dogs of darkness!"], flag("dogsOut"),
+  const fight = [["Wizard", "You little twerps, you think you can fight us? Try to defeat these dogs of darkness!"],
+    () => { if (L && L.poof) L.poof(); S.flags.dogsOut = true; save(); },
     ["", "POOF! The wizard vanishes!"], () => swampCutscene()];
   return [["", "The mirrors are gone. The kids are standing in a huge atrium... and the wizard is laughing at them!"], ["Wizard", "HA HA HA HA HA!"],
     ["Jasin", "Mr. Wizard! Why are our things glowing? My ball, and Olivia's tutu?"],
@@ -56270,12 +56515,18 @@ LV.atrium = () => {
   for (let i = 0; i < 24; i++) put(L, new THREE.CircleGeometry(0.08, 4).rotateX(-Math.PI / 2), mat({ color: 0xd8e8ff, em: 1 }), (rnd() - 0.5) * 10, 0.03, (rnd() - 0.5) * 8);
   const wiz = addChar(L, "wizard", 0, -3.6, 2.0, { name: "Wizard", stand: [0, -1.4], say: () => S.flags.dogsOut ? [] : atriumLines() });
   wiz.show = wiz.body.userData.hot.show = () => !S.flags.dogsOut;
-  const dogs = [[-2.2, -2.4], [0, -3.4], [2.2, -2.4]].map(([x, z]) => {
+  const stepPoof = addPoof(L, 0, -3.6);
+  const dogHomes = [[-2.2, -2.4], [0, -3.4], [2.2, -2.4]];
+  const dogs = dogHomes.map(([x, z]) => {
     const d = addChar(L, "dog", x, z, 1.1, { name: "Dog of darkness", stand: [0, -0.6], say: () => dogLines() });
     d.body.material.uniforms.uColor.value.set(0x4a3a48); d.body.material.uniforms.uEm.value = 0.25;
     d.show = d.body.userData.hot.show = () => !!S.flags.dogsOut && CUT !== "swamp";
     return d;
   });
+  const dogZzz = dogHomes.map(([x, z]) => put(L, planeG(0.6, 0.26), mat({ map: label(["Zzz"], 32, 14, "#14101a", "#ffffff", "#14101a"), em: 1 }), x + 0.3, 0.8, z, 0));
+  const emptyCan = new THREE.Group(); emptyCan.position.set(0, 0.14, -2.2); emptyCan.rotation.z = Math.PI / 2; L.scene.add(emptyCan);
+  put(L, new THREE.CylinderGeometry(0.14, 0.14, 0.28, 10), mat({ color: 0xc83a3a }), 0, 0, 0, 0, null, emptyCan);
+  const chaseBall = put(L, new THREE.IcosahedronGeometry(0.2, 1), mat({ color: 0xfff27a, em: 1 }), -4.2, 0.22, -3.2);
   const back = group(L, 0, 0, 5.6, Math.PI, { name: "Door back to the sphinx", go: "castleUp", stand: [0, 4.4] });
   put(L, planeG(1.3, 2.4), mat({ map: doorC("#d8b070") }), 0, 0, 0, 0, null, back);
   addSlide(L);
@@ -56286,7 +56537,31 @@ LV.atrium = () => {
   L.light = { amb: 0x7a7090, dir: [0, -1, 0.1], dirCol: 0x8888a0, pts: [[[0, 7, 0], 0xd8d8ff, 14], [[0, 1.5, -3], 0xb08aff, 5], [[0, 0, 0], 0, 1]] };
   L.fog = [0x14101a, 14, 30]; L.bg = 0x14101a;
   cam(L, [0, 4.4, 7.6], [0, 1.3, -2.2], 62);
-  L.update = (t) => dogs.forEach((d, i) => (d.yOff = Math.abs(Math.sin(t * 6 + i)) * 0.08));
+  L.update = (t, dt) => {
+    stepPoof(t, dt);
+    const fed = !!S.flags.dogsFed, ball = !!S.flags.ballThrown;
+    emptyCan.visible = fed;
+    chaseBall.visible = ball;
+    if (ball) chaseBall.position.set(-3.8 + Math.cos(t * 2.5) * 1.1, 0.22 + Math.abs(Math.sin(t * 6)) * 0.18, -3.2 + Math.sin(t * 2.5) * 0.9);
+    dogs.forEach((d, i) => {
+      dogZzz[i].visible = fed;
+      dogZzz[i].position.y = 0.75 + Math.sin(t * 2 + i) * 0.08;
+      if (fed) {
+        d.pos.set(dogHomes[i][0], dogHomes[i][1]);
+        d.body.rotation.z = Math.PI / 2 * 0.85;
+        d.yOff = 0.15;
+      } else if (ball) {
+        const a = t * 2.5 - 0.5 - i * 0.55;
+        d.pos.set(-3.8 + Math.cos(a) * 1.1, -3.2 + Math.sin(a) * 0.9);
+        d.body.rotation.z = 0;
+        d.yOff = Math.abs(Math.sin(t * 8 + i)) * 0.16;
+      } else {
+        d.pos.set(dogHomes[i][0], dogHomes[i][1]);
+        d.body.rotation.z = 0;
+        d.yOff = Math.abs(Math.sin(t * 6 + i)) * 0.08;
+      }
+    });
+  };
   return L;
 };
 
@@ -56364,48 +56639,104 @@ const chaseOn = () => !!S.flags.apprJoined && (S.flags.chaseStep || 0) < 3;
 const chaseLast = () => { const s = S.flags.chaseStep || 0; return s === 0 ? "swamp" : CHASE[s - 1]; };
 function chaseMap(L) {
   // wind swirls where the house is going, feathers where it was
-  const wind = new THREE.Group(); L.scene.add(wind);
+  const wind = group(L, 0, 0.4, 0, 0, { name: "Swirling wind", exit: true, stand: [0, 7], show: () => chaseOn(),
+    run: () => mapGo(CHASE[S.flags.chaseStep || 0]) });
+  put(L, new THREE.CylinderGeometry(1.1, 1.1, 1.2, 10), mat({ color: 0xffffff, alpha: 0.01 }), 0, 0.6, 0, 0, null, wind);
   [0.5, 0.8, 1.1].forEach((r, i) => {
     const pts = []; for (let k = 0; k <= 20; k++) { const a = k / 20 * Math.PI * 1.6; pts.push(new THREE.Vector3(Math.cos(a) * r, 0.4 + i * 0.35, Math.sin(a) * r)); }
     line(L, lineG(pts), 0xffffff, wind);
   });
-  const feathers = new THREE.Group(); L.scene.add(feathers);
+  const showFeath = () => chaseOn() || (!!S.flags.houseGone && !S.flags.apprJoined);
+  const feathers = group(L, 0, 0, 0, 0, { name: "Chicken feathers", stand: [0, 7], show: showFeath,
+    say: () => S.flags.apprJoined
+      ? [["", "Chicken feathers! That's where the witch's walking house WAS."], ["Apprentice", "Look for the wind blowing on the road map: that's where it's going NEXT!"]]
+      : [["", "The witch's house is gone from the swamp! Only chicken feathers are left behind."], ["", "Maybe the apprentice at the swamp knows where the house went!"]] });
+  put(L, boxG(1.3, 0.3, 1.3), mat({ color: 0xffffff, alpha: 0.01 }), 0, 0.1, 0, 0, null, feathers);
   [[-0.5, 0.3, 0.4], [0.4, 0.5, -0.6], [0.1, -0.4, 1.2], [-0.2, -0.6, 2.0]].forEach(([x, z, r]) => {
     const f = put(L, planeG(0.16, 0.42), mat({ color: 0xfff8f0, em: 0.5, side: THREE.DoubleSide }), x, 0.05, z, r, null, feathers); f.rotation.x = -1.3;
   });
   return (t) => {
-    const on = chaseOn();
-    wind.visible = feathers.visible = on;
+    const on = chaseOn(), sf = showFeath();
+    wind.visible = on;
+    feathers.visible = sf;
+    if (sf) {
+      const was = MAP_NODES[chaseLast()].pos;
+      feathers.position.set(was[0] + 0.9, 0, was[1] + 0.5);
+    }
     if (!on) return;
-    const at = MAP_NODES[CHASE[S.flags.chaseStep || 0]].pos, was = MAP_NODES[chaseLast()].pos;
+    const at = MAP_NODES[CHASE[S.flags.chaseStep || 0]].pos;
     wind.position.set(at[0], 0.4, at[1]); wind.rotation.y = t * 3;
-    feathers.position.set(was[0] + 0.9, 0, was[1] + 0.5);
   };
+}
+function chaseCatchLines(id) {
+  const f = S.flags, step = f.chaseStep || 0;
+  if (id === CHASE[step] && step < 2) return [
+    ["", "There it is! The witch's house, on its big chicken legs!"], ["Witch's house", "BAWK! BAWK!"],
+    () => { if (L && L.chaseRun) L.chaseRun(); f.chaseStep = step + 1; save(); },
+    ["", "The house jumps up and runs away, leaving chicken feathers everywhere!"],
+    ["Apprentice", "Quick! Go back to the road map and look for the wind. That's where it's going next!"]];
+  if (id === CHASE[step]) return [
+    ["", "The witch's house! It's resting in front of the secret mansion. It's all tired out from running!"],
+    ["", "The kids climb inside the house..."],
+    () => { if (L && L.escapeRun) L.escapeRun(); f.chaseStep = 3; f.chaseDone = true; save(); },
+    ["", "...but the wizard and the witch run out the back door, into the secret mansion!"],
+    ["Apprentice", "After them!"]];
+  if (id === chaseLast()) return [["", "Chicken feathers! The witch's house was here... but it's gone now."]];
+  return null;
 }
 function chaseArrive(id) {
   if (!chaseOn()) return;
-  const f = S.flags, step = f.chaseStep || 0;
-  let lines = null;
-  if (id === CHASE[step] && step < 2) lines = [["", "There it is! The witch's house, on its big chicken legs!"], ["Witch's house", "BAWK! BAWK!"],
-    ["", "The house jumps up and runs away, leaving chicken feathers everywhere!"], () => { f.chaseStep = step + 1; save(); },
-    ["Apprentice", "Quick! Go back to the road map and look for the wind. That's where it's going next!"]];
-  else if (id === CHASE[step]) lines = [["", "The witch's house! It's resting in front of the secret mansion. It's all tired out from running!"],
-    ["", "The kids climb inside the house..."], ["", "...but the wizard and the witch run out the back door, into the secret mansion!"],
-    () => { f.chaseStep = 3; f.chaseDone = true; save(); }, ["Apprentice", "After them!"]];
-  else if (id === chaseLast()) lines = [["", "Chicken feathers! The witch's house was here... but it's gone now."]];
+  const lines = chaseCatchLines(id);
   if (lines) setTimeout(() => say(lines), 450);
 }
 
-// ---------- the secret mansion: outside, and the music maze ----------
+// ---------- the secret mansion: outside, and the giant xylophone ----------
 function chickenHouse(L, parent) {
   const legM = mat({ color: 0xd8a040 });
-  [-0.6, 0.6].forEach((lx) => {
-    put(L, boxG(0.16, 2.0, 0.16), legM, lx, 0, 0, 0, null, parent);
-    put(L, boxG(0.6, 0.08, 0.15), legM, lx, 0, 0.2, 0, null, parent);
+  const legs = [-0.6, 0.6].map((lx) => {
+    const lg = new THREE.Group(); lg.position.set(lx, 2.0, 0); parent.add(lg);
+    put(L, boxG(0.16, 2.0, 0.16), legM, 0, -2.0, 0, 0, null, lg);
+    put(L, boxG(0.6, 0.08, 0.15), legM, 0, -2.0, 0.2, 0, null, lg);
+    return lg;
   });
+  parent.userData.legs = legs;
   put(L, boxG(2.6, 1.8, 2.0), mat({ color: 0x6a5a40 }), 0, 2.0, 0, 0, null, parent);
   put(L, new THREE.ConeGeometry(1.9, 1.4, 4).rotateY(Math.PI / 4), mat({ color: 0x4a3a2a }), 0, 4.5, 0, 0, null, parent);
   put(L, planeG(0.6, 0.9), mat({ color: 0x2a1a10 }), 0, 2.2, 1.01, 0, null, parent);
+}
+function addChaseSpot(L, id, x, z, ry, stand) {
+  let runT = -1;
+  const isHere = () => chaseOn() && CHASE[S.flags.chaseStep || 0] === id;
+  const wasHere = () => chaseOn() && chaseLast() === id && runT < 0;
+  const ch = group(L, x, 0, z, ry, { name: "The witch's house", stand,
+    show: () => isHere() || runT >= 0,
+    say: () => chaseCatchLines(id) || [["", "The witch's house on its big chicken legs!"]] });
+  chickenHouse(L, ch);
+  const feath = group(L, x, 0, z, 0, { name: "Chicken feathers", stand,
+    show: wasHere,
+    say: () => [["", "Chicken feathers! The witch's house was here... but it jumped up and ran away!"],
+      ["Apprentice", "Check the road map and look for the wind: that's where it's going next!"]] });
+  [[-0.5, 0.2, 0.3], [0.4, -0.2, -0.6], [0.1, 0.4, 1.1], [-0.3, -0.4, 1.8], [0.55, 0.15, -1.2]].forEach(([fx, fz, r]) => {
+    const f = put(L, planeG(0.2, 0.46), mat({ color: 0xfff8f0, em: 0.5, side: THREE.DoubleSide }), fx, 0.05, fz, r, null, feath); f.rotation.x = -1.3;
+  });
+  L.chaseRun = () => { runT = 0; };
+  L.chaseUpd = (t, dt) => {
+    const vis = isHere() || runT >= 0;
+    ch.visible = vis;
+    feath.visible = wasHere();
+    const legs = ch.userData.legs || [];
+    if (runT >= 0) {
+      runT += dt || 0.016;
+      ch.position.set(x + runT * 6.5, Math.abs(Math.sin(runT * 14)) * 0.45, z - runT * 2.5);
+      ch.rotation.y = ry + 0.6;
+      legs.forEach((lg, i) => (lg.rotation.x = Math.sin(runT * 24 + i * Math.PI) * 0.7));
+      if (runT > 1.8) { runT = -1; ch.position.set(x, 0, z); ch.rotation.y = ry; }
+    } else if (vis) {
+      ch.position.set(x, Math.abs(Math.sin(t * 3.5)) * 0.08, z);
+      ch.rotation.y = ry + Math.sin(t * 2) * 0.06;
+      legs.forEach((lg, i) => (lg.rotation.x = Math.sin(t * 3.5 + i * Math.PI) * 0.12));
+    }
+  };
 }
 LV.mansionOut = () => {
   const L = newLevel("mansionOut", "Outside the Secret Mansion");
@@ -56418,9 +56749,17 @@ LV.mansionOut = () => {
   for (let r = 0; r < 2; r++) for (let c = -2; c <= 2; c++) if (c) put(L, planeG(0.7, 1.0), mat({ color: r ? 0xffd070 : 0x1a1418, em: r ? 1 : 0 }), c * 1.6, 1.4 + r * 2.4, 1.52, 0, null, m);
   const door = group(L, 0, 0, -7.45, 0, { name: "Front door of the mansion", go: "mansion", stand: [0, -5.6] });
   put(L, planeG(1.6, 2.6), mat({ map: doorTex("#3a2a20", "#6a5040") }), 0, 0, 0, 0, null, door);
-  const ch = group(L, 5.2, 0, -4.4, -0.5, { name: "The witch's house", stand: [3.8, -2.4], show: () => !!S.flags.chaseDone,
-    say: [["", "The witch's house, resting on its chicken legs. It's empty now."]] });
+  const showHouse = () => !!S.flags.chaseDone || (chaseOn() && CHASE[S.flags.chaseStep || 0] === "mansion");
+  const ch = group(L, 5.2, 0, -4.4, -0.5, { name: "The witch's house", stand: [3.8, -2.4], show: showHouse,
+    say: () => S.flags.chaseDone
+      ? [["", "The witch's house, resting on its chicken legs. It's empty now."]]
+      : chaseCatchLines("mansion") });
   chickenHouse(L, ch);
+  let escT = -1;
+  L.escapeRun = () => { escT = 0; };
+  const escWiz = addChar(L, "wizard", 4.4, -4.4, 1.9);
+  const escWit = addChar(L, "witch", 4.9, -4.2, 1.8);
+  escWiz.show = escWit.show = () => escT >= 0;
   [[-7, -3], [-8, 1], [7.5, 1.5], [-6, 3.5]].forEach(([x, z]) => tree(L, x, z, 1.4, 0x1e2a1e));
   const jeep = group(L, -4.6, 0, 3.4, 0.5, toJeep([-3.4, 2.8])); miniJeep(L, jeep);
   crew(L, -2.6, 2.6);
@@ -56430,11 +56769,25 @@ LV.mansionOut = () => {
   L.light = { amb: 0x50506a, dir: [0.3, -1, -0.5], dirCol: 0x404060, pts: [[[0, 3, -6], 0xffb070, 8], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0x101020, 14, 50]; L.bg = 0x101020;
   cam(L, [0, 4.4, 10.5], [0, 2.2, -4], 56, null, 200);
+  L.update = (t, dt) => {
+    ch.visible = showHouse();
+    if (ch.visible && !S.flags.chaseDone) ch.position.y = Math.abs(Math.sin(t * 2.5)) * 0.06;
+    else ch.position.y = 0;
+    if (escT >= 0) {
+      escT += dt || 0.016;
+      const k = Math.min(1, escT / 1.5);
+      escWiz.pos.set(4.4 * (1 - k), -4.4 + (-7.2 + 4.4) * k);
+      escWit.pos.set(4.9 * (1 - k), -4.2 + (-7.2 + 4.2) * k);
+      escWiz.yOff = Math.abs(Math.sin(escT * 14)) * 0.2;
+      escWit.yOff = Math.abs(Math.sin(escT * 14 + 1)) * 0.2;
+      if (escT > 1.5) escT = -1;
+    }
+  };
   return L;
 };
 const NOTES = { Do: 261.63, Re: 293.66, Mi: 329.63, Fa: 349.23, So: 392.0, La: 440.0, Ti: 493.88 };
+const XYL_NOTES = ["Do", "Re", "Mi", "Fa", "So", "La", "Ti"];
 const SONG = ["Do", "Do", "So", "So", "La", "La", "So", "Fa", "Fa", "Mi", "Mi", "Re", "Re", "Do"];   // Twinkle Twinkle Little Star
-const MUSIC_DOORS = ["Mi", "Ti", "Do", "La", "Re", "So", "Fa"];   // where each door is in the music hall (mixed up, like a maze)
 let AUDIO = null;
 function tone(freq, dur = 0.6) {
   try {
@@ -56451,14 +56804,15 @@ function flashNote(n) {
 }
 function noteVisit(n) {
   tone(NOTES[n]); flashNote(n);
+  if (L && L.hitBar) L.hitBar(n);
   const f = S.flags;
   if (f.songDone) return;
   const step = f.songStep || 0;
   f.songStep = SONG[step] === n ? step + 1 : SONG[0] === n ? 1 : 0;   // a wrong note starts the song over
   if (f.songStep >= SONG.length) {
     f.songDone = true; save();
-    setTimeout(() => { SONG.forEach((s, i) => setTimeout(() => tone(NOTES[s], 0.4), i * 260)); }, 500);
-    say([["", "Twinkle, twinkle, little star... The whole song plays through the mansion!"], ["", "RUMBLE... A staircase comes down from the ceiling!"]]);
+    setTimeout(() => { SONG.forEach((s, i) => setTimeout(() => { tone(NOTES[s], 0.4); if (L && L.hitBar) L.hitBar(s); }, i * 260)); }, 500);
+    say([["", "Twinkle, twinkle, little star... The whole song plays on the giant xylophone!"], ["", "RUMBLE... A staircase comes down from the ceiling!"]]);
     return;
   }
   save();
@@ -56467,34 +56821,8 @@ LV.mansionMusic = () => {
   const L = newLevel("mansionMusic", "Mansion Music Hall");
   const RW = 15, RD = 9, R = [RW, RD];
   room(L, { w: RW, d: RD, h: 4, wall: T.creepyWall, floor: T.oldTile, wallRep: 1.4, floorRep: 0.8, ceil: 0x1a1418, trim: 0x2a1a20 });
-  const spots = [["back", -5.4], ["back", -1.8], ["back", 1.8], ["back", 5.4], ["left", -1.6], ["right", -1.6], ["right", 1.8]];
-  const stand = (side, a) => side === "back" ? [a, -3.4] : side === "left" ? [-6.4, a] : [6.4, a];
-  const cols = { Do: "#e04e39", Re: "#f2913a", Mi: "#f2d23a", Fa: "#5ac85a", So: "#5ab8e8", La: "#6a6ae8", Ti: "#b86ae8" };
-  MUSIC_DOORS.forEach((n, k) => {
-    const [side, a] = spots[k];
-    const g = onWall(L, side, R, doorTex("#3a2a20", cols[n]), 1.15, 2.1, a, 0, { name: `Door to the ${n} room`, exit: true, stand: stand(side, a),
-      run: () => { noteVisit(n); if (n === "Ti") goLevel("mn_Ti", "mansionMusic"); } });
-    onWall(L, side, R, signTex("♪ " + n.toUpperCase(), cols[n]), 0.9, 0.32, a, 2.4, null);
-    g.userData.note = n;
-  });
   onWall(L, "left", R, doorTex("#3a2a20", "#6a5040"), 1.2, 2.2, 2.4, 0, { name: "Door back to the front hall", go: "mansion", stand: [-6.4, 2.4] });
-  const st = spiralStairs(L, 0, 0.2, 4.0, { name: "Staircase up", exit: true, go: "mansionTop", stand: [0.9, 1.4], show: () => !!S.flags.songDone });
-  crew(L, -5.4, 2.6);
-  L.walk = [-6.7, 6.7, -3.5, 3.9]; L.start = [-5.4, 2.6];
-  L.entries = { mansion: [-5.8, 2.4], mn_Ti: stand(...spots[1]), mansionTop: [0.9, 1.6] };
-  L.onEnter = [["", "The wizard and the witch ran in here... a hall full of doors. Each one has a music note on it!"], ["Apprentice", "They must be hiding somewhere up above. Listen... each room plays a note!"]];
-  L.light = { amb: 0x4a4050, dir: [0.3, -1, -0.5], dirCol: 0x403840, pts: [[[0, 3, 0], 0xffb070, 9], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
-  L.fog = [0x0a080a, 12, 28]; L.bg = 0x0a080a;
-  cam(L, [0, 6.6, 10.5], [0, 1, -1], 58);
-  let down = S.flags.songDone ? 1 : 0;
-  L.update = (t, dt) => { if (S.flags.songDone && down < 1) down = Math.min(1, down + (dt || 0.016) * 0.5); st.position.y = (1 - down) * 4; };
-  return L;
-};
-LV.mn_Ti = () => {
-  const L = newLevel("mn_Ti", "Ti Room");
-  const RW = 8, RD = 6, R = [RW, RD];
-  room(L, { w: RW, d: RD, wall: T.creepyWall, floor: T.oldTile, wallRep: 1.4, floorRep: 0.8, ceil: 0x1a1418, trim: 0x6a3a8a });
-  onWall(L, "left", R, doorTex("#3a2a20", "#b86ae8"), 1.15, 2.1, 1.2, 0, { name: "Door back to the music hall", go: "mansionMusic", stand: [-3.4, 1.2] });
+  // the note-sheet hint pinned to the back wall
   const sheet = C(128, 96, (x) => {
     x.fillStyle = "#f2e6c8"; x.fillRect(0, 0, 128, 96);
     x.fillStyle = "#2a1f3d"; x.font = '6px "Press Start 2P", monospace'; x.textAlign = "center"; x.textBaseline = "middle";
@@ -56502,15 +56830,56 @@ LV.mn_Ti = () => {
     x.fillText("DO DO SO SO", 64, 42); x.fillText("LA LA SO", 64, 54); x.fillText("FA FA MI MI", 64, 70); x.fillText("RE RE DO", 64, 82);
     x.fillStyle = "#f2c830"; [[12, 30], [116, 30], [20, 88], [108, 88]].forEach(([a, b]) => x.fillRect(a - 2, b - 2, 4, 4));
   }, false, 4);
-  onWall(L, "back", R, sheet, 1.8, 1.35, 0.4, 1.0, { name: "Map of notes", say: () => [flag("got_songMap"),
+  onWall(L, "back", R, sheet, 1.8, 1.35, -4.4, 1.2, { name: "Map of notes", stand: [-4.4, -3.2], say: () => [flag("got_songMap"),
     () => showPeek(sheet.userData.canvas.toDataURL(), "A map of notes: the song \"Twinkle Twinkle Little Star\".")] }, 0x6a3a8a);
-  crew(L, -2.6, 1.4);
-  L.walk = [-3.4, 3.4, -1.3, 2.4]; L.start = [-2.6, 1.4];
-  L.entries = { mansionMusic: [-2.8, 1.2] };
-  L.onEnter = [["", "The Ti room. There's something pinned to the wall..."]];
-  L.light = { amb: 0x5a5060, dir: [0.3, -1, -0.5], dirCol: 0x403840, pts: [[[0, 2.6, 0], 0xd8b0ff, 7], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
-  L.fog = [0x0a080a, 10, 24]; L.bg = 0x0a080a;
-  cam(L, [0.2, 3.0, 6.2], [0.2, 1.1, -1.2], 54);
+  // the giant xylophone in the middle of the music hall
+  const frame = new THREE.Group(); frame.position.set(0, 0, -1.2); L.scene.add(frame);
+  const woodM = mat({ color: 0x5a3a22 }), goldM = mat({ color: 0xf2c830, em: 0.3 });
+  [[-3.2, -0.75], [3.2, -0.75], [-3.2, 0.75], [3.2, 0.75]].forEach(([lx, lz]) => put(L, boxG(0.18, 0.72, 0.18), woodM, lx, 0, lz, 0, null, frame));
+  put(L, boxG(6.8, 0.12, 0.16), woodM, 0, 0.64, -0.7, 0, null, frame);
+  put(L, boxG(6.8, 0.12, 0.16), woodM, 0, 0.64, 0.7, 0, null, frame);
+  const cols = { Do: "#e04e39", Re: "#f2913a", Mi: "#f2d23a", Fa: "#5ac85a", So: "#5ab8e8", La: "#6a6ae8", Ti: "#b86ae8" };
+  const colsHex = { Do: 0xe04e39, Re: 0xf2913a, Mi: 0xf2d23a, Fa: 0x5ac85a, So: 0x5ab8e8, La: 0x6a6ae8, Ti: 0xb86ae8 };
+  const bars = {}, barHits = {};
+  XYL_NOTES.forEach((n, i) => {
+    const bx = -2.7 + i * 0.9, bz = -1.2, len = 2.0 - i * 0.12;
+    const g = group(L, bx, 0.76, bz, 0, { name: `${n} bar`, stand: [bx, 0.3], run: () => noteVisit(n) });
+    const bm = mat({ color: colsHex[n], em: 0.25 });
+    put(L, boxG(0.72, 0.14, len), bm, 0, 0, 0, 0, null, g);
+    [-len * 0.34, len * 0.34].forEach((rz) => put(L, new THREE.CylinderGeometry(0.05, 0.05, 0.18, 6), goldM, 0, 0, rz, 0, null, g));
+    const lbl = put(L, planeG(0.58, 0.34), mat({ map: label([n.toUpperCase()], 32, 16, cols[n], "#ffffff", "#2a1f3d"), em: 0.5 }), 0, 0.16, len * 0.22, 0, null, g);
+    lbl.rotation.x = -0.9;
+    put(L, planeG(0.66, 0.32), mat({ map: signTex(n.toUpperCase(), cols[n]), em: 0.4 }), 0, 0.55, -len * 0.5 - 0.05, 0, null, g);
+    g.userData.bm = bm;
+    bars[n] = g; barHits[n] = 0;
+  });
+  L.hitBar = (n) => { if (barHits[n] !== undefined) barHits[n] = 0.35; };
+  const st = spiralStairs(L, 4.6, -1.8, 4.0, { name: "Staircase up", exit: true, go: "mansionTop", stand: [3.8, -0.8], show: () => !!S.flags.songDone });
+  crew(L, -5.4, 2.6);
+  L.walk = [-6.7, 6.7, -3.5, 3.9]; L.start = [-5.4, 2.6];
+  L.entries = { mansion: [-5.8, 2.4], mansionTop: [3.8, -0.6] };
+  L.onEnter = [["", "The wizard and the witch ran in here... a music hall with a giant xylophone!"],
+    ["Apprentice", "They must be hiding somewhere up above. Look, each bar on the xylophone has a note on it!"]];
+  L.light = { amb: 0x4a4050, dir: [0.3, -1, -0.5], dirCol: 0x403840, pts: [[[0, 3, 0], 0xffb070, 9], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
+  L.fog = [0x0a080a, 12, 28]; L.bg = 0x0a080a;
+  cam(L, [0, 6.6, 10.5], [0, 1, -1], 58);
+  let down = S.flags.songDone ? 1 : 0;
+  L.update = (t, dt) => {
+    if (S.flags.songDone && down < 1) down = Math.min(1, down + (dt || 0.016) * 0.5);
+    st.position.y = (1 - down) * 4;
+    XYL_NOTES.forEach((n) => {
+      const h = barHits[n] || 0, g = bars[n];
+      if (h > 0) {
+        barHits[n] = Math.max(0, h - (dt || 0.016));
+        const k = h / 0.35;
+        g.position.y = 0.76 - Math.sin(k * Math.PI) * 0.1;
+        g.userData.bm.uniforms.uEm.value = 0.25 + k * 0.75;
+      } else {
+        g.position.y = 0.76;
+        g.userData.bm.uniforms.uEm.value = 0.25;
+      }
+    });
+  };
   return L;
 };
 
@@ -56539,6 +56908,12 @@ LV.mansionTop = () => {
   const wiz = addChar(L, "wizard", -0.9, -2.0, 1.9, { name: "Wizard", stand: [-0.4, -0.6], say: () => topAct() });
   const wit = addChar(L, "witch", 0.9, -2.0, 1.8, { name: "Witch", stand: [0.4, -0.6], say: () => topAct() });
   const ap = addChar(L, "apprentice", 3.4, -0.6, 1.5, { name: "Apprentice", say: [["Apprentice", "They're just lonely. Offer to marry them!"]] });
+  const hearts = [0, 1, 2, 3].map((i) => {
+    const hg = new THREE.Group(); hg.visible = false; L.scene.add(hg);
+    const hm = mat({ color: i % 2 ? 0xff5a8a : 0xff9ab8, em: 0.9 });
+    put(L, boxG(0.16, 0.16, 0.06), hm, 0, 0, 0, Math.PI / 4, null, hg);
+    return hg;
+  });
   crew(L, -2.8, 1.6);
   L.walk = [-4.3, 4.3, -1.0, 2.6]; L.start = [-2.8, 1.6];
   L.entries = { mansionMusic: [-3.2, 1.6] };
@@ -56548,7 +56923,21 @@ LV.mansionTop = () => {
   L.light = { amb: 0x5a5068, dir: [0.3, -1, -0.5], dirCol: 0x403848, pts: [[[0, 3, -1], 0xffd8a0, 8], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0x0a080a, 10, 24]; L.bg = 0x0a080a;
   cam(L, [0, 3.4, 7.4], [0, 1.2, -1.2], 56);
-  L.update = (t) => { if (S.flags.married) { wiz.yOff = wit.yOff = Math.abs(Math.sin(t * 4)) * 0.15; ap.yOff = Math.abs(Math.sin(t * 4 + 1)) * 0.15; } };
+  L.update = (t) => {
+    const m = !!S.flags.married;
+    if (m) {
+      wiz.yOff = wit.yOff = Math.abs(Math.sin(t * 4)) * 0.15;
+      ap.yOff = Math.abs(Math.sin(t * 4 + 1)) * 0.15;
+    }
+    hearts.forEach((h, i) => {
+      h.visible = m;
+      if (m) {
+        const k = (t * 0.6 + i * 0.25) % 1;
+        h.position.set((i - 1.5) * 0.55 + Math.sin(t * 3 + i) * 0.15, 1.8 + k * 1.4, -1.9);
+        h.scale.setScalar(0.6 + Math.sin(k * Math.PI) * 0.6);
+      }
+    });
+  };
   return L;
 };
 
@@ -56571,7 +56960,7 @@ function chaseGoal(here) {
   if (f.married) return "The wizard, the witch, and the apprentice are helping fix the ship!";
   if (f.songDone) return here === "mansionTop" ? "Talk to the wizard and the witch." : "A staircase came down from the ceiling in the music hall. Climb up!";
   if (f.chaseDone) {
-    if (here === "mansionMusic" || here === "mn_Ti") return f.got_songMap ? "Play \"Twinkle Twinkle Little Star\": go into the rooms in the order of the notes on the map." : "Each room plays a note. Is there a hint in one of the rooms?";
+    if (here === "mansionMusic") return f.got_songMap ? "Play \"Twinkle Twinkle Little Star\" on the giant xylophone!" : "A giant xylophone! Check the map of notes on the wall to see which song to play.";
     return here === "mansionOut" || here === "mansion" ? "The wizard and the witch ran into the mansion! Look for them inside." : "Drive to the secret mansion. The wizard and the witch are hiding inside!";
   }
   if (f.apprJoined) return `Catch the witch's walking house! On the road map, look for the wind: that's where it's going next. (Caught ${f.chaseStep || 0} of 3)`;
@@ -56585,7 +56974,7 @@ function chaseGoal(here) {
 // ---------- debug: travel to points in the story (Shift+D, or #debug in the address) ----------
 const CHECKPOINTS = (() => {
   const steps = [
-    ["Ch1: start", "mays", {}, []],
+    ["Ch1: start", "hall", {}, []],
     ["Ch1: Olivia wants her pills", "hub", { metJon: 1, askedOlivia: 1 }, []],
     ["Ch1: engine room, with the map", "engine", { got_tuna: 1, got_opener: 1, got_cheese: 1, engineOpen: 1, gotMap: 1 }, ["map"]],
     ["Ch1: bake the cake", "hub", { gotPills: 1, gavePills: 1, got_flour: 1, got_oil: 1, got_sugar: 1, got_water: 1, got_yeast: 1, got_cacao: 1 }, ["map", "flour", "oil", "sugar", "water", "yeast", "cacao"]],
@@ -56622,7 +57011,7 @@ const CHECKPOINTS = (() => {
   return steps.map(([name, room, add, items]) => { flags = { ...flags, ...add }; return { name, room, flags: { ...flags }, items }; });
 })();
 function debugJump(room, flags, items) {
-  stopSpeaking(); dq = []; box.hidden = true; choosing = false;
+  stopSpeaking(); dq = []; box.hidden = true; choosing = false; spaceCut = false;
   if (flags) {
     S.flags = {}; Object.entries(flags).forEach(([k, v]) => (S.flags[k] = v === 1 ? true : v));
     S.items = items.slice(); S.sel = null; S.rockPat = null; S.rockStep = 0;
@@ -56662,13 +57051,85 @@ const LEVEL_ORDER = [["hall", "Hallway"], ["hub", "Kitchen + Rec"], ["mays", "Ma
 // ---------- game state ----------
 const TEX = {}, RAW = {};
 const built = {};
-let L = null, curCam = null, ps1 = true, castOpen = false, busy = false;
+let L = null, curCam = null, ps1 = true, castOpen = false, busy = false, spaceCut = false;
+
+const SPARKLE_HOTS = {
+  Sugar: () => !S.flags.got_sugar, Oil: () => !S.flags.got_oil, Flour: () => !S.flags.got_flour, Cacao: () => !S.flags.got_cacao,
+  Yeast: () => !S.flags.got_yeast, "Space flower": () => !S.flags.got_flower, "Pile of papers": () => !S.flags.gotBoxKey,
+  "Olivia's memory pills": () => S.flags.gotMap && !S.flags.gotPills, "Locked box": () => !S.flags.gotKeycard && has("boxKey"),
+  Flashlight: () => !S.flags.got_flashlight, Squeegee: () => !S.flags.got_squeegee,
+  "Windshield washer container": () => !S.flags.got_momStone, "Magazine rack": () => !S.flags.got_dadStone,
+  "Sink cupboard": () => !S.flags.got_wifeStone, Toilet: () => L && L.id === "gasRest" && !S.flags.got_marketKey,
+  "Mac and cheese box": () => !S.flags.macMoved, "Straw hat": () => S.flags.ladyFree && !S.flags.got_hat,
+  "Old shirt": () => !S.flags.got_shirt, "Bundle of twigs": () => !S.flags.got_twigs,
+  "Big tree with a hole": () => !S.flags.got_head, Straw: () => !S.flags.got_straw, Clothesline: () => !S.flags.got_robes,
+  Closet: () => !S.flags.got_chart, "Giant picture book": () => !S.flags.got_book,
+  "Stone hair bow": () => has("flashlight") && !S.flags.got_stoneBow, "Stone portal disk": () => has("flashlight") && !S.flags.got_stoneDisk,
+  "Stone soccer ball": () => has("flashlight") && !S.flags.got_stoneBall, "Stone tutu": () => has("flashlight") && !S.flags.got_stoneTutu,
+  "Can of dog food": () => !S.flags.got_dogFood, "Map of notes": () => !S.flags.got_songMap,
+};
+function addRoomSparkles(lv) {
+  const sg = new THREE.OctahedronGeometry(0.065, 0), sm = mat({ color: 0xffe860, em: 1 });
+  const list = [];
+  lv.hots.forEach((o) => {
+    const h = o.userData.hot, check = h && SPARKLE_HOTS[h.name];
+    if (!check) return;
+    const wp = o.getWorldPosition(new THREE.Vector3());
+    const g = new THREE.Group(); g.position.set(wp.x, Math.max(0.35, wp.y + 0.45), wp.z); lv.scene.add(g);
+    const a = new THREE.Mesh(sg, sm), b = new THREE.Mesh(sg, sm);
+    g.add(a, b); list.push({ g, a, b, o, check, seed: list.length * 1.7 });
+  });
+  const burstG = new THREE.OctahedronGeometry(0.07, 0), burstM = mat({ color: 0xfff27a, em: 1 });
+  const burst = Array.from({ length: 6 }, () => { const m = new THREE.Mesh(burstG, burstM); m.visible = false; lv.scene.add(m); return m; });
+  lv.sparkles = { list, burst, burstT: -1, burstPos: new THREE.Vector3() };
+}
+function itemCue() {
+  if (!L || !L.player) return;
+  L.player.hopT = 0.36;
+  if (L.sparkles) {
+    L.sparkles.burstT = 0;
+    const p = L.player.root.position;
+    L.sparkles.burstPos.set(p.x, p.y + 0.7, p.z);
+  }
+}
+function updateSparkles(t, dt) {
+  if (!L || !L.sparkles) return;
+  const sp = L.sparkles;
+  sp.list.forEach((s) => {
+    const h = s.o.userData.hot;
+    const show = (!h.show || h.show()) && s.check();
+    s.g.visible = !!show;
+    if (!show) return;
+    const wp = s.o.getWorldPosition(new THREE.Vector3());
+    s.g.position.set(wp.x, Math.max(0.35, wp.y + 0.42), wp.z);
+    const a1 = t * 2.6 + s.seed;
+    s.a.position.set(Math.cos(a1) * 0.22, Math.sin(t * 3.4 + s.seed) * 0.1, Math.sin(a1) * 0.22);
+    s.b.position.set(-Math.cos(a1) * 0.18, 0.14 + Math.cos(t * 3.1 + s.seed) * 0.08, -Math.sin(a1) * 0.18);
+    const sc = 0.6 + 0.5 * Math.abs(Math.sin(t * 4 + s.seed));
+    s.a.scale.setScalar(sc); s.b.scale.setScalar(1.1 - sc * 0.5);
+    s.a.rotation.y = t * 3; s.b.rotation.x = t * 3;
+  });
+  if (sp.burstT >= 0) {
+    sp.burstT += dt * 1.8;
+    const k = sp.burstT;
+    sp.burst.forEach((m, i) => {
+      if (k >= 1) { m.visible = false; return; }
+      m.visible = true;
+      const ang = (i / 6) * Math.PI * 2 + k * 2;
+      m.position.set(sp.burstPos.x + Math.cos(ang) * k * 0.65, sp.burstPos.y + Math.sin(k * Math.PI) * 0.65 + k * 0.3, sp.burstPos.z + Math.sin(ang) * k * 0.65);
+      m.scale.setScalar(1 - k * 0.7);
+      m.rotation.y = k * 8;
+    });
+    if (k >= 1) sp.burstT = -1;
+  }
+}
 
 function getLevel(id) {
   if (!built[id]) {
     const lv = LV[id]();
     if (!lv.player) lv.player = addChar(lv, "may", ...lv.start, 1.3);
     if (["hub", "mays", "jasins", "olivias", "jons", "hideout", "hall", "engine", "storage", "bath", "playroom", "control"].includes(id)) addClueTrail(lv);
+    addRoomSparkles(lv);
     built[id] = lv;
   }
   return built[id];
@@ -56761,6 +57222,12 @@ function next() {
   }
   const [n, t] = dq.shift();
   box.hidden = false; boxName.textContent = n; fullText = t; boxText.textContent = ""; boxMore.hidden = true;
+  if (L && n) {
+    const who = n.toLowerCase();
+    L.chars.forEach((c) => {
+      if (who === "everyone" || (who.startsWith("jon") && c.key.startsWith("jon")) || (who.startsWith("ping-pong") && c.key === "pingpong") || (who.startsWith("shopkeeper") && c.key === "lady") || c.key === who) c.hopT = 0.26;
+    });
+  }
   speak(n, t);
   let i = 0; clearInterval(typing);
   typing = setInterval(() => { i += 2; boxText.textContent = t.slice(0, i); if (i >= t.length) finishType(); }, 28);
@@ -56867,14 +57334,16 @@ function stepChar(c, dt, t) {
   const y = L.groundY ? L.groundY(c.pos.x, c.pos.y) : 0;
   c.root.position.set(c.pos.x, y, c.pos.y);
   const squash = moving ? 0.05 * Math.sin(c.walkT * 22) : 0.012 * Math.sin(t * 2.2 + c.phase);
-  c.body.position.y = (moving ? Math.abs(Math.sin(c.walkT * 11)) * 0.1 : 0) + (c.yOff || 0);
+  let hop = 0;
+  if (c.hopT > 0) { c.hopT = Math.max(0, c.hopT - dt); hop = Math.sin(Math.min(1, c.hopT / 0.3) * Math.PI) * 0.22; }
+  c.body.position.y = (moving ? Math.abs(Math.sin(c.walkT * 11)) * 0.1 : 0) + (c.yOff || 0) + hop;
   const sm = c.scaleMul ?? 1;
   c.body.scale.set(c.face * (1 + squash * 0.6) * sm, (1 - squash) * sm, 1);
   c.body.rotation.y = Math.atan2(curCam.position.x - c.pos.x, curCam.position.z - c.pos.y);
 }
 const tagV = new THREE.Vector3(), tagC = new THREE.Vector3();
 function placeTags() {
-  const hideAll = talking() || !$("title").hidden;
+  const hideAll = talking() || !$("title").hidden || spaceCut;
   const pp = L.player.pos;
   TAGS.forEach((g) => {
     const h = g.o.userData.hot;
@@ -56944,6 +57413,7 @@ function frame(now) {
   L.hots.forEach((o) => { const h = o.userData.hot; if (h.show) o.visible = !!h.show(); });
   L.chars.forEach((c) => { if (c.show) c.root.visible = !!c.show(); stepChar(c, dt, t); });
   updateClue(t);
+  updateSparkles(t, dt);
   placeTags();
   if (ps1) {
     renderer.setRenderTarget(rt); renderer.render(L.scene, curCam);
@@ -56975,13 +57445,24 @@ $("restartBtn").onclick = (e) => {
   location.reload();
 };
 ["fullscreenchange", "webkitfullscreenchange"].forEach((ev) => document.addEventListener(ev, () => setTimeout(resize, 50)));
-const INTRO = [["", "The kids are flying their giant spaceship to Woolley Mountain... but the ship is stalled in space, and it can't move."],
-  ["", "Jon is the engineer, but he's hiding in his secret hole!"], ["", "May is in her room. Help May get Jon out so he can fix the ship."]];
+const INTRO = [
+  () => { spaceCut = true; },
+  ["", "The kids are flying their giant spaceship to Woolley Mountain..."],
+  ["", "...but the ship is stalled in space, and it can't move!"],
+  ["", "Jon is the engineer, but he's hiding in his secret hole!"],
+  () => { spaceCut = false; },
+  ["", "May is in the hallway. Help May get Jon out so he can fix the ship."],
+];
 function beginGame(fresh) {
   $("title").hidden = true;
-  if (fresh) { S.items = []; S.flags = {}; S.room = "mays"; save(); }
-  goLevel(S.room && LV[S.room] ? S.room : "mays");
-  if (fresh || !S.flags.started) { S.flags.started = true; save(); setTimeout(() => say(INTRO), 450); }
+  if (fresh) { S.items = []; S.flags = {}; S.room = "hall"; save(); }
+  const isIntro = fresh || !S.flags.started;
+  goLevel(S.room && LV[S.room] ? S.room : "hall");
+  if (isIntro) {
+    spaceCut = true;
+    S.flags.started = true; save();
+    setTimeout(() => { spaceCut = true; say(INTRO); }, 450);
+  }
 }
 
 // ---------- start ----------
@@ -57171,7 +57652,7 @@ async function start() {
   $("newBtn").onclick = (e) => { e.stopPropagation(); beginGame(true); };
   initDebug();
   if (SHOT && LV[SHOT]) { $("title").hidden = true; goLevel(SHOT); }
-  if (SHOT) window.__mk = { doMove, kidAct, ownerAct, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
+  if (SHOT) window.__mk = { doMove, kidAct, ownerAct, beginGame, get spaceCut() { return spaceCut; }, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
   requestAnimationFrame(frame);
 }
 start().catch((e) => { msg.hidden = false; msg.textContent = "Something went wrong: " + e.message; console.error(e); });
