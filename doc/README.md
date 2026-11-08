@@ -4,7 +4,7 @@ Title (decided by the kids): **Mysteries of Manor Konsz** — "Mysteries" (plura
 
 Point-and-click story game with magical mysteries (like "Mystery of Woolie Mountain"): clickable scenes, item drawer, using items on things, talking to characters.
 
-Designers: Dandy, Addie, and a teammate.
+Designers: Dandy, Addie, and Oliver.
 
 The notes are split into one file per topic and one file per place, so you only need to open the part you're working on. (They used to be all in `manor-konsz-notes.md`.)
 
