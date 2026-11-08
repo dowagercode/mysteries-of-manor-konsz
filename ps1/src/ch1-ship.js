@@ -251,7 +251,7 @@ LV.hall = () => {
   put(L, planeG(42, 28), mat({ map: T.stars, em: 1, fog: 0, rep: [6, 4], scroll: [0.008, 0] }), 0, -12, -10, 0, null, spGroup);
   put(L, planeG(22, 9.2), mat({ map: T.space, em: 1, fog: 0 }), 0, -3.8, -8.5, 0, null, spGroup);
   const spShip = new THREE.Group(); spShip.position.set(0.4, -0.4, -1.2); spGroup.add(spShip);
-  buildSpaceship(L, spShip, 0.05, 0, 0.75);
+  buildSpaceship(L, spShip, 0.05, 0, 0.75); L.spaceShip = spShip;
   const puffs = [0, 1, 2, 3].map((i) => put(L, new THREE.SphereGeometry(0.28, 6, 4), mat({ color: i % 2 ? 0xd8b0ff : 0xb0b4c8, em: 0.9, fog: 0 }), -3.8, 1.4, 0, 0, null, spShip));
   L.entries.engine = [0, 14.6]; L.entries.control = [0, -14.6];
   L.walk = [-1.1, 1.1, -15.3, 15.3];

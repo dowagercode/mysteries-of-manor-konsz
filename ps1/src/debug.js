@@ -41,7 +41,7 @@ const CHECKPOINTS = (() => {
   return steps.map(([name, room, add, items]) => { flags = { ...flags, ...add }; return { name, room, flags: { ...flags }, items }; });
 })();
 function debugJump(room, flags, items) {
-  stopSpeaking(); dq = []; box.hidden = true; choosing = false; spaceCut = false;
+  stopSpeaking(); dq = []; box.hidden = true; choosing = false; spaceCut = false; spaceWait = false;
   if (flags) {
     S.flags = {}; Object.entries(flags).forEach(([k, v]) => (S.flags[k] = v === 1 ? true : v));
     S.items = items.slice(); S.sel = null; S.rockPat = null; S.rockStep = 0;

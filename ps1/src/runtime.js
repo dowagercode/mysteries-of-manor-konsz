@@ -4,7 +4,7 @@
 // ---------- game state ----------
 const TEX = {}, RAW = {};
 const built = {};
-let L = null, curCam = null, ps1 = true, castOpen = false, busy = false, spaceCut = false;
+let L = null, curCam = null, ps1 = true, castOpen = false, busy = false, spaceCut = false, spaceWait = false;
 
 const SPARKLE_HOTS = {
   Sugar: () => !S.flags.got_sugar, Oil: () => !S.flags.got_oil, Flour: () => !S.flags.got_flour, Cacao: () => !S.flags.got_cacao,
@@ -209,6 +209,7 @@ function act(h) {
   else if (h.say) say(typeof h.say === "function" ? h.say() : h.say);
 }
 canvas.addEventListener("pointermove", (e) => {
+  if (spaceWait && L && curCam && !talking()) { canvas.style.cursor = overShip(e) ? "pointer" : "default"; return; }
   if (!L || !curCam || castOpen || talking() || !$("title").hidden) { $("hover").textContent = ""; return; }
   setNdc(e); const o = pick();
   $("hover").textContent = o ? (S.sel ? `Use ${ITEMS[S.sel][1]} on ${o.userData.hot.name}` : o.userData.hot.name) : "";
@@ -219,6 +220,7 @@ stage.addEventListener("click", (e) => {
   if (!L || !curCam || castOpen || busy || !$("title").hidden) return;
   $("hover").textContent = "";
   if (talking()) { advance(); return; }
+  if (spaceWait) { if (overShip(e)) enterShip(); else $("hover").textContent = "Click the spaceship to go inside!"; return; }
   if (e.target !== canvas) return;
   setNdc(e);
   const o = pick();
@@ -250,13 +252,13 @@ function renderExits() {
   if (!L) return;
   L.hots.filter((o) => isExit(o.userData.hot)).forEach((o) => {
     const t = document.createElement("div"); t.className = "tag"; t.dataset.name = exitName(o.userData.hot);
-    t.onclick = (e) => { e.stopPropagation(); if (!talking() && !busy) useHot(o); };
+    t.onclick = (e) => { e.stopPropagation(); if (!talking() && !busy && !spaceWait) useHot(o); };
     $("tags").appendChild(t); TAGS.push({ o, t, arrow: null });
   });
   L.hots.filter((o) => isExit(o.userData.hot) && (!o.userData.hot.show || o.userData.hot.show())).forEach((o) => {
     const h = o.userData.hot, b = document.createElement("button");
     b.textContent = exitName(h);
-    b.onclick = () => { if (!talking() && !busy && $("title").hidden) useHot(o); };
+    b.onclick = () => { if (!talking() && !busy && !spaceWait && $("title").hidden) useHot(o); };
     row.appendChild(b);
   });
 }
@@ -403,9 +405,17 @@ const INTRO = [
   ["", "The kids are flying their giant spaceship to Woolley Mountain..."],
   ["", "...but the ship is stalled in space, and it can't move!"],
   ["", "Jon is the engineer, but he's hiding in his secret hole!"],
-  () => { spaceCut = false; },
-  ["", "May is in the hallway. Help May get Jon out so he can fix the ship."],
+  () => { spaceWait = true; $("hover").textContent = "Click the spaceship to go inside!"; },
 ];
+// Intro ends in space; clicking the ship cuts to May in the hallway.
+function enterShip() {
+  spaceWait = false; spaceCut = false; $("hover").textContent = ""; canvas.style.cursor = "default";
+  say([["", "May is in the hallway. Help May get Jon out so he can fix the ship."]]);
+}
+function overShip(e) {
+  setNdc(e); ray.setFromCamera(ndc, curCam);
+  return !!(L.spaceShip && ray.intersectObject(L.spaceShip, true).length);
+}
 function beginGame(fresh) {
   $("title").hidden = true;
   if (fresh) { S.items = []; S.flags = {}; S.room = "hall"; save(); }
@@ -605,7 +615,7 @@ async function start() {
   $("newBtn").onclick = (e) => { e.stopPropagation(); beginGame(true); };
   initDebug();
   if (SHOT && LV[SHOT]) { $("title").hidden = true; goLevel(SHOT); }
-  if (SHOT) window.__mk = { doMove, kidAct, ownerAct, beginGame, get spaceCut() { return spaceCut; }, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
+  if (SHOT) window.__mk = { doMove, kidAct, ownerAct, beginGame, get spaceCut() { return spaceCut; }, get spaceWait() { return spaceWait; }, enterShip, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
   requestAnimationFrame(frame);
 }
 start().catch((e) => { msg.hidden = false; msg.textContent = "Something went wrong: " + e.message; console.error(e); });
