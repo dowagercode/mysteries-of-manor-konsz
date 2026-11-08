@@ -46,48 +46,104 @@ const chaseOn = () => !!S.flags.apprJoined && (S.flags.chaseStep || 0) < 3;
 const chaseLast = () => { const s = S.flags.chaseStep || 0; return s === 0 ? "swamp" : CHASE[s - 1]; };
 function chaseMap(L) {
   // wind swirls where the house is going, feathers where it was
-  const wind = new THREE.Group(); L.scene.add(wind);
+  const wind = group(L, 0, 0.4, 0, 0, { name: "Swirling wind", exit: true, stand: [0, 7], show: () => chaseOn(),
+    run: () => mapGo(CHASE[S.flags.chaseStep || 0]) });
+  put(L, new THREE.CylinderGeometry(1.1, 1.1, 1.2, 10), mat({ color: 0xffffff, alpha: 0.01 }), 0, 0.6, 0, 0, null, wind);
   [0.5, 0.8, 1.1].forEach((r, i) => {
     const pts = []; for (let k = 0; k <= 20; k++) { const a = k / 20 * Math.PI * 1.6; pts.push(new THREE.Vector3(Math.cos(a) * r, 0.4 + i * 0.35, Math.sin(a) * r)); }
     line(L, lineG(pts), 0xffffff, wind);
   });
-  const feathers = new THREE.Group(); L.scene.add(feathers);
+  const showFeath = () => chaseOn() || (!!S.flags.houseGone && !S.flags.apprJoined);
+  const feathers = group(L, 0, 0, 0, 0, { name: "Chicken feathers", stand: [0, 7], show: showFeath,
+    say: () => S.flags.apprJoined
+      ? [["", "Chicken feathers! That's where the witch's walking house WAS."], ["Apprentice", "Look for the wind blowing on the road map: that's where it's going NEXT!"]]
+      : [["", "The witch's house is gone from the swamp! Only chicken feathers are left behind."], ["", "Maybe the apprentice at the swamp knows where the house went!"]] });
+  put(L, boxG(1.3, 0.3, 1.3), mat({ color: 0xffffff, alpha: 0.01 }), 0, 0.1, 0, 0, null, feathers);
   [[-0.5, 0.3, 0.4], [0.4, 0.5, -0.6], [0.1, -0.4, 1.2], [-0.2, -0.6, 2.0]].forEach(([x, z, r]) => {
     const f = put(L, planeG(0.16, 0.42), mat({ color: 0xfff8f0, em: 0.5, side: THREE.DoubleSide }), x, 0.05, z, r, null, feathers); f.rotation.x = -1.3;
   });
   return (t) => {
-    const on = chaseOn();
-    wind.visible = feathers.visible = on;
+    const on = chaseOn(), sf = showFeath();
+    wind.visible = on;
+    feathers.visible = sf;
+    if (sf) {
+      const was = MAP_NODES[chaseLast()].pos;
+      feathers.position.set(was[0] + 0.9, 0, was[1] + 0.5);
+    }
     if (!on) return;
-    const at = MAP_NODES[CHASE[S.flags.chaseStep || 0]].pos, was = MAP_NODES[chaseLast()].pos;
+    const at = MAP_NODES[CHASE[S.flags.chaseStep || 0]].pos;
     wind.position.set(at[0], 0.4, at[1]); wind.rotation.y = t * 3;
-    feathers.position.set(was[0] + 0.9, 0, was[1] + 0.5);
   };
+}
+function chaseCatchLines(id) {
+  const f = S.flags, step = f.chaseStep || 0;
+  if (id === CHASE[step] && step < 2) return [
+    ["", "There it is! The witch's house, on its big chicken legs!"], ["Witch's house", "BAWK! BAWK!"],
+    () => { if (L && L.chaseRun) L.chaseRun(); f.chaseStep = step + 1; save(); },
+    ["", "The house jumps up and runs away, leaving chicken feathers everywhere!"],
+    ["Apprentice", "Quick! Go back to the road map and look for the wind. That's where it's going next!"]];
+  if (id === CHASE[step]) return [
+    ["", "The witch's house! It's resting in front of the secret mansion. It's all tired out from running!"],
+    ["", "The kids climb inside the house..."],
+    () => { if (L && L.escapeRun) L.escapeRun(); f.chaseStep = 3; f.chaseDone = true; save(); },
+    ["", "...but the wizard and the witch run out the back door, into the secret mansion!"],
+    ["Apprentice", "After them!"]];
+  if (id === chaseLast()) return [["", "Chicken feathers! The witch's house was here... but it's gone now."]];
+  return null;
 }
 function chaseArrive(id) {
   if (!chaseOn()) return;
-  const f = S.flags, step = f.chaseStep || 0;
-  let lines = null;
-  if (id === CHASE[step] && step < 2) lines = [["", "There it is! The witch's house, on its big chicken legs!"], ["Witch's house", "BAWK! BAWK!"],
-    ["", "The house jumps up and runs away, leaving chicken feathers everywhere!"], () => { f.chaseStep = step + 1; save(); },
-    ["Apprentice", "Quick! Go back to the road map and look for the wind. That's where it's going next!"]];
-  else if (id === CHASE[step]) lines = [["", "The witch's house! It's resting in front of the secret mansion. It's all tired out from running!"],
-    ["", "The kids climb inside the house..."], ["", "...but the wizard and the witch run out the back door, into the secret mansion!"],
-    () => { f.chaseStep = 3; f.chaseDone = true; save(); }, ["Apprentice", "After them!"]];
-  else if (id === chaseLast()) lines = [["", "Chicken feathers! The witch's house was here... but it's gone now."]];
+  const lines = chaseCatchLines(id);
   if (lines) setTimeout(() => say(lines), 450);
 }
 
-// ---------- the secret mansion: outside, and the music maze ----------
+// ---------- the secret mansion: outside, and the giant xylophone ----------
 function chickenHouse(L, parent) {
   const legM = mat({ color: 0xd8a040 });
-  [-0.6, 0.6].forEach((lx) => {
-    put(L, boxG(0.16, 2.0, 0.16), legM, lx, 0, 0, 0, null, parent);
-    put(L, boxG(0.6, 0.08, 0.15), legM, lx, 0, 0.2, 0, null, parent);
+  const legs = [-0.6, 0.6].map((lx) => {
+    const lg = new THREE.Group(); lg.position.set(lx, 2.0, 0); parent.add(lg);
+    put(L, boxG(0.16, 2.0, 0.16), legM, 0, -2.0, 0, 0, null, lg);
+    put(L, boxG(0.6, 0.08, 0.15), legM, 0, -2.0, 0.2, 0, null, lg);
+    return lg;
   });
+  parent.userData.legs = legs;
   put(L, boxG(2.6, 1.8, 2.0), mat({ color: 0x6a5a40 }), 0, 2.0, 0, 0, null, parent);
   put(L, new THREE.ConeGeometry(1.9, 1.4, 4).rotateY(Math.PI / 4), mat({ color: 0x4a3a2a }), 0, 4.5, 0, 0, null, parent);
   put(L, planeG(0.6, 0.9), mat({ color: 0x2a1a10 }), 0, 2.2, 1.01, 0, null, parent);
+}
+function addChaseSpot(L, id, x, z, ry, stand) {
+  let runT = -1;
+  const isHere = () => chaseOn() && CHASE[S.flags.chaseStep || 0] === id;
+  const wasHere = () => chaseOn() && chaseLast() === id && runT < 0;
+  const ch = group(L, x, 0, z, ry, { name: "The witch's house", stand,
+    show: () => isHere() || runT >= 0,
+    say: () => chaseCatchLines(id) || [["", "The witch's house on its big chicken legs!"]] });
+  chickenHouse(L, ch);
+  const feath = group(L, x, 0, z, 0, { name: "Chicken feathers", stand,
+    show: wasHere,
+    say: () => [["", "Chicken feathers! The witch's house was here... but it jumped up and ran away!"],
+      ["Apprentice", "Check the road map and look for the wind: that's where it's going next!"]] });
+  [[-0.5, 0.2, 0.3], [0.4, -0.2, -0.6], [0.1, 0.4, 1.1], [-0.3, -0.4, 1.8], [0.55, 0.15, -1.2]].forEach(([fx, fz, r]) => {
+    const f = put(L, planeG(0.2, 0.46), mat({ color: 0xfff8f0, em: 0.5, side: THREE.DoubleSide }), fx, 0.05, fz, r, null, feath); f.rotation.x = -1.3;
+  });
+  L.chaseRun = () => { runT = 0; };
+  L.chaseUpd = (t, dt) => {
+    const vis = isHere() || runT >= 0;
+    ch.visible = vis;
+    feath.visible = wasHere();
+    const legs = ch.userData.legs || [];
+    if (runT >= 0) {
+      runT += dt || 0.016;
+      ch.position.set(x + runT * 6.5, Math.abs(Math.sin(runT * 14)) * 0.45, z - runT * 2.5);
+      ch.rotation.y = ry + 0.6;
+      legs.forEach((lg, i) => (lg.rotation.x = Math.sin(runT * 24 + i * Math.PI) * 0.7));
+      if (runT > 1.8) { runT = -1; ch.position.set(x, 0, z); ch.rotation.y = ry; }
+    } else if (vis) {
+      ch.position.set(x, Math.abs(Math.sin(t * 3.5)) * 0.08, z);
+      ch.rotation.y = ry + Math.sin(t * 2) * 0.06;
+      legs.forEach((lg, i) => (lg.rotation.x = Math.sin(t * 3.5 + i * Math.PI) * 0.12));
+    }
+  };
 }
 LV.mansionOut = () => {
   const L = newLevel("mansionOut", "Outside the Secret Mansion");
@@ -100,9 +156,17 @@ LV.mansionOut = () => {
   for (let r = 0; r < 2; r++) for (let c = -2; c <= 2; c++) if (c) put(L, planeG(0.7, 1.0), mat({ color: r ? 0xffd070 : 0x1a1418, em: r ? 1 : 0 }), c * 1.6, 1.4 + r * 2.4, 1.52, 0, null, m);
   const door = group(L, 0, 0, -7.45, 0, { name: "Front door of the mansion", go: "mansion", stand: [0, -5.6] });
   put(L, planeG(1.6, 2.6), mat({ map: doorTex("#3a2a20", "#6a5040") }), 0, 0, 0, 0, null, door);
-  const ch = group(L, 5.2, 0, -4.4, -0.5, { name: "The witch's house", stand: [3.8, -2.4], show: () => !!S.flags.chaseDone,
-    say: [["", "The witch's house, resting on its chicken legs. It's empty now."]] });
+  const showHouse = () => !!S.flags.chaseDone || (chaseOn() && CHASE[S.flags.chaseStep || 0] === "mansion");
+  const ch = group(L, 5.2, 0, -4.4, -0.5, { name: "The witch's house", stand: [3.8, -2.4], show: showHouse,
+    say: () => S.flags.chaseDone
+      ? [["", "The witch's house, resting on its chicken legs. It's empty now."]]
+      : chaseCatchLines("mansion") });
   chickenHouse(L, ch);
+  let escT = -1;
+  L.escapeRun = () => { escT = 0; };
+  const escWiz = addChar(L, "wizard", 4.4, -4.4, 1.9);
+  const escWit = addChar(L, "witch", 4.9, -4.2, 1.8);
+  escWiz.show = escWit.show = () => escT >= 0;
   [[-7, -3], [-8, 1], [7.5, 1.5], [-6, 3.5]].forEach(([x, z]) => tree(L, x, z, 1.4, 0x1e2a1e));
   const jeep = group(L, -4.6, 0, 3.4, 0.5, toJeep([-3.4, 2.8])); miniJeep(L, jeep);
   crew(L, -2.6, 2.6);
@@ -112,11 +176,25 @@ LV.mansionOut = () => {
   L.light = { amb: 0x50506a, dir: [0.3, -1, -0.5], dirCol: 0x404060, pts: [[[0, 3, -6], 0xffb070, 8], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0x101020, 14, 50]; L.bg = 0x101020;
   cam(L, [0, 4.4, 10.5], [0, 2.2, -4], 56, null, 200);
+  L.update = (t, dt) => {
+    ch.visible = showHouse();
+    if (ch.visible && !S.flags.chaseDone) ch.position.y = Math.abs(Math.sin(t * 2.5)) * 0.06;
+    else ch.position.y = 0;
+    if (escT >= 0) {
+      escT += dt || 0.016;
+      const k = Math.min(1, escT / 1.5);
+      escWiz.pos.set(4.4 * (1 - k), -4.4 + (-7.2 + 4.4) * k);
+      escWit.pos.set(4.9 * (1 - k), -4.2 + (-7.2 + 4.2) * k);
+      escWiz.yOff = Math.abs(Math.sin(escT * 14)) * 0.2;
+      escWit.yOff = Math.abs(Math.sin(escT * 14 + 1)) * 0.2;
+      if (escT > 1.5) escT = -1;
+    }
+  };
   return L;
 };
 const NOTES = { Do: 261.63, Re: 293.66, Mi: 329.63, Fa: 349.23, So: 392.0, La: 440.0, Ti: 493.88 };
+const XYL_NOTES = ["Do", "Re", "Mi", "Fa", "So", "La", "Ti"];
 const SONG = ["Do", "Do", "So", "So", "La", "La", "So", "Fa", "Fa", "Mi", "Mi", "Re", "Re", "Do"];   // Twinkle Twinkle Little Star
-const MUSIC_DOORS = ["Mi", "Ti", "Do", "La", "Re", "So", "Fa"];   // where each door is in the music hall (mixed up, like a maze)
 let AUDIO = null;
 function tone(freq, dur = 0.6) {
   try {
@@ -133,14 +211,15 @@ function flashNote(n) {
 }
 function noteVisit(n) {
   tone(NOTES[n]); flashNote(n);
+  if (L && L.hitBar) L.hitBar(n);
   const f = S.flags;
   if (f.songDone) return;
   const step = f.songStep || 0;
   f.songStep = SONG[step] === n ? step + 1 : SONG[0] === n ? 1 : 0;   // a wrong note starts the song over
   if (f.songStep >= SONG.length) {
     f.songDone = true; save();
-    setTimeout(() => { SONG.forEach((s, i) => setTimeout(() => tone(NOTES[s], 0.4), i * 260)); }, 500);
-    say([["", "Twinkle, twinkle, little star... The whole song plays through the mansion!"], ["", "RUMBLE... A staircase comes down from the ceiling!"]]);
+    setTimeout(() => { SONG.forEach((s, i) => setTimeout(() => { tone(NOTES[s], 0.4); if (L && L.hitBar) L.hitBar(s); }, i * 260)); }, 500);
+    say([["", "Twinkle, twinkle, little star... The whole song plays on the giant xylophone!"], ["", "RUMBLE... A staircase comes down from the ceiling!"]]);
     return;
   }
   save();
@@ -149,34 +228,8 @@ LV.mansionMusic = () => {
   const L = newLevel("mansionMusic", "Mansion Music Hall");
   const RW = 15, RD = 9, R = [RW, RD];
   room(L, { w: RW, d: RD, h: 4, wall: T.creepyWall, floor: T.oldTile, wallRep: 1.4, floorRep: 0.8, ceil: 0x1a1418, trim: 0x2a1a20 });
-  const spots = [["back", -5.4], ["back", -1.8], ["back", 1.8], ["back", 5.4], ["left", -1.6], ["right", -1.6], ["right", 1.8]];
-  const stand = (side, a) => side === "back" ? [a, -3.4] : side === "left" ? [-6.4, a] : [6.4, a];
-  const cols = { Do: "#e04e39", Re: "#f2913a", Mi: "#f2d23a", Fa: "#5ac85a", So: "#5ab8e8", La: "#6a6ae8", Ti: "#b86ae8" };
-  MUSIC_DOORS.forEach((n, k) => {
-    const [side, a] = spots[k];
-    const g = onWall(L, side, R, doorTex("#3a2a20", cols[n]), 1.15, 2.1, a, 0, { name: `Door to the ${n} room`, exit: true, stand: stand(side, a),
-      run: () => { noteVisit(n); if (n === "Ti") goLevel("mn_Ti", "mansionMusic"); } });
-    onWall(L, side, R, signTex("♪ " + n.toUpperCase(), cols[n]), 0.9, 0.32, a, 2.4, null);
-    g.userData.note = n;
-  });
   onWall(L, "left", R, doorTex("#3a2a20", "#6a5040"), 1.2, 2.2, 2.4, 0, { name: "Door back to the front hall", go: "mansion", stand: [-6.4, 2.4] });
-  const st = spiralStairs(L, 0, 0.2, 4.0, { name: "Staircase up", exit: true, go: "mansionTop", stand: [0.9, 1.4], show: () => !!S.flags.songDone });
-  crew(L, -5.4, 2.6);
-  L.walk = [-6.7, 6.7, -3.5, 3.9]; L.start = [-5.4, 2.6];
-  L.entries = { mansion: [-5.8, 2.4], mn_Ti: stand(...spots[1]), mansionTop: [0.9, 1.6] };
-  L.onEnter = [["", "The wizard and the witch ran in here... a hall full of doors. Each one has a music note on it!"], ["Apprentice", "They must be hiding somewhere up above. Listen... each room plays a note!"]];
-  L.light = { amb: 0x4a4050, dir: [0.3, -1, -0.5], dirCol: 0x403840, pts: [[[0, 3, 0], 0xffb070, 9], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
-  L.fog = [0x0a080a, 12, 28]; L.bg = 0x0a080a;
-  cam(L, [0, 6.6, 10.5], [0, 1, -1], 58);
-  let down = S.flags.songDone ? 1 : 0;
-  L.update = (t, dt) => { if (S.flags.songDone && down < 1) down = Math.min(1, down + (dt || 0.016) * 0.5); st.position.y = (1 - down) * 4; };
-  return L;
-};
-LV.mn_Ti = () => {
-  const L = newLevel("mn_Ti", "Ti Room");
-  const RW = 8, RD = 6, R = [RW, RD];
-  room(L, { w: RW, d: RD, wall: T.creepyWall, floor: T.oldTile, wallRep: 1.4, floorRep: 0.8, ceil: 0x1a1418, trim: 0x6a3a8a });
-  onWall(L, "left", R, doorTex("#3a2a20", "#b86ae8"), 1.15, 2.1, 1.2, 0, { name: "Door back to the music hall", go: "mansionMusic", stand: [-3.4, 1.2] });
+  // the note-sheet hint pinned to the back wall
   const sheet = C(128, 96, (x) => {
     x.fillStyle = "#f2e6c8"; x.fillRect(0, 0, 128, 96);
     x.fillStyle = "#2a1f3d"; x.font = '6px "Press Start 2P", monospace'; x.textAlign = "center"; x.textBaseline = "middle";
@@ -184,15 +237,56 @@ LV.mn_Ti = () => {
     x.fillText("DO DO SO SO", 64, 42); x.fillText("LA LA SO", 64, 54); x.fillText("FA FA MI MI", 64, 70); x.fillText("RE RE DO", 64, 82);
     x.fillStyle = "#f2c830"; [[12, 30], [116, 30], [20, 88], [108, 88]].forEach(([a, b]) => x.fillRect(a - 2, b - 2, 4, 4));
   }, false, 4);
-  onWall(L, "back", R, sheet, 1.8, 1.35, 0.4, 1.0, { name: "Map of notes", say: () => [flag("got_songMap"),
+  onWall(L, "back", R, sheet, 1.8, 1.35, -4.4, 1.2, { name: "Map of notes", stand: [-4.4, -3.2], say: () => [flag("got_songMap"),
     () => showPeek(sheet.userData.canvas.toDataURL(), "A map of notes: the song \"Twinkle Twinkle Little Star\".")] }, 0x6a3a8a);
-  crew(L, -2.6, 1.4);
-  L.walk = [-3.4, 3.4, -1.3, 2.4]; L.start = [-2.6, 1.4];
-  L.entries = { mansionMusic: [-2.8, 1.2] };
-  L.onEnter = [["", "The Ti room. There's something pinned to the wall..."]];
-  L.light = { amb: 0x5a5060, dir: [0.3, -1, -0.5], dirCol: 0x403840, pts: [[[0, 2.6, 0], 0xd8b0ff, 7], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
-  L.fog = [0x0a080a, 10, 24]; L.bg = 0x0a080a;
-  cam(L, [0.2, 3.0, 6.2], [0.2, 1.1, -1.2], 54);
+  // the giant xylophone in the middle of the music hall
+  const frame = new THREE.Group(); frame.position.set(0, 0, -1.2); L.scene.add(frame);
+  const woodM = mat({ color: 0x5a3a22 }), goldM = mat({ color: 0xf2c830, em: 0.3 });
+  [[-3.2, -0.75], [3.2, -0.75], [-3.2, 0.75], [3.2, 0.75]].forEach(([lx, lz]) => put(L, boxG(0.18, 0.72, 0.18), woodM, lx, 0, lz, 0, null, frame));
+  put(L, boxG(6.8, 0.12, 0.16), woodM, 0, 0.64, -0.7, 0, null, frame);
+  put(L, boxG(6.8, 0.12, 0.16), woodM, 0, 0.64, 0.7, 0, null, frame);
+  const cols = { Do: "#e04e39", Re: "#f2913a", Mi: "#f2d23a", Fa: "#5ac85a", So: "#5ab8e8", La: "#6a6ae8", Ti: "#b86ae8" };
+  const colsHex = { Do: 0xe04e39, Re: 0xf2913a, Mi: 0xf2d23a, Fa: 0x5ac85a, So: 0x5ab8e8, La: 0x6a6ae8, Ti: 0xb86ae8 };
+  const bars = {}, barHits = {};
+  XYL_NOTES.forEach((n, i) => {
+    const bx = -2.7 + i * 0.9, bz = -1.2, len = 2.0 - i * 0.12;
+    const g = group(L, bx, 0.76, bz, 0, { name: `${n} bar`, stand: [bx, 0.3], run: () => noteVisit(n) });
+    const bm = mat({ color: colsHex[n], em: 0.25 });
+    put(L, boxG(0.72, 0.14, len), bm, 0, 0, 0, 0, null, g);
+    [-len * 0.34, len * 0.34].forEach((rz) => put(L, new THREE.CylinderGeometry(0.05, 0.05, 0.18, 6), goldM, 0, 0, rz, 0, null, g));
+    const lbl = put(L, planeG(0.58, 0.34), mat({ map: label([n.toUpperCase()], 32, 16, cols[n], "#ffffff", "#2a1f3d"), em: 0.5 }), 0, 0.16, len * 0.22, 0, null, g);
+    lbl.rotation.x = -0.9;
+    put(L, planeG(0.66, 0.32), mat({ map: signTex(n.toUpperCase(), cols[n]), em: 0.4 }), 0, 0.55, -len * 0.5 - 0.05, 0, null, g);
+    g.userData.bm = bm;
+    bars[n] = g; barHits[n] = 0;
+  });
+  L.hitBar = (n) => { if (barHits[n] !== undefined) barHits[n] = 0.35; };
+  const st = spiralStairs(L, 4.6, -1.8, 4.0, { name: "Staircase up", exit: true, go: "mansionTop", stand: [3.8, -0.8], show: () => !!S.flags.songDone });
+  crew(L, -5.4, 2.6);
+  L.walk = [-6.7, 6.7, -3.5, 3.9]; L.start = [-5.4, 2.6];
+  L.entries = { mansion: [-5.8, 2.4], mansionTop: [3.8, -0.6] };
+  L.onEnter = [["", "The wizard and the witch ran in here... a music hall with a giant xylophone!"],
+    ["Apprentice", "They must be hiding somewhere up above. Look, each bar on the xylophone has a note on it!"]];
+  L.light = { amb: 0x4a4050, dir: [0.3, -1, -0.5], dirCol: 0x403840, pts: [[[0, 3, 0], 0xffb070, 9], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
+  L.fog = [0x0a080a, 12, 28]; L.bg = 0x0a080a;
+  cam(L, [0, 6.6, 10.5], [0, 1, -1], 58);
+  let down = S.flags.songDone ? 1 : 0;
+  L.update = (t, dt) => {
+    if (S.flags.songDone && down < 1) down = Math.min(1, down + (dt || 0.016) * 0.5);
+    st.position.y = (1 - down) * 4;
+    XYL_NOTES.forEach((n) => {
+      const h = barHits[n] || 0, g = bars[n];
+      if (h > 0) {
+        barHits[n] = Math.max(0, h - (dt || 0.016));
+        const k = h / 0.35;
+        g.position.y = 0.76 - Math.sin(k * Math.PI) * 0.1;
+        g.userData.bm.uniforms.uEm.value = 0.25 + k * 0.75;
+      } else {
+        g.position.y = 0.76;
+        g.userData.bm.uniforms.uEm.value = 0.25;
+      }
+    });
+  };
   return L;
 };
 
@@ -221,6 +315,12 @@ LV.mansionTop = () => {
   const wiz = addChar(L, "wizard", -0.9, -2.0, 1.9, { name: "Wizard", stand: [-0.4, -0.6], say: () => topAct() });
   const wit = addChar(L, "witch", 0.9, -2.0, 1.8, { name: "Witch", stand: [0.4, -0.6], say: () => topAct() });
   const ap = addChar(L, "apprentice", 3.4, -0.6, 1.5, { name: "Apprentice", say: [["Apprentice", "They're just lonely. Offer to marry them!"]] });
+  const hearts = [0, 1, 2, 3].map((i) => {
+    const hg = new THREE.Group(); hg.visible = false; L.scene.add(hg);
+    const hm = mat({ color: i % 2 ? 0xff5a8a : 0xff9ab8, em: 0.9 });
+    put(L, boxG(0.16, 0.16, 0.06), hm, 0, 0, 0, Math.PI / 4, null, hg);
+    return hg;
+  });
   crew(L, -2.8, 1.6);
   L.walk = [-4.3, 4.3, -1.0, 2.6]; L.start = [-2.8, 1.6];
   L.entries = { mansionMusic: [-3.2, 1.6] };
@@ -230,7 +330,21 @@ LV.mansionTop = () => {
   L.light = { amb: 0x5a5068, dir: [0.3, -1, -0.5], dirCol: 0x403848, pts: [[[0, 3, -1], 0xffd8a0, 8], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0x0a080a, 10, 24]; L.bg = 0x0a080a;
   cam(L, [0, 3.4, 7.4], [0, 1.2, -1.2], 56);
-  L.update = (t) => { if (S.flags.married) { wiz.yOff = wit.yOff = Math.abs(Math.sin(t * 4)) * 0.15; ap.yOff = Math.abs(Math.sin(t * 4 + 1)) * 0.15; } };
+  L.update = (t) => {
+    const m = !!S.flags.married;
+    if (m) {
+      wiz.yOff = wit.yOff = Math.abs(Math.sin(t * 4)) * 0.15;
+      ap.yOff = Math.abs(Math.sin(t * 4 + 1)) * 0.15;
+    }
+    hearts.forEach((h, i) => {
+      h.visible = m;
+      if (m) {
+        const k = (t * 0.6 + i * 0.25) % 1;
+        h.position.set((i - 1.5) * 0.55 + Math.sin(t * 3 + i) * 0.15, 1.8 + k * 1.4, -1.9);
+        h.scale.setScalar(0.6 + Math.sin(k * Math.PI) * 0.6);
+      }
+    });
+  };
   return L;
 };
 
@@ -253,7 +367,7 @@ function chaseGoal(here) {
   if (f.married) return "The wizard, the witch, and the apprentice are helping fix the ship!";
   if (f.songDone) return here === "mansionTop" ? "Talk to the wizard and the witch." : "A staircase came down from the ceiling in the music hall. Climb up!";
   if (f.chaseDone) {
-    if (here === "mansionMusic" || here === "mn_Ti") return f.got_songMap ? "Play \"Twinkle Twinkle Little Star\": go into the rooms in the order of the notes on the map." : "Each room plays a note. Is there a hint in one of the rooms?";
+    if (here === "mansionMusic") return f.got_songMap ? "Play \"Twinkle Twinkle Little Star\" on the giant xylophone!" : "A giant xylophone! Check the map of notes on the wall to see which song to play.";
     return here === "mansionOut" || here === "mansion" ? "The wizard and the witch ran into the mansion! Look for them inside." : "Drive to the secret mansion. The wizard and the witch are hiding inside!";
   }
   if (f.apprJoined) return `Catch the witch's walking house! On the road map, look for the wind: that's where it's going next. (Caught ${f.chaseStep || 0} of 3)`;

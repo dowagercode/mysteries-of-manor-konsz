@@ -16,8 +16,12 @@
     await w(80); await drain(pick); await w(800); await drain(pick);
   };
   const step = (n) => log.push(n + ' => ' + M.goal() + (M.sideGoal() ? ' | ' + M.sideGoal() : '') + ' [' + M.S.items.join(',') + ']');
-  localStorage.clear(); Object.assign(M.S, { items: [], flags: {} });
-  step('start');
+  localStorage.clear();
+  M.beginGame(true);
+  await w(550);
+  log.push('intro: room=' + M.L.id + ' spaceCut=' + M.spaceCut);
+  await drain();
+  step('start: room=' + M.L.id + ' spaceCut=' + M.spaceCut);
   await go('jons'); await use("Jon's purple portal (climb in)"); await w(800); await drain(); step('in oval');
   await use('Jon'); step('talked Jon');
   await use('Pile of papers'); step('papers');

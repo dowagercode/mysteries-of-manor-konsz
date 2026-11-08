@@ -30,7 +30,8 @@
   step('dogs');
   await use('Dog of darkness', null, 'dog food'); step('dogs fed');
   await use('Emergency exit slide'); step('slid out');
-  await use('Back to the jeep'); await map('Swamp'); step('swamp: house gone=' + !hot("Witch's house"));
+  await use('Back to the jeep'); await map('Swamp'); step('swamp: house gone=' + !hot("Witch's house") + ' spot=' + !!hot("Where the witch's house stood"));
+  await use("Where the witch's house stood");
   await use('Apprentice', null, 'rower'); step('wrong compliment');
   await use('Apprentice', null, 'too nice'); step('apprentice joined');
   await use('Back to the jeep'); await map('Gas station'); step('wrong place');
@@ -38,9 +39,9 @@
   await use('Back to the jeep'); await map('Gas station'); step('catch 2');
   await use('The creepy jeep'); await map('Secret mansion'); step('catch 3');
   await use('Front door of the mansion'); await use('Door to the music hall'); step('music hall');
-  await use('Door to the Ti room'); await use('Map of notes'); document.getElementById('peek').hidden = true; await use('Door back to the music hall'); step('song map');
-  await use('Door to the Do room'); await use('Door to the La room'); step('wrong note: step=' + M.S.flags.songStep);
-  for (const n of ['Do', 'Do', 'So', 'So', 'La', 'La', 'So', 'Fa', 'Fa', 'Mi', 'Mi', 'Re', 'Re', 'Do']) await use(`Door to the ${n} room`);
+  await use('Map of notes'); document.getElementById('peek').hidden = true; step('song map');
+  await use('Do bar'); await use('La bar'); step('wrong note: step=' + M.S.flags.songStep);
+  for (const n of ['Do', 'Do', 'So', 'So', 'La', 'La', 'So', 'Fa', 'Fa', 'Mi', 'Mi', 'Re', 'Re', 'Do']) await use(`${n} bar`);
   step('song: done=' + M.S.flags.songDone);
   await use('Staircase up'); step('top');
   await use('Wizard', null, 'marry'); await settle('marry'); for (let i = 0; i < 6; i++) { await w(600); await settle('marry'); }

@@ -168,7 +168,8 @@ LV.hideout = () => {
   ] }];
   const papers = group(L, -1.7, 0, -2.3, 0.4, { name: "Pile of papers",
     say: () => S.flags.gotBoxKey ? [["", "Just a messy pile of papers."]] : [["", "A messy pile of papers..."], () => add("boxKey", "gotBoxKey"), ["", "Underneath: a little key! It goes in your item drawer."]] });
-  [0, 0.06, 0.12, 0.18, 0.24].forEach((py, i) => { const sh = put(L, boxG(0.6, 0.05, 0.45), mat({ color: i % 2 ? 0xf4f0e4 : 0xffffff }), 0, py, 0, 0, null, papers); sh.rotation.y = i * 0.35; });
+  const keyUnder = put(L, boxG(0.18, 0.04, 0.08), mat({ color: 0xffd23f, em: 0.7 }), 0.05, 0.01, 0.05, 0.4, null, papers);
+  const sheets = [0, 0.06, 0.12, 0.18, 0.24].map((py, i) => { const sh = put(L, boxG(0.6, 0.05, 0.45), mat({ color: i % 2 ? 0xf4f0e4 : 0xffffff }), 0, py, 0, 0, null, papers); sh.rotation.y = i * 0.35; return sh; });
   // Jon, hiding
   const jon = addChar(L, "jon", 2.3, -1.5, 1.3, { name: "Jon", stand: [1.2, -0.7] });
   jon.show = () => !S.flags.gaveCake;
@@ -181,6 +182,10 @@ LV.hideout = () => {
   L.fog = [0x2a1450, 9, 22]; L.bg = 0x2a1450;
   cam(L, [0.8, 2.7, 4.6], [0, 0.9, -1.2], 58);
   L.update = (t, dt) => {
+    keyUnder.visible = !S.flags.gotBoxKey;
+    sheets.forEach((sh, i) => {
+      if (S.flags.gotBoxKey && i >= 2) { sh.position.x = (i - 1) * 0.18; sh.position.z = (i % 2 ? 1 : -1) * 0.14; }
+    });
     if (egg.floatT != null) {
       egg.floatT += dt / 1.6;
       const k = Math.min(1, egg.floatT);
@@ -217,6 +222,17 @@ const signTex = (text, color) => label([text], Math.max(56, text.length * 8 + 12
 const toHall = (name) => ({ name: name || "Door to the hallway", go: "hall", stand: [-3.3, -1.3] });
 const standIn = (what) => [["", `The kids haven't drawn the ${what} yet, so this one is a stand-in.`]];
 
+function buildSpaceship(L, ship, tilt = -0.28, fog = 1, em = 0) {
+  const body = new THREE.SphereGeometry(1, 14, 9); body.scale(3.4, 1.8, 2.0);
+  const sb = put(L, body, mat({ map: T.shipBody, fog, em }), 0, 1.0, 0, 0, null, ship); sb.rotation.z = tilt;
+  const finM = mat({ color: 0xa24fd6, fog, em });
+  const fin1 = put(L, boxG(1.6, 0.12, 1.0), finM, -3.2, 2.4, 0, 0, null, ship); fin1.rotation.z = 0.3;
+  const fin2 = put(L, boxG(1.6, 0.12, 1.0), finM, -3.4, 1.6, 0, 0, null, ship); fin2.rotation.z = -0.5;
+  const lad = mat({ color: 0x2a1f3d, fog, em });
+  put(L, boxG(0.06, 1.6, 0.06), lad, -0.3, -0.9, 1.4, 0, null, ship); put(L, boxG(0.06, 1.6, 0.06), lad, 0.2, -0.9, 1.4, 0, null, ship);
+  for (let i = 0; i < 4; i++) put(L, boxG(0.5, 0.05, 0.05), lad, -0.05, -0.8 + i * 0.38, 1.4, 0, null, ship);
+}
+
 LV.hall = () => {
   const L = newLevel("hall", "Hallway");
   const RW = 4, RD = 32, R = [RW, RD];
@@ -230,14 +246,35 @@ LV.hall = () => {
   });
   onWall(L, "front", R, T.engineDoor, 1.6, 2.4, 0, 0, { name: "Door to the engine room", run: engineDoor, stand: [0, 15.2] }, 0x3a3f5a);
   onWall(L, "back", R, doorTex("#8a8f9a", "#f6f6f8"), 1.4, 2.4, 0, 0, { name: "Door to the control room", go: "control", stand: [0, -15.2] });
+  // Opening cutscene: the smiling spaceship stalled in space (rendered when spaceCut is true)
+  const spGroup = new THREE.Group(); spGroup.position.set(0, 28, 0); L.scene.add(spGroup);
+  put(L, planeG(42, 28), mat({ map: T.stars, em: 1, fog: 0, rep: [6, 4], scroll: [0.008, 0] }), 0, -12, -10, 0, null, spGroup);
+  put(L, planeG(22, 9.2), mat({ map: T.space, em: 1, fog: 0 }), 0, -3.8, -8.5, 0, null, spGroup);
+  const spShip = new THREE.Group(); spShip.position.set(0.4, -0.4, -1.2); spGroup.add(spShip);
+  buildSpaceship(L, spShip, 0.05, 0, 0.75);
+  const puffs = [0, 1, 2, 3].map((i) => put(L, new THREE.SphereGeometry(0.28, 6, 4), mat({ color: i % 2 ? 0xd8b0ff : 0xb0b4c8, em: 0.9, fog: 0 }), -3.8, 1.4, 0, 0, null, spShip));
   L.entries.engine = [0, 14.6]; L.entries.control = [0, -14.6];
   L.walk = [-1.1, 1.1, -15.3, 15.3];
   L.start = [0, 9];
   L.light = { amb: 0x7a7c98, dir: [0.2, -1, -0.2], dirCol: 0x606070, pts: [[[0, 2.9, 10], 0xfff0d0, 9], [[0, 2.9, 0], 0xe0e0ff, 9], [[0, 2.9, -10], 0xfff0d0, 9]] };
   L.fog = [0x14162a, 8, 26]; L.bg = 0x14162a;
+  cam(L, [0, 28.6, 6.8], [0, 28.2, -2], 50, () => spaceCut, 100);
   cam(L, [-1.3, 2.8, 4.5], [0.4, 0.9, 15], 62, (p) => p.y >= 9.5);
   cam(L, [0, 9, 0], [0, 0, 0], 50, (p) => p.y >= -9.5, 60, (c, p) => { c.position.set(0.5, 7.2, p.y + 3.0); c.lookAt(0, 0.4, p.y - 0.6); });
   cam(L, [1.2, 2.85, -3.5], [-0.3, 0.9, -15.5], 62);
+  L.update = (t) => {
+    spGroup.visible = spaceCut;
+    if (spaceCut) {
+      spShip.position.y = -0.4 + Math.sin(t * 1.5) * 0.22;
+      spShip.rotation.z = Math.sin(t * 1.1) * 0.06;
+      spShip.rotation.y = Math.PI + 0.25 + Math.sin(t * 0.7) * 0.08;
+      puffs.forEach((m, i) => {
+        const k = (t * 0.9 + i / 4) % 1;
+        m.position.set(-3.8 - k * 2.2, 1.5 + Math.sin(k * 6 + i) * 0.25, (i - 1.5) * 0.15);
+        m.scale.setScalar(0.5 + (1 - k) * 0.9);
+      });
+    }
+  };
   return L;
 };
 
@@ -258,17 +295,23 @@ LV.hub = () => {
   const fridge = group(L, -7.1, 0, -2.85, 0, { name: "Fridge", say: () => fridgeMenu() });
   put(L, boxG(1.1, 2.3, 0.9), mat({ map: T.greenFridge }), 0, 0, 0, 0, null, fridge);
   put(L, planeG(0.6, 0.83), mat({ map: TEX.kids }), -0.1, 0.5, 0.46, 0, null, fridge);
+  const fridgeDoor = new THREE.Group(); fridgeDoor.position.set(-0.55, 0, 0.45); fridge.add(fridgeDoor);
+  put(L, boxG(1.08, 1.35, 0.05), mat({ color: 0x3fae4a }), 0.54, 0.05, 0, 0, null, fridgeDoor);
   const tv = group(L, -7.1, 2.3, -2.85, 0, { name: "Old TV", say: [["", "An old TV on top of the fridge."]] });
   put(L, boxG(0.8, 0.55, 0.55), mat({ color: 0x3fae6a }), 0, 0, 0, 0, null, tv);
   put(L, planeG(0.6, 0.4), mat({ map: TEX.oldTv, em: 0.7 }), 0, 0.08, 0.28, 0, null, tv);
   line(L, lineG([new THREE.Vector3(0.2, 0.55, 0), new THREE.Vector3(0.45, 0.95, 0)]), 0x2a1f3d, tv);
   const stove = group(L, -5.6, 0, -3.0, 0, { name: "Stove", say: () => stoveAct(), use: Object.fromEntries(CAKE.map((c) => [c, stoveAct])) });
   put(L, boxG(1.2, 1.0, 0.8), mat({ color: 0xe8559a }), 0, 0, 0, 0, null, stove);
-  put(L, planeG(1.2, 1.0), mat({ map: T.oven }), 0, 0, 0.41, 0, null, stove);
+  const ovenFront = put(L, planeG(1.2, 1.0), mat({ map: T.oven }), 0, 0, 0.41, 0, null, stove);
   put(L, boxG(1.1, 0.02, 0.7), mat({ map: T.stove }), 0, 1.0, 0, 0, null, stove);
+  const stoveCake = new THREE.Group(); stoveCake.position.set(0, 1.02, 0); stoveCake.visible = false; stove.add(stoveCake);
+  put(L, new THREE.CylinderGeometry(0.24, 0.24, 0.18, 10), mat({ color: 0x5a3218 }), 0, 0.09, 0, 0, null, stoveCake);
+  put(L, new THREE.CylinderGeometry(0.25, 0.25, 0.05, 10), mat({ color: 0xf06aa8 }), 0, 0.19, 0, 0, null, stoveCake);
   const drawers = group(L, -4.2, 0, -3.0, 0, { name: "Kitchen drawers", say: () => drawerMenu() });
   put(L, boxG(1.4, 0.95, 0.8), mat({ map: T.drawers }), 0, 0, 0, 0, null, drawers);
   put(L, boxG(1.5, 0.06, 0.86), mat({ color: 0xf6e8f0 }), 0, 0.95, 0, 0, null, drawers);
+  const openDrw = put(L, boxG(0.62, 0.22, 0.45), mat({ color: 0xd9c7a6 }), -0.34, 0.56, 0.2, 0, null, drawers);
   const win = group(L, -5.6, 1.5, -3.47, 0, { name: "Window", say: [["", "A window with pink curtains. Outside: stars. The ship is stalled in space."]] });
   put(L, planeG(1.3, 1.1), mat({ map: T.stars, em: 1, rep: [1.5, 1.2], scroll: [0.01, 0] }), 0, 0, 0.02, 0, null, win);
   const curtain = mat({ color: 0xf06aa8 });
@@ -294,6 +337,7 @@ LV.hub = () => {
   put(L, new THREE.CircleGeometry(0.22, 8, 0, Math.PI), mat({ color: 0x050308, em: 1 }), 0, 0.01, 0.01, 0, null, hole);
   const mg = new THREE.PlaneGeometry(0.4, 0.24); mg.translate(0, 0.12, 0);
   const mouse = put(L, mg, mat({ map: SPR.mouse.tex, em: 0.4, side: THREE.DoubleSide }), -1.0, 0.01, -3.35);
+  const mouseCheese = put(L, new THREE.ConeGeometry(0.09, 0.12, 4), mat({ color: 0x9ad85a, em: 0.3 }), -0.58, 0.06, -3.28);
 
   // REC ROOM
   const bigTv = group(L, 4.2, 1.15, -3.45, 0, { name: "TV", say: [["", "A soccer game is on the TV. \"Les go!\" ... \"Skor!!!!\""]] });
@@ -325,8 +369,18 @@ LV.hub = () => {
   cam(L, [-2.6, 3.3, 6.4], [-4.6, 0.9, -1.4], 52, (p) => p.x < 0);
   cam(L, [2.4, 3.1, 6.6], [4.4, 0.9, -1.2], 52);
   L.update = (t) => {
-    const peek = Math.max(0, Math.sin(t * 0.7)) ** 3;
-    mouse.position.x = -1.0 + peek * 0.4; mouse.visible = peek > 0.02;
+    const fed = !!S.flags.gotMap;
+    const peek = fed ? 1 : Math.max(0, Math.sin(t * 0.7)) ** 3;
+    mouse.position.x = -1.0 + peek * 0.35;
+    mouse.position.y = fed ? 0.01 + Math.abs(Math.sin(t * 9)) * 0.03 : 0.01;
+    mouse.visible = peek > 0.02;
+    mouseCheese.visible = fed;
+    flower.rotation.z = Math.sin(t * 2.2) * 0.08;
+    fridgeDoor.rotation.y = L.fridgeOpen ? -1.1 : 0;
+    openDrw.position.z = L.drawerOpen ? 0.46 : 0.2;
+    ovenFront.material.uniforms.uEm.value = L.bakeT > 0 ? 0.6 + 0.3 * Math.sin(t * 10) : 0;
+    stoveCake.visible = !!(L.bakeT > 0);
+    if (L.bakeT > 0) L.bakeT = Math.max(0, L.bakeT - 0.02);
   };
   return L;
 };
@@ -431,9 +485,10 @@ LV.control = () => {
   const top = put(L, planeG(5.2, 0.7), mat({ map: T.buttons, em: 0.5 }), 0, 0.85, 0.45, 0, null, panel); top.rotation.x = -1.1;
   onWall(L, "left", R, T.greyPanel, 0.6, 0.6, -1.4, 1.0, { name: "Small grey panel",
     say: [["", "A small grey panel with a knob. (What's inside? Ask the kids!)"]] }, 0x6a6e80);
-  onWall(L, "right", R, T.armoryDoor, 1.2, 2.3, -0.6, 0, { name: "Armory door", stand: [4.2, -0.6], run: armoryDoor }, 0x6a6e80);
-  onWall(L, "right", R, T.cardReader, 0.22, 0.34, 0.25, 1.0, { name: "Keycard reader", stand: [4.2, 0.2],
-    say: [["", "A keycard reader. It needs the keycard."]] }, 0x2a2a32);
+  const armDoorG = onWall(L, "right", R, T.armoryDoor, 1.2, 2.3, -0.6, 0, { name: "Armory door", stand: [4.2, -0.6], run: armoryDoor }, 0x6a6e80);
+  const readerG = onWall(L, "right", R, T.cardReader, 0.22, 0.34, 0.25, 1.0, { name: "Keycard reader", stand: [4.2, 0.2],
+    say: () => S.flags.armoryOpen ? [["", "The keycard reader is blinking green. The armory is unlocked!"]] : [["", "A keycard reader. It needs the keycard."]],
+    use: { keycard: () => { armoryDoor(); return []; } } }, 0x2a2a32);
   onWall(L, "back", R, doorTex("#8a8f9a", "#f6f6f8"), 1.15, 2.1, -4.1, 0, { name: "Door to the hallway", go: "hall", stand: [-4.0, -1.2] });
   onWall(L, "back", R, TEX.control, 0.9, 1.24, 4.0, 1.4, { name: "The kids' drawing", say: [["", "The kids' drawing of the control room. This 3D room is built from it."]] }, 0x8a6a4a);
   L.player = addChar(L, "may", -1.5, 1.2, 1.3);
@@ -442,6 +497,11 @@ LV.control = () => {
   L.light = { amb: 0x707490, dir: [0.2, -1, -0.5], dirCol: 0x606070, pts: [[[0, 1.6, -2.4], 0x9ab8ff, 5], [[0, 2.9, 1], 0xe0e0f0, 8], [[4, 1.2, -0.6], 0xff6050, 2]] };
   L.fog = [0x0c0d1a, 10, 24]; L.bg = 0x0c0d1a;
   cam(L, [-0.8, 3.0, 6.4], [0.4, 1.1, -1.4], 54);
+  L.update = (t) => {
+    top.material.uniforms.uEm.value = 0.45 + 0.25 * Math.sin(t * 3);
+    armDoorG.position.z = S.flags.armoryOpen ? -1.1 : -0.6;
+    readerG.children[1].material.uniforms.uEm.value = S.flags.armoryOpen ? 0.9 : 0.2;
+  };
   return L;
 };
 
@@ -507,7 +567,8 @@ LV.engine = () => {
   put(L, new THREE.CylinderGeometry(0.11, 0.11, 0.28, 7), mat({ color: 0x3a6ad8 }), 0, 0.14, 0, 0, null, pills);
   put(L, new THREE.CylinderGeometry(0.12, 0.12, 0.08, 7), mat({ color: 0xb0b0b8 }), 0, 0.32, 0, 0, null, pills);
   const lock = group(L, -0.6, 0, -2.5, 0.15, { name: "Locked box", say: () => lockAct(), use: { boxKey: lockAct } });
-  put(L, boxG(0.7, 0.5, 0.5), mat({ color: 0x6a5a3a }), 0, 0, 0, 0, null, lock);
+  put(L, boxG(0.7, 0.42, 0.5), mat({ color: 0x6a5a3a }), 0, 0, 0, 0, null, lock);
+  const lockLid = put(L, boxG(0.72, 0.1, 0.52), mat({ color: 0x7a6844 }), 0, 0.42, -0.25, 0, null, lock);
   put(L, boxG(0.16, 0.18, 0.04), mat({ color: 0xffd23f }), 0, 0.18, 0.26, 0, null, lock);
   // RIGHT BAY: blue pipes into the big bubbly blue tank (it leaks until the engine is fixed)
   put(L, boxG(0.16, 1.2, 0.16), blue, 2.2, 2.2, -2.6); put(L, boxG(1.2, 0.16, 0.16), blue, 2.8, 2.2, -2.6);
@@ -549,6 +610,7 @@ LV.engine = () => {
     });
     eng.position.y = fixed ? Math.sin(t * 8) * 0.015 : 0;
     engM.uniforms.uEm.value = fixed ? 0.5 + 0.3 * Math.sin(t * 6) : 0;
+    lockLid.rotation.x = S.flags.gotKeycard ? -0.9 : 0;
   };
   return L;
 };
@@ -694,25 +756,29 @@ function updateClue(t) {
 const FRIDGE = [["Mango", "Just a mango."], ["Apple", "Just an apple."], ["Moldy cheese", null, "cheese"], ["Garlic", "Garlic. Stinky!"],
   ["Pickled herring", "Pickled herring."], ["Kimchi", "Kimchi."], ["Milk (expired)", "This milk is expired. Yuck!"], ["Milk", "This milk is still good."], ["Can of tuna", null, "tuna"]];
 function fridgeMenu() {
+  if (L) L.fridgeOpen = true;
   return [["", "May opens the fridge. What should she check?"], { choices: FRIDGE.map(([n, line, item]) => [n, () => {
+    if (L) L.fridgeOpen = false;
     if (!item) return [["", line]];
     if (S.flags["got_" + item]) return [["", "May already took that."]];
     return [() => add(item, "got_" + item), ["", item === "tuna" ? "A can of tuna. Something rattles inside it! It goes in your item drawer." : "Moldy cheese! It goes in your item drawer."]];
-  }]).concat([["Close the fridge", () => []]]) }];
+  }]).concat([["Close the fridge", () => { if (L) L.fridgeOpen = false; return []; }]]) }];
 }
 const DRAWER = [["Can opener", null], ["Knife", "A knife. Careful!"], ["Soup scoop", "A soup scoop."], ["Corkscrew", "A corkscrew."],
   ["Bottle opener", "A bottle opener."], ["Aluminum foil", "Some aluminum foil."], ["Whisk", "A whisk."]];
 function drawerMenu() {
+  if (L) L.drawerOpen = true;
   return [["", "May opens the kitchen drawers."], { choices: DRAWER.map(([n, line]) => [n, () => {
+    if (L) L.drawerOpen = false;
     if (line) return [["", line]];
     if (S.flags.got_opener) return [["", "May already took the can opener."]];
     return [() => add("opener", "got_opener"), ["", "A can opener! It goes in your item drawer."]];
-  }]).concat([["Close the drawers", () => []]]) }];
+  }]).concat([["Close the drawers", () => { if (L) L.drawerOpen = false; return []; }]]) }];
 }
 function stoveAct() {
   if (S.flags.gotCake) return [["", "The pink stove."]];
   const n = CAKE.filter(has).length;
-  if (n === 6) return [["", "May mixes flour, oil, sugar, a little water, some yeast, and a LOT of cacao..."],
+  if (n === 6) return [() => { if (L) L.bakeT = 1.6; }, ["", "May mixes flour, oil, sugar, a little water, some yeast, and a LOT of cacao..."],
     () => { CAKE.forEach(remove); add("cake", "gotCake"); }, ["", "A chocolate cake! It goes in your item drawer."]];
   return [["", n ? `The pink stove. May has ${n} of the 6 cake ingredients.` : "The pink stove."]];
 }
@@ -731,7 +797,9 @@ function oliviaAct() {
 }
 function giveCake() {
   return [() => remove("cake"), ["May", "Jon! I made you a chocolate cake!"], ["Jon", "Chocolate cake?!"],
-    ["May", "You can have it if you come out and fix the ship!"], ["Jon", "Okay! I'll come out and fix the ship!"],
+    ["May", "You can have it if you come out and fix the ship!"],
+    () => { const j = L && L.chars.find((c) => c.key === "jon"); if (j) { j.hopT = 0.45; j.target = new THREE.Vector2(-2.2, -1.5); } },
+    ["Jon", "Okay! I'll come out and fix the ship!"],
     flag("gaveCake"), ["", "Jon climbs out of his hole and heads to the engine room!"]];
 }
 function jonHoleAct() {
@@ -744,7 +812,9 @@ function jonEngineAct() {
   const f = S.flags;
   if (f.fixed) return [["Jon", "The engine is fixed!"]];
   if (!has("map")) return [["Jon", "I need the engine room schematics to fix this!"]];
-  return [() => remove("map"), ["May", "Here, Jon! The mouse's map of the engine room!"], ["Jon", "The schematics! Now I can fix it!"],
+  return [() => remove("map"), ["May", "Here, Jon! The mouse's map of the engine room!"],
+    () => { const j = L && L.chars.find((c) => c.key === "jon"); if (j) { j.hopT = 0.4; j.target = new THREE.Vector2(-2.1, -1.5); } },
+    ["Jon", "The schematics! Now I can fix it!"],
     ["", "CLANK! BONK! WHIRR!"], flag("fixed"), ["", "The engine is back online! The ship starts moving again... on to Woolley Mountain!"],
     () => shake(), ["", "BOOM! Something smashes into the ship!"], ["Jon", "Asteroids!!"],
     ["May", "Quick! Everybody to the ship's blasters! Shoot them!"],

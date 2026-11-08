@@ -54,12 +54,13 @@ LV.roadmap = () => {
   const L = newLevel("roadmap", "Road Map");
   put(L, new THREE.SphereGeometry(90, 12, 8), mat({ map: T.sky, em: 1, fog: 0, side: THREE.BackSide }));
   put(L, floorG(26, 18, 13, 9), mat({ map: T.worldMap }), 0, 0, 0);
+  let swampHouse = null;
   const lm = {
     gas: (g) => { put(L, boxG(0.8, 0.5, 0.6), mat({ color: 0xc82020 }), 0, 0, 0, 0, null, g); put(L, boxG(1.0, 0.08, 0.8), mat({ color: 0xf0e8d0 }), 0, 0.7, 0, 0, null, g); },
     mansion: (g) => { put(L, boxG(1.0, 0.8, 0.7), mat({ color: 0x3a2a3a }), 0, 0, 0, 0, null, g); put(L, new THREE.ConeGeometry(0.75, 0.6, 4), mat({ color: 0x2a1a2a }), 0, 1.1, 0, 0, null, g); },
     market: (g) => { put(L, boxG(1.1, 0.6, 0.7), mat({ color: 0xd8c8a0 }), 0, 0, 0, 0, null, g); put(L, boxG(1.1, 0.2, 0.05), mat({ color: 0xe04e39 }), 0, 0.55, 0.36, 0, null, g); },
     forest: (g) => { [[-0.4, 0], [0.3, -0.3], [0.1, 0.4], [-0.1, -0.5]].forEach(([a, b]) => { put(L, new THREE.ConeGeometry(0.35, 1.1, 6), mat({ color: 0x1e3a1e }), a, 0.55, b, 0, null, g); }); },
-    swamp: (g) => { const d = new THREE.CircleGeometry(0.8, 10); d.rotateX(-Math.PI / 2); put(L, d, mat({ color: 0x3a6a5a }), 0, 0.02, 0, 0, null, g); put(L, boxG(0.5, 0.4, 0.4), mat({ color: 0x5a4a3a }), 0, 0.4, 0, 0, null, g); },
+    swamp: (g) => { const d = new THREE.CircleGeometry(0.8, 10); d.rotateX(-Math.PI / 2); put(L, d, mat({ color: 0x3a6a5a }), 0, 0.02, 0, 0, null, g); swampHouse = put(L, boxG(0.5, 0.4, 0.4), mat({ color: 0x5a4a3a }), 0, 0.4, 0, 0, null, g); },
     castle: (g) => { [[-0.35, 1.3], [0.35, 1.0], [0, 1.6]].forEach(([a, h]) => { put(L, new THREE.CylinderGeometry(0.15, 0.2, h, 6), mat({ color: 0x6a6070 }), a, h / 2, 0, 0, null, g); put(L, new THREE.ConeGeometry(0.2, 0.5, 6), mat({ color: 0x8a3ac8 }), a, h + 0.25, 0, 0, null, g); }); },
   };
   Object.entries(MAP_NODES).forEach(([id, n]) => {
@@ -86,6 +87,7 @@ LV.roadmap = () => {
       jeep.rotation.y = -Math.atan2(mapDrive.to.y - mapDrive.from.y, mapDrive.to.x - mapDrive.from.x);
       if (mapDrive.t >= 1) { const d = mapDrive.done; mapDrive = null; d(); }
     } else jeep.position.set(at[0], 0, at[1] + 0.9);
+    if (swampHouse) swampHouse.visible = !S.flags.houseGone;
     chaseUpd(t);
   };
   return L;
@@ -149,7 +151,8 @@ LV.marketIn = () => {
   }
   const mac = group(L, 1.4, 0, -1.5, 0.3, { name: "Mac and cheese box", show: () => !S.flags.macMoved,
     say: () => [["", "Just one box of mac and cheese, sitting on the pile."], { choices: [["Move the box", () => [flag("macMoved"), ["", "May moves the mac and cheese box... there's someone under the ramen! It's the shopkeeper lady!"], ["Shopkeeper lady", "Help! Get me out of here!"]]], ["Leave it", () => []]] }] });
-  put(L, boxG(0.5, 0.36, 0.14), mat({ map: label(["MAC", "CHEESE"], 32, 24, "#f2b830", "#2a6ad8", "#f2b830") }), 0, 0.5, 0, 0, null, mac);
+  const macBox = put(L, boxG(0.5, 0.36, 0.14), mat({ map: label(["MAC", "CHEESE"], 32, 24, "#f2b830", "#2a6ad8", "#f2b830") }), 0, 0.5, 0, 0, null, mac);
+  const macMovedBox = put(L, boxG(0.5, 0.36, 0.14), mat({ map: label(["MAC", "CHEESE"], 32, 24, "#f2b830", "#2a6ad8", "#f2b830") }), 2.3, 0, -1.2, 0.8);
   const lady = addChar(L, "lady", 0.6, -1.9, 1.45, { name: "Shopkeeper lady", stand: [0.6, -0.7], say: () => ladyAct() });
   lady.show = () => !!S.flags.macMoved;
   lady.body.userData.hot.show = lady.show;
@@ -167,7 +170,8 @@ LV.marketIn = () => {
   let lift = -1;
   PP.lift = () => { lift = 0; };
   L.update = (t, dt) => {
-    lady.yOff = S.flags.ladyFree ? 0 : -0.95;
+    macMovedBox.visible = !!S.flags.macMoved;
+    lady.yOff = S.flags.ladyFree ? Math.abs(Math.sin(t * 2.5)) * 0.05 : -0.95;
     if (lift >= 0) lift += dt;
     pieces.forEach((m, i) => {
       if (S.flags.ladyFree && lift < 0) { m.visible = false; return; }
@@ -239,6 +243,7 @@ LV.forest = () => {
   const face = put(L, planeG(1.2, 1.0), mat({ map: T.woodyFace, em: 0.6 }), 0, 2.7, 0.78, 0, null, woody);
   const armL = put(L, boxG(0.25, 2.2, 0.25), mat({ color: 0x5a3a22 }), -0.9, 2.6, 0, 0, null, woody); armL.rotation.z = 0.9;
   const armR = put(L, boxG(0.25, 2.2, 0.25), mat({ color: 0x5a3a22 }), 0.9, 2.6, 0, 0, null, woody); armR.rotation.z = -0.9;
+  const woodyFlower = put(L, new THREE.SphereGeometry(0.22, 8, 6), mat({ color: 0xff7ae0, em: 0.9 }), 1.45, 3.3, 0.2, 0, null, woody);
   const woodyEyes = put(L, planeG(0.8, 0.22), mat({ map: T.eyes, em: 1 }), -2.4, 3.0, -5.7, 0.2);
   // things to find for the scarecrow, and the statue's head
   const shirt = group(L, -4.6, 1.5, -2.8, 0.4, { name: "Old shirt", show: () => !S.flags.got_shirt, say: () => [() => add("shirt", "got_shirt"), ["", "An old shirt hanging on a branch. It goes in your item drawer."]] });
@@ -249,6 +254,7 @@ LV.forest = () => {
   put(L, new THREE.CylinderGeometry(0.9, 1.2, 4, 8), mat({ color: 0x4a3222 }), 0, 2, 0, 0, null, bigTree);
   put(L, new THREE.CircleGeometry(0.35, 8), mat({ color: 0x0a0806, em: 1 }), 0, 1.4, 0.92, 0, null, bigTree);
   const head = put(L, new THREE.SphereGeometry(0.22, 7, 5), mat({ color: 0x9a9a90 }), 0, 1.4, 0.95, 0, null, bigTree);
+  addChaseSpot(L, "forest", 2.4, -3.5, 0.25, [1.8, -1.6]);
   crew(L, 0.5, 4);
   L.walk = [-6, 7, -4, 6]; L.start = [0.5, 4];
   L.entries = { roadmap: [2.5, 5], swampField: [-5.4, 4.6] };
@@ -259,20 +265,32 @@ LV.forest = () => {
   L.light = { amb: 0x404858, dir: [0.2, -1, -0.3], dirCol: 0x384050, pts: [[[1, 3, 2], 0x90a0ff, 9], [[-2.4, 3, -5], 0x80ff90, 5], [[0, 0, 0], 0, 1]] };
   L.fog = [0x0a0e14, 8, 30]; L.bg = 0x0a0e14;
   cam(L, [1, 4.6, 11.5], [0.5, 1.0, -2.5], 54, null, 200);
-  let woodyT = 0, wakeT = -1;
+  let woodyT = 0, wakeT = -1, headPopT = -1;
+  L.popHead = () => { headPopT = 0; };
   L.update = (t, dt) => {
     const f = S.flags;
     woodyT += dt;
     if (!L.userData.woodyReady && (woodyT > 20 || (L.userData.seen || 0) >= 2)) L.userData.woodyReady = true;
     woodyEyes.visible = !!L.userData.woodyReady && !f.woodyMet;
     face.material.uniforms.uEm.value = 0.5 + 0.2 * Math.sin(t * 2);
+    woodyFlower.visible = !!f.treesAwake;
+    if (f.treesAwake) {
+      armL.rotation.z = 0.9 + Math.sin(t * 3) * 0.25;
+      armR.rotation.z = -0.9 - Math.sin(t * 3) * 0.25;
+    }
     critters.forEach((g) => { g.userData.eyes.visible = !g.userData.seen; g.userData.cr.visible = !!g.userData.seen; g.userData.eyes.scale.y = Math.sin(t * 1.3 + g.position.x) > 0.95 ? 0.1 : 1; });
-    head.visible = !f.got_head;
+    if (headPopT >= 0) {
+      headPopT += dt * 1.8;
+      head.visible = headPopT < 1;
+      head.position.set(0, 1.4 + Math.sin(Math.min(1, headPopT) * Math.PI) * 0.6, 0.95 + headPopT * 1.4);
+      if (headPopT >= 1) headPopT = -1;
+    } else head.visible = !f.got_head;
     if (f.treesAwake && wakeT < 0 && sleepers[0].visible) wakeT = 0;
     if (wakeT >= 0) {
       wakeT += dt;
       sleepers.forEach((g, i) => { const k = Math.min(1, wakeT / 2.5); g.rotation.z = k * Math.PI / 2; g.position.x = g.userData.home.x + (i % 2 ? 1 : -1) * k * 6; g.position.y = k * 1.5; if (k >= 1) g.visible = false; });
     } else if (f.treesAwake) sleepers.forEach((g) => (g.visible = false));
+    if (L.chaseUpd) L.chaseUpd(t, dt);
   };
   return L;
 };
@@ -280,7 +298,7 @@ function headAct() {
   if (S.flags.got_head) return [["", "A big tree with an empty hole in it."]];
   return [["", "Something round is stuck in a hole in this big tree. It's a stone head!"], { choices: [
     ["Pull it out", () => [["", "May pulls and pulls... it's stuck tight!"]]],
-    ["Lift it out with telekinesis", () => [["May", "Nnnngh... this one is HEAVY!"], () => add("head", "got_head"), ["", "Pop! The stone head comes free. It goes in your item drawer. Whose head could it be?"]]],
+    ["Lift it out with telekinesis", () => [["May", "Nnnngh... this one is HEAVY!"], () => { if (L && L.popHead) L.popHead(); add("head", "got_head"); }, ["", "Pop! The stone head comes free. It goes in your item drawer. Whose head could it be?"]]],
     ["Never mind", () => []]] }];
 }
 
@@ -324,9 +342,9 @@ LV.swampField = () => {
   L.light = { amb: 0x7a8078, dir: [-0.3, -1, -0.4], dirCol: 0x707868, pts: [[[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0xa8b4a8, 10, 40]; L.bg = 0xa8b4a8;
   cam(L, [0.5, 4.4, 11], [0, 0.9, -1.8], 52, null, 200);
-  L.update = (t) => {
+  L.update = (t, dt) => {
     sHead.visible = !!S.flags.statueTold;
-    rider.rotation.y = S.flags.statueTold ? 0.7 : 0;
+    rider.rotation.y += ((S.flags.statueTold ? 0.7 : 0) - rider.rotation.y) * Math.min(1, (dt || 0.016) * 3.5);
     frogs.forEach((g, i) => { g.position.y = Math.max(0, Math.sin(t * 2 + i * 2)) * 0.25; });
   };
   return L;
@@ -337,7 +355,7 @@ const SCARE = ["twigs", "shirt", "hat", "straw"];
 const SCARE_WHERE = { twigs: "a bundle of twigs (scary forest)", shirt: "an old shirt (scary forest)", hat: "a straw hat (closed supermarket)", straw: "straw (the field by the swamp)" };
 const scareParts = () => (has("scarecrowKit") ? 4 : SCARE.filter((x) => has(x)).length);
 const scareMissing = () => (has("scarecrowKit") ? [] : SCARE.filter((x) => !has(x)).map((x) => SCARE_WHERE[x]));
-const SCARE_BUILT = [() => { SCARE.forEach(remove); remove("scarecrowKit"); S.flags.scarecrow = true; save(); },
+const SCARE_BUILT = [() => { SCARE.forEach(remove); remove("scarecrowKit"); S.flags.scarecrow = true; if (L && L.scareAppr) L.scareAppr(); save(); },
   ["", "The kids stand the giant scarecrow up on the old post in the fog. Spooky!"],
   ["", "They hide and watch... The apprentice sees the scarecrow looming in the fog!"], ["Apprentice", "AAAH! A monster!"],
   ["", "The apprentice runs away and leaves his boat behind!"]];
@@ -368,7 +386,7 @@ function witchAct() {
     ["Jon: hide everyone in the portal", () => [["", "Too late! The spell is already flying!"]]],
     ["Olivia: spin", () => [["", "Olivia spins... but the witch's spell is pulling everyone toward the swamp!"]]],
     ["May: telekinesis", () => [["", "May reaches out with her mind... but the witch's magic is too slippery!"]]],
-    ["Jasin: kick the soccer ball", () => [["", "Jasin hears the witch and kicks his soccer ball right into the witch's guts!"], ["Witch", "Oof... my guts..."], ["", "Jasin kicked so hard, the witch fell down!"],
+    ["Jasin: kick the soccer ball", () => [() => { if (L && L.kickWitch) L.kickWitch(); }, ["", "Jasin hears the witch and kicks his soccer ball right into the witch's guts!"], ["Witch", "Oof... my guts..."], ["", "Jasin kicked so hard, the witch fell down!"],
       ["", "The kids take her into her house and lock her in a cage."], ["Witch", "Let me OUT!"], () => { f.witchCaged = true; f.witchUp = false; save(); }]],
   ] }];
   return [["", "The kids look around the witch's house on its big bird legs... nobody seems to be home."], ["", "As the kids start to walk away, the witch sneaks out and secretly waves her wand!"],
@@ -394,11 +412,27 @@ LV.swamp = () => {
   put(L, boxG(0.4, 1.2, 0.4), mat({ color: 0x3a3028 }), -0.8, 4.8, -0.3, 0, null, house);
   put(L, planeG(0.6, 0.9), mat({ color: 0x2a1a10 }), 0, 2.4, 1.01, 0, null, house);
   const smoke = [0, 1, 2, 3, 4].map((i) => put(L, new THREE.SphereGeometry(0.35, 6, 4), mat({ color: 0xc8c8c8, em: 0.3 }), -0.8, 6.2, -0.3, 0, null, house));
+  // empty spot where the house used to stand (after S.flags.houseGone)
+  const emptySpot = group(L, 1.8, 0, -4.0, 0, { name: "Where the witch's house stood", stand: [1.6, -2.8],
+    show: () => !!S.flags.houseGone && CUT !== "swamp",
+    say: () => [["", "The witch's house is gone! Only giant bird footprints and chicken feathers are left in the mud."],
+      ...(S.flags.apprJoined ? [["Apprentice", "Check the road map for chicken feathers and swirling wind!"]]
+        : [["", "The apprentice is sitting in his boat over there. Maybe ask him where the house went!"]])] });
+  [[-0.55, -0.2, 0.2], [0.55, 0.1, -0.15]].forEach(([fx, fz, ry]) => {
+    const tr = new THREE.Group(); tr.position.set(fx, 0.02, fz); tr.rotation.y = ry; emptySpot.add(tr);
+    [-0.35, 0, 0.35].forEach((a) => { const toe = put(L, boxG(0.08, 0.02, 0.45), mat({ color: 0x241c14 }), Math.sin(a) * 0.14, 0, Math.cos(a) * 0.14, a, null, tr); });
+  });
+  [[-0.3, 0.2, 0.4], [0.35, -0.1, -0.7], [0.05, 0.35, 1.1], [-0.45, -0.25, 1.9]].forEach(([fx, fz, r]) => {
+    const f = put(L, planeG(0.18, 0.42), mat({ color: 0xfff8f0, em: 0.5, side: THREE.DoubleSide }), fx, 0.05, fz, r, null, emptySpot); f.rotation.x = -1.3;
+  });
   const cage = group(L, 0.6, 0, -3.6, 0, { name: "Cage", show: () => !!S.flags.witchCaged && !S.flags.witchFree, say: () => [["Witch", "Let me OUT of this cage!"]] });
   put(L, boxG(1.0, 0.1, 1.0), mat({ color: 0x3a3028 }), 0, 0, 0, 0, null, cage);
   for (let i = 0; i < 6; i++) put(L, boxG(0.05, 1.8, 0.05), mat({ color: 0x9a9a90 }), -0.45 + i * 0.18, 0, 0.5, 0, null, cage);
   const witch = addChar(L, "witch", 0.6, -3.6, 1.7, { name: "Witch", stand: [1.6, -2.4], say: () => witchAct() });
   witch.show = witch.body.userData.hot.show = () => !!(S.flags.witchUp || S.flags.witchCaged) && !S.flags.houseGone;
+  const spellG = new THREE.Group(); L.scene.add(spellG);
+  const spellOrbs = [0, 1, 2, 3, 4].map((i) => put(L, new THREE.SphereGeometry(0.12, 6, 4), mat({ color: i % 2 ? 0x7aff7a : 0xc86aff, em: 1 }), 0, 1, 0, 0, null, spellG));
+  const witchBall = put(L, new THREE.IcosahedronGeometry(0.2, 1), mat({ color: 0xfff27a, em: 1 }), 0, -5, 0);
   const wizard = addChar(L, "wizard", 1.9, -2.9, 1.9);
   wizard.show = () => CUT === "swamp" && !S.flags.houseGone;
   // the priest robes, on a clothesline behind the house
@@ -407,9 +441,13 @@ LV.swamp = () => {
   line(L, lineG([new THREE.Vector3(-1, 1.75, 0), new THREE.Vector3(1, 1.75, 0)]), 0x2a2a2a, line1);
   const robes = [-0.5, 0.1, 0.6].map((x) => put(L, planeG(0.45, 0.8), mat({ color: 0x2a2440, side: THREE.DoubleSide }), x, 0.95, 0, 0, null, line1));
   // the apprentice in his boat, and the scarecrow spot
+  let apprRunT = -1, witchBallT = -1;
+  L.scareAppr = () => { apprRunT = 0; };
+  L.kickWitch = () => { witchBallT = 0; };
   const appr = addChar(L, "apprentice", -1.8, -6.0, 1.6, { name: "Apprentice", stand: [-1.8, -3.0], say: () => S.flags.dogsBeaten ? apprenticeAct() : S.flags.scarecrow ? [] : [["Apprentice", "Um... hi. I'm supposed to be a bad guy..."], ["", "He's sitting in his boat and won't leave it. Maybe something spooky would scare him off..."]],
     use: Object.fromEntries([...SCARE, "scarecrowKit"].map((x) => [x, () => [["", "He'd only be scared if something spooky popped up in the fog. Try the old post by the water."]]])) });
-  appr.show = appr.body.userData.hot.show = () => !S.flags.scarecrow || (!!S.flags.dogsBeaten && !S.flags.apprJoined && CUT !== "swamp");
+  appr.show = () => !S.flags.scarecrow || apprRunT >= 0 || (!!S.flags.dogsBeaten && !S.flags.apprJoined && CUT !== "swamp");
+  appr.body.userData.hot.show = () => !S.flags.scarecrow || (!!S.flags.dogsBeaten && !S.flags.apprJoined && CUT !== "swamp");
   const boat = group(L, -1.8, -0.1, -6.0, 0.4, { name: "The apprentice's boat", stand: [-1.8, -3.0], show: () => !!S.flags.scarecrow, exit: true,
     run: () => { if (!S.flags.boatTaken) { S.flags.boatTaken = true; save(); } say([["", "The kids hop in the apprentice's boat and row out to the spaceship in the water."], () => goLevel("hub", "swamp")]); } });
   const hull = new THREE.CylinderGeometry(0.5, 0.35, 2.2, 8, 1, false, 0, Math.PI); hull.rotateZ(Math.PI / 2); hull.rotateX(Math.PI);
@@ -434,7 +472,14 @@ LV.swamp = () => {
   const jeep = group(L, 7.6, 0, 4.4, -0.4, { name: "Back to the jeep", exit: true, stand: [6.2, 3.6], show: () => !!S.flags.treesAwake,
     run: () => S.flags.witchUp && !S.flags.witchCaged ? say([["Witch", "You'll be stuck in my swamp forever!"], ["", "The witch's spell is pulling the kids back! Who can stop her?"]]) : goLevel("roadmap", "swamp") });
   miniJeep(L, jeep);
-  L.onEnter = () => S.flags.treesAwake
+  const houseGoneLines = () => {
+    S.flags.sawHouseGone = true; save();
+    return [["", "The witch's house is gone! Only giant bird footprints and chicken feathers are left in the mud."],
+      ...(S.flags.apprJoined ? [] : [["", "The apprentice is sitting in his boat, all alone. Maybe ask him where the house went!"]])];
+  };
+  L.onEnter = () => S.flags.houseGone && CUT !== "swamp"
+    ? houseGoneLines()
+    : S.flags.treesAwake
     ? [["", "The jeep rolls up to the swamp. There's the witch's house, standing on big bird legs!"]]
     : [["", "The kids walk to the swamp on foot. It's foggy... There's the witch's house on big bird legs, and her apprentice, sitting in a boat."]];
   L.light = { amb: 0x6a7068, dir: [-0.3, -1, -0.4], dirCol: 0x606858, pts: [[[2.2, 3.5, -8], 0xff9a50, 6], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
@@ -442,12 +487,34 @@ LV.swamp = () => {
   cam(L, [0, 4.6, 11], [0.5, 1.4, -4], 54, null, 200);
   L.update = (t, dt) => {
     const f = S.flags;
+    if (f.houseGone && !f.sawHouseGone && CUT !== "swamp" && !busy && !talking()) say(houseGoneLines());
     if (f.houseGone && CUT === "swamp") { house.position.x += (dt || 0.016) * 2.2; house.position.y = Math.abs(Math.sin(t * 6)) * 0.25; }
     smoke.forEach((m, i) => { const k = (t * 0.3 + i / 5) % 1; m.position.set(-0.8 + Math.sin(k * 6 + i) * 0.4, 6.2 + k * 3, -0.3); m.scale.setScalar(0.5 + k * 1.5); });
     scare.visible = !!f.scarecrow;
     robes.forEach((r) => (r.visible = !f.got_robes));
     witch.pos.set(f.witchFree ? 1.0 : f.witchCaged ? 0.6 : 1.6, f.witchFree ? -2.8 : f.witchCaged ? -3.6 : -4.6);
-    appr.yOff = Math.sin(t * 1.5) * 0.06;
+    spellG.visible = !!f.witchUp && !f.witchCaged;
+    if (spellG.visible) {
+      spellOrbs.forEach((o, i) => {
+        const a = t * 4 + i * 1.25, r = 0.7 + Math.sin(t * 3 + i) * 0.2;
+        o.position.set(witch.pos.x + Math.cos(a) * r, 0.9 + Math.sin(t * 5 + i) * 0.35, witch.pos.y + Math.sin(a) * r);
+      });
+    }
+    if (witchBallT >= 0) {
+      witchBallT += (dt || 0.016) * 2.2;
+      const k = Math.min(1, witchBallT);
+      witchBall.position.set(L.player.pos.x + (1.6 - L.player.pos.x) * k, 0.5 + Math.sin(k * Math.PI) * 0.9, L.player.pos.y + (-4.6 - L.player.pos.y) * k);
+      if (witchBallT >= 1) { witchBallT = -1; witchBall.position.y = -5; }
+    }
+    if (apprRunT >= 0) {
+      apprRunT += (dt || 0.016);
+      appr.pos.set(-1.8 - apprRunT * 4.5, -6.0);
+      appr.yOff = Math.abs(Math.sin(apprRunT * 14)) * 0.35;
+      if (apprRunT > 1.8) { apprRunT = -1; appr.pos.set(-1.8, -6.0); }
+    } else {
+      appr.pos.set(-1.8, -6.0);
+      appr.yOff = Math.sin(t * 1.5) * 0.06;
+    }
   };
   return L;
 };
