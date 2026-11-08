@@ -284,9 +284,9 @@ function headAct() {
 
 // ---------- the field on the edge of the swamp ----------
 function statueAct() {
-  if (S.flags.statueTold) return [["Statue", "The secret way into the wizard's castle is around behind, at the truck entrance."]];
+  if (S.flags.statueTold) return [["Statue", "Remember my riddle: \"Follow the wheel of the year.\""]];
   if (has("head")) return [() => remove("head"), ["", "May puts the stone head back on the statue..."], ["", "The statue turns its head... and looks right at the kids!"],
-    ["Statue", "Thank you for finding my head. Here is a secret: the way into the wizard's castle is around behind, at the truck entrance."], flag("statueTold")];
+    ["Statue", "Thank you for finding my head. Here is a riddle to help you inside the wizard's castle..."], ["Statue", "\"Follow the wheel of the year.\""], flag("statueTold")];
   return [["", "A stone statue of a guy on a horse. The horse has its front legs in the air... but the guy's head is gone!"]];
 }
 LV.swampField = () => {
@@ -378,7 +378,7 @@ LV.swamp = () => {
   put(L, floorG(60, 30, 30, 15), mat({ map: T.swampWater, rep: [20, 10], wave: 0.4, scroll: [0.01, 0.005] }), 0, -0.15, -18);
   [[-7, -2], [8, -1], [-9, 3], [9, 4]].forEach(([x, z]) => tree(L, x, z, 1.3, 0x3a4a2a));
   // the witch's house on big bird legs
-  const house = group(L, 2.2, 0, -10, -0.3, { name: "Witch's house", stand: [1.6, -3.2], say: () => witchAct() });
+  const house = group(L, 2.2, 0, -10, -0.3, { name: "Witch's house", stand: [1.6, -3.2], say: () => witchAct(), show: () => !S.flags.houseGone || CUT === "swamp" });
   const legM = mat({ color: 0xd8a040 });
   [[-0.6], [0.6]].forEach(([lx]) => {
     put(L, boxG(0.16, 2.0, 0.16), legM, lx, 0, 0, 0, null, house);
@@ -392,11 +392,13 @@ LV.swamp = () => {
   put(L, boxG(0.4, 1.2, 0.4), mat({ color: 0x3a3028 }), -0.8, 4.8, -0.3, 0, null, house);
   put(L, planeG(0.6, 0.9), mat({ color: 0x2a1a10 }), 0, 2.4, 1.01, 0, null, house);
   const smoke = [0, 1, 2, 3, 4].map((i) => put(L, new THREE.SphereGeometry(0.35, 6, 4), mat({ color: 0xc8c8c8, em: 0.3 }), -0.8, 6.2, -0.3, 0, null, house));
-  const cage = group(L, 0.6, 0, -3.6, 0, { name: "Cage", show: () => !!S.flags.witchCaged, say: () => [["Witch", "Let me OUT of this cage!"]] });
+  const cage = group(L, 0.6, 0, -3.6, 0, { name: "Cage", show: () => !!S.flags.witchCaged && !S.flags.witchFree, say: () => [["Witch", "Let me OUT of this cage!"]] });
   put(L, boxG(1.0, 0.1, 1.0), mat({ color: 0x3a3028 }), 0, 0, 0, 0, null, cage);
   for (let i = 0; i < 6; i++) put(L, boxG(0.05, 1.8, 0.05), mat({ color: 0x9a9a90 }), -0.45 + i * 0.18, 0, 0.5, 0, null, cage);
   const witch = addChar(L, "witch", 0.6, -3.6, 1.7, { name: "Witch", stand: [1.6, -2.4], say: () => witchAct() });
-  witch.show = witch.body.userData.hot.show = () => !!(S.flags.witchUp || S.flags.witchCaged);
+  witch.show = witch.body.userData.hot.show = () => !!(S.flags.witchUp || S.flags.witchCaged) && !S.flags.houseGone;
+  const wizard = addChar(L, "wizard", 1.9, -2.9, 1.9);
+  wizard.show = () => CUT === "swamp" && !S.flags.houseGone;
   // the priest robes, on a clothesline behind the house
   const line1 = group(L, -4.2, 0, -4.2, 0.3, { name: "Clothesline", say: () => S.flags.got_robes ? [["", "An empty clothesline."]] : [() => add("robes", "got_robes"), ["", "Robes on a clothesline: priest robes from the witch's ministry! Good for a disguise. They go in your item drawer."]] });
   put(L, boxG(0.08, 1.8, 0.08), mat({ color: 0x5a4a38 }), -1, 0, 0, 0, null, line1); put(L, boxG(0.08, 1.8, 0.08), mat({ color: 0x5a4a38 }), 1, 0, 0, 0, null, line1);
@@ -423,7 +425,7 @@ LV.swamp = () => {
   put(L, new THREE.SphereGeometry(0.35, 7, 5), mat({ color: 0xe8c870 }), 0, 3.0, 0, 0, null, scare);
   put(L, new THREE.CylinderGeometry(0.55, 0.55, 0.05, 10), mat({ color: 0xe8c870 }), 0, 3.3, 0, 0, null, scare);
   put(L, new THREE.CylinderGeometry(0.25, 0.3, 0.3, 10), mat({ color: 0xe8c870 }), 0, 3.45, 0, 0, null, scare);
-  crew(L, -3, 2.4);
+  Object.values(crew(L, -3, 2.4)).forEach((c) => (c.show = () => CUT !== "swamp"));
   L.walk = [-8, 8, -3.0, 4.5]; L.start = [-3, 2.4];
   L.entries = { swampField: [-7, 3.2], roadmap: [6.4, 3.8], hub: [-1.8, -2.6] };
   signpost(L, -8.4, 3.6, "< FIELD", { name: "Back to the field", exit: true, go: "swampField", stand: [-7.6, 3.4] });
@@ -436,12 +438,13 @@ LV.swamp = () => {
   L.light = { amb: 0x6a7068, dir: [-0.3, -1, -0.4], dirCol: 0x606858, pts: [[[2.2, 3.5, -8], 0xff9a50, 6], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0x8a9888, 8, 32]; L.bg = 0x8a9888;
   cam(L, [0, 4.6, 11], [0.5, 1.4, -4], 54, null, 200);
-  L.update = (t) => {
+  L.update = (t, dt) => {
     const f = S.flags;
+    if (f.houseGone && CUT === "swamp") { house.position.x += (dt || 0.016) * 2.2; house.position.y = Math.abs(Math.sin(t * 6)) * 0.25; }
     smoke.forEach((m, i) => { const k = (t * 0.3 + i / 5) % 1; m.position.set(-0.8 + Math.sin(k * 6 + i) * 0.4, 6.2 + k * 3, -0.3); m.scale.setScalar(0.5 + k * 1.5); });
     scare.visible = !!f.scarecrow;
     robes.forEach((r) => (r.visible = !f.got_robes));
-    witch.pos.set(f.witchCaged ? 0.6 : 1.6, f.witchCaged ? -3.6 : -4.6);
+    witch.pos.set(f.witchFree ? 1.0 : f.witchCaged ? 0.6 : 1.6, f.witchFree ? -2.8 : f.witchCaged ? -3.6 : -4.6);
     appr.yOff = Math.sin(t * 1.5) * 0.06;
   };
   return L;
@@ -513,12 +516,7 @@ LV.mansionKitchen = () => {
 
 function roadGoal() {
   const f = S.flags, here = L ? L.id : "";
-  if (f.castleEnd) return "To be continued! The kids are still writing what happens inside the wizard's castle.";
-  if (f.witchCaged) {
-    if (here !== "castle" && here !== "castleBack") return "The witch is locked up! Drive to the wizard's castle.";
-    if (!f.rocksDone) return f.slipped ? "Watch the clouds closely. Hop on the rocks in the same order the clouds puff up." : "Get across the dangerous rocks to the gigantic front door. (The clouds seem to be moving in a pattern...)";
-    return has("robes") ? "Knock on the gigantic front door, wearing your disguise." : "The door is shut tight. A disguise might help... maybe something from around the witch's house?";
-  }
+  if (f.witchCaged) return castleGoal(here);
   if (f.treesAwake) {
     if (f.witchUp) return "The witch is casting a spell! Who can stop her? Click the witch's house.";
     return here === "swamp" ? "Look around the witch's house... carefully." : "The road is clear! Drive to the swamp and find the witch.";

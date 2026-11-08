@@ -359,7 +359,7 @@ LV.jons = () => {
   put(L, boxG(2.42, 0.08, 1.32), mat({ color: 0x9cc8f0 }), 0, 0.5, 0, 0, null, bed);
   put(L, boxG(0.45, 0.28, 0.85), mat({ color: 0xffffff }), 0.85, 0.58, 0, 0, null, bed);
   put(L, boxG(0.44, 0.03, 0.32), mat({ map: T.ipad, em: 0.6 }), -0.3, 0.58, 0.1, 0.2,
-    { name: "iPad", say: [["", "The iPad. This is where Jon heard there are bad guys."]] }, bed);
+    { name: "iPad", say: [["", "The iPad. This is where Jon heard there are bad guys: a ping-pong bad guy, and a witch."]] }, bed);
   const cacao = group(L, 0.5, 0, -2.6, 0, { name: "Cacao", show: () => !S.flags.got_cacao, say: () => take("cacao") });
   put(L, new THREE.CylinderGeometry(0.15, 0.15, 0.36, 7), mat({ color: 0x6b3a20 }), 0, 0.18, 0, 0, null, cacao);
   put(L, new THREE.CylinderGeometry(0.16, 0.16, 0.06, 7), mat({ color: 0xffd23f }), 0, 0.38, 0, 0, null, cacao);
@@ -459,6 +459,13 @@ LV.armory = () => {
   onWall(L, "back", R, TEX.arm4, 2.4, 0.6, -2.9, 0.6, weapon("Small weapons"), 0x8a8f9a);
   L.hots.forEach((g) => g.children.forEach((m) => { if (m.material.uniforms.map.value !== WHITE) m.material.uniforms.uColor.value.set(glass); }));
   onWall(L, "left", R, TEX.armory, 0.9, 1.24, -1.4, 1.3, { name: "The kids' drawing", say: [["", "The kids' drawing of the armory. This 3D room is built from it."]] }, 0x8a6a4a);
+  // the flashlight (needed later, in the wizard's hall of mirrors)
+  const fl = group(L, 2.6, 0, -1.6, 0, { name: "Flashlight", stand: [2.4, -0.9], show: () => !S.flags.got_flashlight,
+    say: () => [() => add("flashlight", "got_flashlight"), ["", "A big space flashlight! May takes it. It goes in your item drawer."]] });
+  put(L, boxG(0.7, 0.8, 0.5), mat({ color: 0x4a4f6e }), 0, 0, 0, 0, null, fl);
+  const tube = new THREE.CylinderGeometry(0.09, 0.09, 0.5, 8); tube.rotateZ(Math.PI / 2);
+  put(L, tube, mat({ color: 0xd8b030 }), 0, 0.9, 0, 0, null, fl);
+  put(L, new THREE.CircleGeometry(0.1, 8).rotateY(Math.PI / 2), mat({ color: 0xfff6c0, em: 1 }), 0.26, 0.9, 0, 0, null, fl);
   L.player = addChar(L, "may", -2.4, 1.2, 1.3);
   L.walk = [-3.8, 3.8, -1.35, 2.5];
   L.start = [-2.4, 1.2]; L.entries = { control: [-3.3, 1.4] };
@@ -738,9 +745,13 @@ function jonEngineAct() {
   if (f.fixed) return [["Jon", "The engine is fixed!"]];
   if (!has("map")) return [["Jon", "I need the engine room schematics to fix this!"]];
   return [() => remove("map"), ["May", "Here, Jon! The mouse's map of the engine room!"], ["Jon", "The schematics! Now I can fix it!"],
-    ["", "CLANK! BONK! WHIRR!"], flag("fixed"), ["", "The engine is back online! The ship starts moving again..."],
+    ["", "CLANK! BONK! WHIRR!"], flag("fixed"), ["", "The engine is back online! The ship starts moving again... on to Woolley Mountain!"],
     () => shake(), ["", "BOOM! Something smashes into the ship!"], ["Jon", "Asteroids!!"],
-    () => { S.flags.crashed = true; save(); goLevel("beach"); }];
+    ["May", "Quick! Everybody to the ship's blasters! Shoot them!"],
+    () => asteroidStorm((hits) => say([
+      ["", `The kids blast ${hits} asteroid${hits === 1 ? "" : "s"}... but there are just too many!`], () => shake(),
+      ["Everyone", "AHHHHH!"], ["", "KA-BOOM! The ship spins out of space and falls toward a planet below..."],
+      () => { S.flags.crashed = true; save(); goLevel("beach"); }]))];
 }
 function lockAct() {
   if (S.flags.gotKeycard) return [["", "The box is empty now."]];
@@ -760,4 +771,90 @@ function armoryDoor() {
 }
 function shake() {
   stage.animate([{ transform: "translate(0,0)" }, { transform: "translate(-8px,4px)" }, { transform: "translate(7px,-5px)" }, { transform: "translate(-5px,3px)" }, { transform: "translate(0,0)" }], { duration: 500, iterations: 2 });
+}
+
+// ---------- the asteroid storm: the kids shoot asteroids from the ship (like Asteroids), but it's too much ----------
+function asteroidStorm(done) {
+  const cv = $("astro"), x = cv.getContext("2d"), DUR = SHOT ? 1.5 : 42;
+  cv.hidden = false; busy = true; stopSpeaking();
+  const ship = { x: 160, y: 140, a: -Math.PI / 2 }, aim = { x: 160, y: 40 };
+  const stars = Array.from({ length: 70 }, () => [rnd() * 320, rnd() * 240, 0.3 + rnd() * 1.6]);
+  let rocks = [], shots = [], booms = [], spawn = 0.4, hits = 0, cool = 0, firing = false, hurt = 0, over = false;
+  const t0 = performance.now(); let last = t0;
+  const pt = (e) => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * 320, y: (e.clientY - r.top) / r.height * 240 }; };
+  const down = (e) => { e.preventDefault(); Object.assign(aim, pt(e)); firing = true; };
+  const move = (e) => Object.assign(aim, pt(e));
+  const up = () => (firing = false);
+  const key = (e) => { if (e.key === " ") { e.preventDefault(); firing = e.type === "keydown"; } };
+  cv.addEventListener("pointerdown", down); cv.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up); window.addEventListener("keydown", key); window.addEventListener("keyup", key);
+  function newRock(k, r, px, py) {
+    if (px == null) {
+      const side = Math.floor(rnd() * 4);
+      px = side === 0 ? -20 : side === 1 ? 340 : rnd() * 320; py = side === 2 ? -20 : side === 3 ? 260 : rnd() * 240;
+    }
+    r = r || 9 + rnd() * 10 + k * 6;
+    const toShip = Math.atan2(ship.y - py, ship.x - px) + (rnd() - 0.5) * 0.9, sp = 22 + k * 45 + rnd() * 20;
+    const pts = Array.from({ length: 9 }, (_, i) => [i / 9 * Math.PI * 2, 0.7 + rnd() * 0.35]);
+    return { x: px, y: py, r, vx: Math.cos(toShip) * sp, vy: Math.sin(toShip) * sp, rot: rnd() * 6, spin: (rnd() - 0.5) * 2, pts };
+  }
+  function boom(px, py, n, col) { for (let i = 0; i < n; i++) { const a = rnd() * 6.3, s = 20 + rnd() * 70; booms.push({ x: px, y: py, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.5 + rnd() * 0.4, col }); } }
+  function tick(now) {
+    if (over) return;
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const el = (now - t0) / 1000, k = Math.min(1, el / DUR);
+    spawn -= dt;
+    if (spawn <= 0) { rocks.push(newRock(k)); if (k > 0.6) rocks.push(newRock(k)); spawn = Math.max(0.18, 1.2 - k * 1.1); }
+    ship.a = Math.atan2(aim.y - ship.y, aim.x - ship.x);
+    cool -= dt;
+    if (firing && cool <= 0) { shots.push({ x: ship.x + Math.cos(ship.a) * 14, y: ship.y + Math.sin(ship.a) * 14, vx: Math.cos(ship.a) * 260, vy: Math.sin(ship.a) * 260, life: 1.2 }); cool = 0.15; }
+    shots.forEach((s) => { s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; });
+    rocks.forEach((r) => { r.x += r.vx * dt; r.y += r.vy * dt; r.rot += r.spin * dt; });
+    booms.forEach((b) => { b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt; });
+    for (const s of shots) for (const r of rocks) {
+      if (s.life > 0 && !r.dead && Math.hypot(s.x - r.x, s.y - r.y) < r.r) {
+        s.life = 0; r.dead = true; hits++; boom(r.x, r.y, 10, "#ffb84a");
+        if (r.r > 14) for (let i = 0; i < 2; i++) rocks.push(newRock(k, r.r * 0.55, r.x, r.y));
+      }
+    }
+    for (const r of rocks) if (!r.dead && Math.hypot(r.x - ship.x, r.y - ship.y) < r.r + 9) { r.dead = true; hurt = 0.3; boom(r.x, r.y, 14, "#ff5a5a"); shake(); }
+    rocks = rocks.filter((r) => !r.dead && r.x > -60 && r.x < 380 && r.y > -60 && r.y < 300);
+    shots = shots.filter((s) => s.life > 0); booms = booms.filter((b) => b.life > 0); hurt = Math.max(0, hurt - dt);
+    // draw
+    x.fillStyle = hurt > 0 ? "#3a0c18" : "#05060f"; x.fillRect(0, 0, 320, 240);
+    stars.forEach((s) => { s[1] = (s[1] + s[2] * 18 * dt) % 240; x.fillStyle = s[2] > 1.4 ? "#ffffff" : "#8890b8"; x.fillRect(s[0] | 0, s[1] | 0, 1, 1); });
+    rocks.forEach((r) => {
+      x.save(); x.translate(r.x, r.y); x.rotate(r.rot); x.beginPath();
+      r.pts.forEach(([a, m], i) => x[i ? "lineTo" : "moveTo"](Math.cos(a) * r.r * m, Math.sin(a) * r.r * m));
+      x.closePath(); x.fillStyle = "#6a5a50"; x.fill(); x.strokeStyle = "#c8b8a8"; x.lineWidth = 1; x.stroke();
+      x.fillStyle = "#4a3e38"; x.fillRect(-r.r * 0.3, -r.r * 0.2, r.r * 0.25, r.r * 0.25); x.restore();
+    });
+    x.fillStyle = "#ffe85a"; shots.forEach((s) => x.fillRect(s.x - 1, s.y - 1, 3, 3));
+    booms.forEach((b) => { x.fillStyle = b.col; x.globalAlpha = Math.min(1, b.life * 2); x.fillRect(b.x | 0, b.y | 0, 2, 2); });
+    x.globalAlpha = 1;
+    // the smiling spaceship (purple fins, round body), turning to aim
+    x.save(); x.translate(ship.x, ship.y); x.rotate(ship.a);
+    x.fillStyle = "#a24fd6"; x.fillRect(-12, -9, 6, 4); x.fillRect(-12, 5, 6, 4);
+    x.fillStyle = "#e8e4f4"; x.beginPath(); x.ellipse(0, 0, 13, 8, 0, 0, 6.3); x.fill();
+    x.fillStyle = "#2a1f3d"; x.fillRect(3, -3, 2, 2); x.fillRect(3, 2, 2, 2); x.fillRect(7, -2, 2, 4);
+    x.restore();
+    // words on top
+    x.font = FONT; x.textAlign = "center"; x.textBaseline = "top";
+    const msgTop = k < 0.45 ? "ASTEROIDS! CLICK TO SHOOT" : k < 0.8 ? "THERE ARE SO MANY!" : "TOO MANY!! HANG ON!";
+    x.fillStyle = "#000"; x.fillText(msgTop, 161, 9); x.fillStyle = k < 0.8 ? "#ffd23f" : "#ff6a6a"; x.fillText(msgTop, 160, 8);
+    x.textAlign = "left"; x.fillStyle = "#fff"; x.fillText("HITS " + hits, 8, 224);
+    x.fillStyle = "#3a3f60"; x.fillRect(200, 225, 110, 7);
+    const shield = Math.max(0, 1 - k);
+    x.fillStyle = shield > 0.3 ? "#5ad8ff" : "#ff5a5a"; x.fillRect(200, 225, 110 * shield, 7);
+    x.textAlign = "right"; x.fillStyle = "#fff"; x.fillText("SHIELDS", 196, 224);
+    if (el >= DUR) {
+      over = true;
+      cv.removeEventListener("pointerdown", down); cv.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up); window.removeEventListener("keydown", key); window.removeEventListener("keyup", key);
+      shake(); cv.hidden = true; busy = false; done(hits);
+      return;
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
 }

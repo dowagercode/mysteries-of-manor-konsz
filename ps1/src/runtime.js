@@ -58,6 +58,10 @@ const CAST = {
   Olivia: { names: ["Kathy", "Victoria", "Tessa", "Fiona"], pitch: 1.6, rate: 0.88 },
   Jon: { names: ["Junior", "Fred", "Daniel"], pitch: 1.15, rate: 0.92 },
   Jasin: { names: ["Ralph", "Aaron", "Alex", "Daniel"], pitch: 1.25, rate: 0.92 },
+  Wizard: { names: ["Ralph", "Fred", "Daniel"], pitch: 0.75, rate: 0.86 },
+  Witch: { names: ["Victoria", "Kathy", "Moira"], pitch: 0.9, rate: 0.9 },
+  Sphinx: { names: ["Fred", "Daniel", "Alex"], pitch: 0.5, rate: 0.8 },
+  Owl: { names: ["Kathy", "Samantha", "Karen"], pitch: 1.2, rate: 0.85 },
 };
 function castFor(name) {
   const key = Object.keys(CAST).find((k) => name.startsWith(k)) || "May";
@@ -313,11 +317,12 @@ $("restartBtn").onclick = (e) => {
   location.reload();
 };
 ["fullscreenchange", "webkitfullscreenchange"].forEach((ev) => document.addEventListener(ev, () => setTimeout(resize, 50)));
-const INTRO = [["", "The kids' giant spaceship is stalled in space, and it can't move."], ["", "Jon is the engineer, but he's hiding in his secret hole!"], ["", "Help May get Jon out so he can fix the ship."]];
+const INTRO = [["", "The kids are flying their giant spaceship to Woolley Mountain... but the ship is stalled in space, and it can't move."],
+  ["", "Jon is the engineer, but he's hiding in his secret hole!"], ["", "May is in her room. Help May get Jon out so he can fix the ship."]];
 function beginGame(fresh) {
   $("title").hidden = true;
-  if (fresh) { S.items = []; S.flags = {}; S.room = "hall"; save(); }
-  goLevel(S.room && LV[S.room] ? S.room : "hall");
+  if (fresh) { S.items = []; S.flags = {}; S.room = "mays"; save(); }
+  goLevel(S.room && LV[S.room] ? S.room : "mays");
   if (fresh || !S.flags.started) { S.flags.started = true; save(); setTimeout(() => say(INTRO), 450); }
 }
 

@@ -46,12 +46,53 @@ LV.beach = () => {
   L.walk = [-9, 9, -2.4, 6.5];
   L.start = [0, 2];
   L.entries = { pingpong: [-7.6, 4.2] };
-  L.onEnter = [["Everyone", "AHHHHH!"], ["", "The ship falls all the way from space... SPLASH! Right into the water."], ["Everyone", "Shucks!"], ["", "The crew swims to the beach. Chapter 2 begins! Now everyone walks together."]];
+  // far away inland: the wizard's castle behind the hills and forests, with lightning all around it
+  const far = new THREE.Group(); far.position.set(-6, 0, 62); far.rotation.y = Math.PI; L.scene.add(far);
+  const fm = mat({ color: 0x3a3048, fog: 0.35 });
+  put(L, boxG(8, 5, 3), fm, 0, 4, 0, 0, null, far);
+  [[-4, 11, 0.3], [4, 9, -0.3], [-1.5, 8, 0.2], [2, 12, -0.2]].forEach(([tx, h, tw]) => {
+    const tw1 = put(L, new THREE.CylinderGeometry(0.6, 0.9, h, 6), fm, tx, 4 + h / 2, 0, 0, null, far); tw1.rotation.z = tw * 0.4;
+    put(L, new THREE.ConeGeometry(0.8, 2.2, 6), mat({ color: 0x241c30, fog: 0.35 }), tx - tw * h * 0.2, 4 + h + 1, 0, 0, null, far);
+  });
+  [[-14, 30, 9], [6, 34, 11], [-2, 40, 8], [16, 38, 10], [-22, 44, 12]].forEach(([hx, hz, r]) => {
+    const hill = new THREE.SphereGeometry(r, 10, 6); hill.scale(1.6, 0.45, 1);
+    put(L, hill, mat({ color: 0x3e5a3a, fog: 0.5 }), hx, -1, hz);
+  });
+  [[-9, 22], [-5, 24], [-1, 23], [3, 25], [7, 22], [11, 24], [-13, 25]].forEach(([tx, tz]) => tree(L, tx, tz, 1.8, 0x2a4a2a));
+  const bolts = [[-5, 18, 2], [3, 20, -1], [7, 16, 1]].map(([bx, by, bz]) => {
+    const pts = []; let px = bx, py = by;
+    for (let i = 0; i < 7; i++) { pts.push(new THREE.Vector3(px, py, bz)); px += (rnd() - 0.5) * 2.2; py -= 2.2; }
+    const l = line(L, lineG(pts), 0xfff6a0, far); l.visible = false; return l;
+  });
+  const glowM = mat({ color: 0xfff27a, em: 1, alpha: 0.5 });
+  const ballGlow = put(L, new THREE.SphereGeometry(0.28, 8, 6), glowM, 0, -9, 0);
+  const tutuGlow = put(L, new THREE.TorusGeometry(0.34, 0.1, 5, 12).rotateX(Math.PI / 2), glowM, 0, -9, 0);
+  let cut = false, jumpT = -9;
+  L.onEnter = [["Everyone", "AHHHHH!"], ["", "The ship falls all the way from space... SPLASH! Right into the water."], ["Everyone", "Shucks!"],
+    ["", "The crew swims to the beach. Then... Jasin's soccer ball and Olivia's tutu start to GLOW!"], () => { S.flags.glowing = true; save(); jumpT = performance.now() / 1000; },
+    ["Jasin", "Whoa! My ball!"], ["Olivia", "My tutu is glowing too! What could cause that?"],
+    () => { cut = true; }, ["", "Far away, behind the hills and forests, there's a castle... with lightning crashing all around it!"],
+    ["Jon", "I wonder if there's a wizard there who can tell us about this?"], () => { cut = false; },
+    ["", "Chapter 2 begins! Now everyone walks together."]];
   L.light = { amb: 0x6a6088, dir: [-0.5, -0.7, -0.6], dirCol: 0xd8a8a0, pts: [[[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0xd6a2bd, 14, 60]; L.bg = 0xd6a2bd;
+  cam(L, [0, 2.2, 3], [-5, 6, 60], 48, () => cut, 200);
   cam(L, [-1, 4.2, 12.5], [0.5, 0.4, -3], 50, (p) => p.x < 3, 200);
   cam(L, [8.5, 1.6, 4.5], [3.5, 1.0, -6], 56, null, 200);
-  L.update = (t) => { ship.position.y = -0.7 + Math.sin(t * 1.1) * 0.08; ship.rotation.z = Math.sin(t * 0.8) * 0.03; };
+  L.update = (t) => {
+    ship.position.y = -0.7 + Math.sin(t * 1.1) * 0.08; ship.rotation.z = Math.sin(t * 0.8) * 0.03;
+    const flash = Math.sin(t * 7.3) * Math.sin(t * 2.1) > 0.82;
+    bolts.forEach((b, i) => (b.visible = flash && (Math.floor(t * 3) + i) % 2 === 0));
+    const g = !!S.flags.glowing;
+    ballGlow.visible = tutuGlow.visible = g;
+    if (g) {
+      ballGlow.position.set(jasin.pos.x + 0.25, 0.3 + jasin.body.position.y, jasin.pos.y + 0.05);
+      tutuGlow.position.set(olivia.pos.x, 0.5 + olivia.body.position.y, olivia.pos.y);
+      glowM.uniforms.uAlpha.value = 0.35 + Math.sin(t * 5) * 0.15;
+    }
+    const j = t - jumpT;   // everyone jumps, startled
+    [jon, jasin, olivia, may].forEach((c, i) => (c.yOff = j > 0 && j < 0.7 ? Math.sin((j - i * 0.05) / 0.7 * Math.PI) * 0.45 : 0));
+  };
   return L;
 };
 

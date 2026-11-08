@@ -37,6 +37,11 @@ The notes are split into one file per topic and one file per place, so you only 
 - The kids want to go to the wizard to find out why Jasin's ball glows.
 - The wizard is secretly a bad guy, but the kids don't know.
 
+- Why they're on the spaceship: the kids were trying to fly to Woolley Mountain.
+- Do they know about Manor Konsz yet (on the spaceship)? Not really; they only heard about it from rumors.
+- The story begins with May, in her room.
+- CHANGED: the ball and the tutu should start glowing when they land on the beach ([zones/02-crash-site.md](zones/02-crash-site.md)). (Earlier idea, now replaced: at the start, May finds Jasin, and his ball is glowing, and they wonder why.)
+
 ## The world
 
 - World size: the world should seem a little bit larger. The rooms should have some connecting areas. The way to the witch's house is full of a few different zones, and the witch's house is on chicken feet in the middle. The wizard's place also has a lot of different areas you have to go through. Each area can have puzzles (not decided yet — to write together).

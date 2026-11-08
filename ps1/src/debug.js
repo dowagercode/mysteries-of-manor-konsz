@@ -4,7 +4,7 @@
 // ---------- debug: travel to points in the story (Shift+D, or #debug in the address) ----------
 const CHECKPOINTS = (() => {
   const steps = [
-    ["Ch1: start", "hall", {}, []],
+    ["Ch1: start", "mays", {}, []],
     ["Ch1: Olivia wants her pills", "hub", { metJon: 1, askedOlivia: 1 }, []],
     ["Ch1: engine room, with the map", "engine", { got_tuna: 1, got_opener: 1, got_cheese: 1, engineOpen: 1, gotMap: 1 }, ["map"]],
     ["Ch1: bake the cake", "hub", { gotPills: 1, gavePills: 1, got_flour: 1, got_oil: 1, got_sugar: 1, got_water: 1, got_yeast: 1, got_cacao: 1 }, ["map", "flour", "oil", "sugar", "water", "yeast", "cacao"]],
@@ -24,7 +24,14 @@ const CHECKPOINTS = (() => {
     ["Ch3: the witch", "swamp", { treesAwake: 1, got_robes: 1, mapAt: "swamp" }, ["robes"]],
     ["Ch4: castle rocks", "castle", { witchCaged: 1, mapAt: "castle" }, ["robes"]],
     ["Ch4: gigantic door", "castle", { rocksDone: 1 }, ["robes"]],
-    ["Ch4: the end", "castle", { wizardOut: 1, castleEnd: 1 }, []],
+    ["Ch4: tea with the wizard", "reception", { wizardOut: 1, inCastle: 1 }, []],
+    ["Ch4: wheel of the year hall", "wheelHall", { wizardGone: 1 }, []],
+    ["Ch4: the sphinx", "castleUp", { got_chart: 1, wheelStep: 8, stairsUp: 1, stairsSeen: 1, letter_Yule: 1, letter_Ostara: 1, letter_Litha: 1, letter_Mabon: 1 }, ["chart"]],
+    ["Ch4: hall of mirrors (no flashlight)", "mirrors", { sphinxPassed: 1 }, ["chart"]],
+    ["Ch4: hall of mirrors (with flashlight)", "mirrors", { got_flashlight: 1 }, ["chart", "flashlight"]],
+    ["Ch4: blow the trumpet", "mirrors", { chairMoved: 1, got_book: 1, got_mouthpiece: 1, fogClear: 1, got_middle: 1, placed_may: 1, placed_jon: 1, placed_jasin: 1, placed_olivia: 1, got_bell: 1, got_trumpet: 1 }, ["chart", "flashlight", "trumpet"]],
+    ["Ch4: the wizard in the atrium", "atrium", { shattered: 1 }, ["chart", "flashlight"]],
+    ["Ch4: the end (dogs of darkness)", "atrium", { dogsOut: 1, wizSwamp: 1, witchFree: 1, houseGone: 1, dogsEnd: 1 }, ["chart", "flashlight"]],
   ];
   let flags = { started: 1 };
   return steps.map(([name, room, add, items]) => { flags = { ...flags, ...add }; return { name, room, flags: { ...flags }, items }; });

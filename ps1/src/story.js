@@ -3,7 +3,7 @@
 
 // ---------- the game: items, puzzles, goals (story from the kids' notes) ----------
 const SAVE_KEY = "manorkonsz-ps1-save";
-const S = { items: [], flags: {}, room: "hall", sel: null };
+const S = { items: [], flags: {}, room: "mays", sel: null };
 try { const d = JSON.parse(localStorage.getItem(SAVE_KEY) || "null"); if (d) Object.assign(S, d, { sel: null }); } catch {}
 const ITEMS = {
   tuna: ["🥫", "Can of tuna"], opener: ["🔧", "Can opener"], key: ["🗝️", "Engine room key"], cheese: ["🧀", "Moldy cheese"],
@@ -13,6 +13,9 @@ const ITEMS = {
   squeegee: ["🧽", "Squeegee"], momStone: ["🪨", "Mom stone"], dadStone: ["🪨", "Dad stone"], wifeStone: ["🪨", "Wife stone"],
   jeepKeys: ["🚙", "Jeep keys"], marketKey: ["🗝️", "Supermarket key"],
   hat: ["👒", "Straw hat"], scarecrowKit: ["🧑‍🌾", "Giant scarecrow"], shirt: ["👕", "Old shirt"], twigs: ["🪵", "Bundle of twigs"], straw: ["🌾", "Straw"], head: ["🗿", "Stone head"], robes: ["🥋", "Priest robes"],
+  flashlight: ["🔦", "Flashlight"], chart: ["📜", "Wheel of the year chart"], book: ["📕", "Giant picture book"],
+  mouthpiece: ["🎺", "Trumpet mouthpiece"], middle: ["🎺", "Trumpet middle section"], bell: ["🎺", "Trumpet bell"], trumpet: ["🎺", "Crystal trumpet"],
+  stoneBow: ["🎀", "Stone hair bow"], stoneDisk: ["⚫", "Stone portal disk"], stoneBall: ["⚽", "Stone soccer ball"], stoneTutu: ["🩰", "Stone tutu"],
 };
 const CAKE = ["flour", "oil", "sugar", "water", "yeast", "cacao"];
 const has = (id) => S.items.includes(id);
@@ -65,9 +68,17 @@ function goal() {
 }
 function sideGoal() {
   const f = S.flags;
+  if (f.needLight && !has("flashlight")) {
+    const ship = L && ["hall", "hub", "control", "armory", "engine", "hideout", "jons", "mays", "jasins", "olivias", "playroom", "storage", "bath"].includes(L.id);
+    if (!ship) return "Flashlight: it's in the ship's armory. Drive to the swamp and row the apprentice's boat out to the ship.";
+    if (f.armoryOpen) return "Flashlight: it's in the armory, through the door in the control room.";
+    if (has("keycard")) return "Flashlight: open the armory in the control room with the keycard.";
+    if (has("boxKey")) return "Flashlight: the armory needs a keycard. The little key opens a locked box in the engine room.";
+    return "Flashlight: the armory needs a keycard. Is there anything under the papers in Jon's purple portal?";
+  }
   if (f.drove) {
     if (has("head")) return "Side mystery: whose stone head is this? Maybe it belongs to a statue somewhere.";
-    if (f.statueTold && !f.castleEnd) return "Secret: there's a truck entrance around behind the wizard's castle.";
+    if (f.statueTold && !f.stairsUp) return "The statue's riddle: \"Follow the wheel of the year.\"";
     return "";
   }
   if (f.crashed && f.ppKO && !f.got_marketKey) return f.metOwner ? "Side mystery: is there anything else hidden around the gas station?" : "";

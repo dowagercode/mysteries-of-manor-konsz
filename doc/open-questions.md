@@ -20,5 +20,5 @@ These are in the playable game, but the kids didn't decide them. Ask the kids to
 - Priest robes on a clothesline behind the witch's house.
 - Witch fight: pick a kid when she casts her spell; only Jasin's kick works.
 - Dangerous rocks: 3 rows of 3 rocks; clouds puff up in an order and you hop in that order; a wrong rock slides you back.
-- Castle door: the wizard peeks out, then "to be continued." Truck entrance behind the castle is empty.
+- Castle door: the wizard peeks out, then "to be continued." Truck entrance behind the castle is empty. (Kids, 2026-11-08: keep it for now; it goes to the castle kitchen, which connects to the main reception area where they have tea. See zones/09.)
 - Secret mansion: optional stop on the road map; the TV only shows fuzz.
