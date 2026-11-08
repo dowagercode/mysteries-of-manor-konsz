@@ -56559,14 +56559,14 @@ function finale() {
   setTimeout(() => say([["", "Back at the beach, the wizard, the witch, and the apprentice help fix the kids' spaceship."],
     ["Jon", "The engine is working again!"], flag("shipUp"),
     ["", "The smiling spaceship rises up out of the water!"], ["Everyone", "Bye! Thank you!"],
-    ["", "Where will the kids fly next? (The kids are still deciding!)"], flag("theEnd"),
+    ["", "And the kids fly on to Woolley Mountain, where they were going all along!"], flag("theEnd"),
     ["", "THE END. Thanks for playing Mysteries of Manor Konsz!"]]), 450);
 }
 
 // ---------- goals for chapter 5 ----------
 function chaseGoal(here) {
   const f = S.flags;
-  if (f.theEnd) return "THE END! Where will the kids fly next? (The kids are still deciding.)";
+  if (f.theEnd) return "THE END! The kids fly on to Woolley Mountain.";
   if (f.married) return "The wizard, the witch, and the apprentice are helping fix the ship!";
   if (f.songDone) return here === "mansionTop" ? "Talk to the wizard and the witch." : "A staircase came down from the ceiling in the music hall. Climb up!";
   if (f.chaseDone) {
