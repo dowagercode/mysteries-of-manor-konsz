@@ -109,6 +109,7 @@
     <button id="readBtn" aria-pressed="true">Voices: on</button>
     <button id="fullBtn">Full screen</button>
     <button id="ps1Btn" aria-pressed="true">PS1 hint: on</button>
+    <button id="char3dBtn" aria-pressed="false">3D chars: off</button>
     <button id="restartBtn">Start over</button>
   </div>
 </header>
@@ -53389,7 +53390,7 @@ function wavyString(x, y0, y1, z, wig = 0.12) {
 
 // ---------- levels ----------
 function newLevel(id, name) {
-  return { id, name, scene: new THREE.Scene(), hots: [], chars: [], cams: [], walk: [-3, 3, -1, 2], start: [0, 1], entries: {},
+  return { id, name, scene: new THREE.Scene(), hots: [], chars: [], allChars: [], cams: [], walk: [-3, 3, -1, 2], start: [0, 1], entries: {},
     light: { amb: 0x707080, dir: [0.3, -1, -0.5], dirCol: 0x606060, pts: [] }, fog: [0x000000, 12, 30], bg: 0x000000 };
 }
 function put(L, geo, m, x = 0, y = 0, z = 0, ry = 0, hot, parent) {
@@ -53437,17 +53438,335 @@ function onWall(L, side, room, tex, w, h, a, y, hot, frameCol, depth = 0.02) {
   put(L, planeG(w, h), mat({ map: tex }), 0, 0, 0.06, 0, null, g);
   return g;
 }
+
+const CLEAR_TEX = C(2, 2, () => {});
+let chars3d = false;
+function buildChar3D(key, h) {
+  const g = new THREE.Group();
+  const parts = [];
+  const P = (par, geo, col, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, em = 0.42) => {
+    const me = new THREE.Mesh(geo, mat({ color: col, em, side: THREE.DoubleSide }));
+    me.position.set(x, y, z); me.rotation.set(rx, ry, rz);
+    me.userData.baseCol = new THREE.Color(col); me.userData.baseEm = em;
+    par.add(me); parts.push(me);
+    return me;
+  };
+  const piv = (par, x, y, z) => { const p = new THREE.Group(); p.position.set(x, y, z); par.add(p); return p; };
+  const cyl = (rt, rb, len, seg = 6) => new THREE.CylinderGeometry(rt, rb, len, seg);
+  const sph = (r, ws = 7, hs = 6) => new THREE.SphereGeometry(r, ws, hs);
+  const cone = (r, len, seg = 6) => new THREE.ConeGeometry(r, len, seg);
+  const face = (y = 1.0, z = 0.165, sep = 0.065, eyeCol = 0x2a1f3d, sparkle = false, cheekCol = null, smileCol = 0x2a1f3d) => {
+    [-1, 1].forEach((s) => {
+      P(g, sph(0.024, 5, 4), eyeCol, s * sep, y + 0.015, z, 0, 0, 0, 0.6);
+      if (sparkle) P(g, sph(0.011, 4, 4), 0xffffff, s * sep + 0.008, y + 0.022, z + 0.012, 0, 0, 0, 0.95);
+      if (cheekCol) P(g, sph(0.025, 5, 4), cheekCol, s * (sep + 0.045), y - 0.025, z - 0.01, 0, 0, 0, 0.55);
+    });
+    if (smileCol != null) P(g, boxG(0.075, 0.018, 0.02), smileCol, 0, y - 0.06, z, 0, 0, 0, 0.5);
+  };
+  let legL = null, legR = null, armL = null, armR = null, extra = null;
+  if (key === "may") {
+    legL = piv(g, -0.08, 0.44, 0); legR = piv(g, 0.08, 0.44, 0);
+    [legL, legR].forEach((l) => {
+      P(l, cyl(0.038, 0.034, 0.36), 0xf3c9a5, 0, -0.18, 0);
+      P(l, boxG(0.095, 0.065, 0.14), 0x8a2c55, 0, -0.44, 0.025);
+    });
+    P(g, cyl(0.095, 0.23, 0.46, 8), 0xe8669a, 0, 0.63, 0);
+    P(g, boxG(0.075, 0.075, 0.02), 0xffffff, 0, 0.58, 0.165, 0, 0, 0, 0.85);
+    P(g, boxG(0.075, 0.075, 0.02), 0xffffff, 0, 0.58, 0.168, 0, 0, Math.PI / 4, 0.85);
+    armL = piv(g, -0.12, 0.81, 0); armR = piv(g, 0.12, 0.81, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, sph(0.052, 6, 5), 0xe8669a, s * 0.015, -0.02, 0);
+      P(a, cyl(0.034, 0.03, 0.27), 0xf3c9a5, s * 0.055, -0.14, 0, 0, 0, -s * 0.26);
+      P(a, sph(0.04, 6, 5), 0xf3c9a5, s * 0.09, -0.26, 0);
+    });
+    P(g, sph(0.18, 8, 7), 0xf3c9a5, 0, 1.01, 0);
+    P(g, sph(0.188, 8, 7), 0x6b3f2a, 0, 1.03, -0.025);
+    [-1, 1].forEach((s) => {
+      P(g, boxG(0.13, 0.07, 0.09), 0x6b3f2a, s * 0.065, 1.11, 0.11, 0, 0, -s * 0.22);
+      P(g, sph(0.095, 7, 6), 0x6b3f2a, s * 0.165, 1.19, -0.01);
+      P(g, sph(0.038, 5, 4), 0xe8669a, s * 0.13, 1.13, 0.045);
+    });
+    face(1.01, 0.168, 0.065, 0x2a1f3d, true, 0xf29bb0);
+  } else if (key === "jon" || key === "jonOval") {
+    legL = piv(g, -0.085, 0.44, 0); legR = piv(g, 0.085, 0.44, 0);
+    [legL, legR].forEach((l) => {
+      P(l, boxG(0.095, 0.12, 0.11), 0x2f4a6e, 0, -0.10, 0);
+      P(l, cyl(0.036, 0.033, 0.28), 0xe9b48a, 0, -0.22, 0);
+      P(l, boxG(0.10, 0.07, 0.15), 0xe04e39, 0, -0.44, 0.025);
+    });
+    P(g, boxG(0.24, 0.12, 0.15), 0x2f4a6e, 0, 0.41, 0);
+    P(g, cyl(0.12, 0.135, 0.35, 7), 0x3a86c8, 0, 0.68, 0);
+    P(g, boxG(0.085, 0.085, 0.02), 0xffd23f, 0, 0.65, 0.13, 0, 0, 0, 0.75);
+    P(g, boxG(0.085, 0.085, 0.02), 0xffd23f, 0, 0.65, 0.133, 0, 0, Math.PI / 4, 0.75);
+    armL = piv(g, -0.135, 0.81, 0); armR = piv(g, 0.135, 0.81, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, cyl(0.045, 0.042, 0.10), 0x3a86c8, s * 0.02, -0.04, 0, 0, 0, -s * 0.2);
+      P(a, cyl(0.034, 0.03, 0.24), 0xe9b48a, s * 0.06, -0.16, 0, 0, 0, -s * 0.25);
+      P(a, sph(0.04, 6, 5), 0xe9b48a, s * 0.095, -0.27, 0);
+    });
+    P(g, sph(0.178, 8, 7), 0xe9b48a, 0, 1.00, 0);
+    P(g, sph(0.182, 7, 6), 0xf0a830, 0, 1.03, -0.03);
+    [[-0.14, 1.15, 0.02, 0.45], [-0.07, 1.22, 0.04, 0.2], [0, 1.24, 0.05, 0], [0.08, 1.22, 0.04, -0.22], [0.15, 1.15, 0.02, -0.48]].forEach(([x, y, z, rz]) => {
+      P(g, cone(0.065, 0.19, 5), 0xf0a830, x, y, z, 0.1, 0, rz);
+    });
+    face(1.00, 0.165, 0.064, 0x2a1f3d, false, null);
+    if (key === "jonOval") {
+      const ov = piv(g, -0.32, 0.58, 0.04);
+      const g1 = cyl(0.12, 0.12, 0.035, 10); g1.rotateX(Math.PI / 2); g1.scale(0.95, 2.8, 1);
+      P(ov, g1, 0x6a2fb0, 0, 0, 0, 0, 0, 0, 0.65);
+      const g2 = cyl(0.095, 0.095, 0.042, 10); g2.rotateX(Math.PI / 2); g2.scale(0.9, 2.6, 1);
+      P(ov, g2, 0xa965e6, 0, 0, 0, 0, 0, 0, 0.85);
+      const g3 = cyl(0.035, 0.035, 0.048, 8); g3.rotateX(Math.PI / 2); g3.scale(0.7, 2.2, 1);
+      P(ov, g3, 0xf1d9ff, -0.025, 0.05, 0, 0, 0, 0, 0.95);
+      extra = (t) => { ov.position.y = 0.58 + Math.sin(t * 3.2) * 0.035; };
+    }
+  } else if (key === "jasin") {
+    legL = piv(g, -0.085, 0.44, 0); legR = piv(g, 0.085, 0.44, 0);
+    [legL, legR].forEach((l) => {
+      P(l, boxG(0.095, 0.12, 0.11), 0xf4f4f4, 0, -0.10, 0);
+      P(l, cyl(0.036, 0.033, 0.28), 0xc68a5e, 0, -0.22, 0);
+      P(l, boxG(0.10, 0.07, 0.15), 0x222222, 0, -0.44, 0.025);
+    });
+    P(g, boxG(0.24, 0.12, 0.15), 0xf4f4f4, 0, 0.41, 0);
+    P(g, cyl(0.12, 0.135, 0.35, 7), 0x3fae6a, 0, 0.68, 0);
+    P(g, boxG(0.022, 0.10, 0.02), 0xffffff, -0.038, 0.63, 0.132, 0, 0, 0, 0.8);
+    P(g, boxG(0.062, 0.10, 0.02), 0xffffff, 0.028, 0.63, 0.132, 0, 0, 0, 0.8);
+    P(g, boxG(0.024, 0.06, 0.022), 0x3fae6a, 0.028, 0.63, 0.135, 0, 0, 0, 0.5);
+    armL = piv(g, -0.135, 0.81, 0); armR = piv(g, 0.135, 0.81, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, cyl(0.045, 0.042, 0.10), 0x3fae6a, s * 0.02, -0.04, 0, 0, 0, -s * 0.2);
+      P(a, cyl(0.034, 0.03, 0.24), 0xc68a5e, s * 0.06, -0.16, 0, 0, 0, -s * 0.25);
+      P(a, sph(0.04, 6, 5), 0xc68a5e, s * 0.095, -0.27, 0);
+    });
+    P(armL, sph(0.082, 7, 6), 0xffffff, -0.07, -0.19, 0.05, 0, 0, 0, 0.7);
+    P(armL, sph(0.038, 5, 4), 0x2a1f3d, -0.07, -0.19, 0.115, 0, 0, 0, 0.5);
+    P(g, sph(0.088, 7, 6), 0xffffff, 0.22, 0.09, 0.11, 0, 0, 0, 0.75);
+    P(g, sph(0.04, 5, 4), 0x2a1f3d, 0.22, 0.11, 0.18, 0, 0, 0, 0.5);
+    P(g, cyl(0.13, 0.13, 0.02, 8), 0xffe066, 0.22, 0.02, 0.11, 0, 0, 0, 0.9);
+    P(g, sph(0.178, 8, 7), 0xc68a5e, 0, 1.00, 0);
+    P(g, sph(0.186, 8, 7), 0x3b2a20, 0, 1.04, -0.025);
+    [[-0.10, 1.16, 0.06], [0, 1.18, 0.08], [0.10, 1.16, 0.06], [-0.14, 1.09, 0.08], [0.14, 1.09, 0.08]].forEach(([x, y, z]) => {
+      P(g, sph(0.068, 6, 5), 0x3b2a20, x, y, z);
+    });
+    face(1.00, 0.165, 0.064, 0x2a1f3d, false, null, null);
+    P(g, boxG(0.105, 0.042, 0.025), 0xffffff, 0, 0.92, 0.16, 0, 0, 0, 0.85);
+  } else if (key === "olivia") {
+    legL = piv(g, -0.075, 0.44, 0); legR = piv(g, 0.075, 0.44, 0);
+    [legL, legR].forEach((l) => {
+      P(l, cyl(0.035, 0.032, 0.36), 0xf6d2b8, 0, -0.18, 0);
+      P(l, boxG(0.09, 0.06, 0.14), 0x8b4fd1, 0, -0.44, 0.025);
+    });
+    P(g, cyl(0.105, 0.115, 0.40, 7), 0x38b2ac, 0, 0.64, 0);
+    P(g, cyl(0.34, 0.38, 0.065, 12), 0x9b5de5, 0, 0.48, 0, 0, 0, 0, 0.55);
+    P(g, cyl(0.24, 0.28, 0.075, 10), 0xecd9ff, 0, 0.485, 0, 0, 0, 0, 0.75);
+    armL = piv(g, -0.12, 0.81, 0); armR = piv(g, 0.12, 0.81, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, cyl(0.032, 0.028, 0.27), 0xf6d2b8, s * 0.05, -0.14, 0, 0, 0, -s * 0.24);
+      P(a, sph(0.038, 6, 5), 0xf6d2b8, s * 0.085, -0.26, 0);
+    });
+    P(g, sph(0.178, 8, 7), 0xf6d2b8, 0, 1.00, 0);
+    P(g, sph(0.186, 8, 7), 0xa8452f, 0, 1.03, -0.025);
+    [-1, 1].forEach((s) => {
+      P(g, boxG(0.13, 0.065, 0.09), 0xa8452f, s * 0.065, 1.11, 0.105, 0, 0, -s * 0.2);
+      P(g, sph(0.038, 5, 4), 0xe8669a, s * 0.18, 1.02, 0.01);
+      P(g, cone(0.068, 0.26, 6), 0xa8452f, s * 0.24, 0.89, -0.01, 0, 0, s * 0.32);
+    });
+    face(1.00, 0.165, 0.064, 0x2a1f3d, true, 0xf29bb0);
+  } else if (key === "wizard") {
+    legL = piv(g, -0.08, 0.22, 0); legR = piv(g, 0.08, 0.22, 0);
+    [legL, legR].forEach((l) => P(l, boxG(0.07, 0.05, 0.14), 0xa08b74, 0, -0.22, 0.03));
+    P(g, cyl(0.10, 0.27, 0.78, 8), 0xb44fd6, 0, 0.47, 0);
+    P(g, cyl(0.11, 0.22, 0.79, 6), 0x8a2fb0, 0, 0.47, -0.01);
+    armL = piv(g, -0.14, 0.80, 0); armR = piv(g, 0.14, 0.80, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, cone(0.095, 0.30, 6), 0xb44fd6, s * 0.08, -0.12, 0, 0, 0, s * 0.45);
+      P(a, sph(0.038, 5, 4), 0xa08b74, s * 0.15, -0.25, 0.02);
+    });
+    P(g, sph(0.155, 8, 7), 0xf1dcc6, 0, 0.96, 0);
+    [-1, 1].forEach((s) => {
+      P(g, sph(0.065, 6, 5), 0xd8d0c4, s * 0.15, 0.99, -0.01);
+      P(g, sph(0.055, 6, 5), 0xd8d0c4, s * 0.13, 0.90, 0.01);
+    });
+    const brd = cone(0.115, 0.32, 6); brd.rotateX(Math.PI);
+    P(g, brd, 0xd8d0c4, 0, 0.77, 0.10);
+    P(g, sph(0.035, 5, 4), 0xf1dcc6, 0, 0.95, 0.155);
+    face(0.97, 0.145, 0.055, 0x2a1f3d, false, null, null);
+    P(g, cyl(0.24, 0.26, 0.05, 8), 0xb44fd6, 0, 1.11, 0);
+    P(g, cyl(0.14, 0.17, 0.08, 7), 0x8a2fb0, 0, 1.17, 0);
+    P(g, cone(0.12, 0.16, 7), 0xb44fd6, 0, 1.27, 0);
+  } else if (key === "witch") {
+    legL = piv(g, -0.08, 0.32, 0); legR = piv(g, 0.08, 0.32, 0);
+    [legL, legR].forEach((l) => {
+      P(l, cyl(0.032, 0.028, 0.24), 0x3f9a47, 0, -0.14, 0);
+      P(l, boxG(0.09, 0.055, 0.15), 0xb44fd6, 0, -0.32, 0.03);
+    });
+    P(g, cyl(0.10, 0.26, 0.64, 8), 0xb44fd6, 0, 0.54, 0);
+    armL = piv(g, -0.13, 0.80, 0); armR = piv(g, 0.13, 0.80, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, cone(0.075, 0.18, 6), 0xb44fd6, s * 0.05, -0.07, 0, 0, 0, s * 0.38);
+      P(a, cyl(0.028, 0.024, 0.20), 0x3f9a47, s * 0.10, -0.18, 0, 0, 0, -s * 0.32);
+      P(a, sph(0.036, 5, 4), 0x3f9a47, s * 0.14, -0.27, 0.02);
+    });
+    [-1, 1].forEach((s) => P(g, cone(0.065, 0.38, 5), 0xcfc6b8, s * 0.17, 0.84, -0.02, 0, 0, s * 0.2));
+    P(g, sph(0.16, 8, 7), 0x6cc070, 0, 0.98, 0);
+    const nose = cone(0.035, 0.14, 5); nose.rotateX(Math.PI / 2);
+    P(g, nose, 0x6cc070, 0, 0.97, 0.20);
+    P(g, boxG(0.09, 0.035, 0.025), 0xffffff, 0, 0.90, 0.15, 0, 0, 0, 0.8);
+    face(0.99, 0.148, 0.055, 0x1d3b1f, false, null, null);
+    P(g, cyl(0.23, 0.25, 0.04, 8), 0x8b2fb8, 0, 1.11, 0);
+    P(g, cone(0.13, 0.24, 7), 0x8b2fb8, 0.02, 1.24, -0.01, -0.1, 0, -0.15);
+  } else if (key === "pingpong") {
+    legL = piv(g, -0.09, 0.38, 0); legR = piv(g, 0.09, 0.38, 0);
+    [legL, legR].forEach((l) => {
+      P(l, cyl(0.04, 0.036, 0.28), 0xf1d3b8, 0, -0.18, 0);
+      P(l, boxG(0.105, 0.07, 0.15), 0x222222, 0, -0.38, 0.025);
+    });
+    P(g, boxG(0.28, 0.14, 0.20), 0xc0392b, 0, 0.34, 0);
+    P(g, sph(0.205, 8, 7), 0xf1d3b8, 0, 0.58, 0.025);
+    P(g, cyl(0.16, 0.195, 0.19, 8), 0xb89a7c, 0, 0.74, 0);
+    armL = piv(g, -0.18, 0.78, 0); armR = piv(g, 0.18, 0.78, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, cyl(0.038, 0.034, 0.24), 0xf1d3b8, s * 0.06, -0.12, 0.03, -0.25, 0, -s * 0.3);
+      P(a, sph(0.042, 6, 5), 0xf1d3b8, s * 0.10, -0.22, 0.06);
+    });
+    // Right hand: orange ping-pong paddle; Left hand: frothy root-beer mug
+    const pad = cyl(0.085, 0.085, 0.022, 8); pad.rotateX(Math.PI / 2);
+    P(armR, pad, 0xe8542c, 0.16, -0.14, 0.10);
+    P(armR, boxG(0.025, 0.07, 0.025), 0x5a3a20, 0.12, -0.20, 0.08, 0, 0, -0.5);
+    P(armL, cyl(0.055, 0.055, 0.12, 7), 0xf0a020, -0.13, -0.24, 0.09);
+    P(armL, cyl(0.062, 0.062, 0.035, 7), 0xfffaf0, -0.13, -0.17, 0.09, 0, 0, 0, 0.8);
+    P(g, sph(0.155, 8, 7), 0xf1d3b8, 0, 0.98, 0);
+    [[-0.08, 1.14], [0, 1.16], [0.08, 1.14]].forEach(([x, y]) => P(g, cone(0.06, 0.14, 5), 0x222222, x, y, 0));
+    [-1, 1].forEach((s) => P(g, boxG(0.065, 0.018, 0.02), 0x222222, s * 0.05, 1.03, 0.15, 0, 0, -s * 0.35));
+    face(0.98, 0.148, 0.052, 0x2a1f3d, false, null, 0x2a1f3d);
+  } else if (key === "apprentice") {
+    // Standing in his little wooden rowboat with an oar
+    P(g, boxG(0.68, 0.16, 0.32), 0x6b4a2f, 0, 0.0, 0);
+    P(g, boxG(0.72, 0.04, 0.35), 0x4a321e, 0, 0.14, 0);
+    legL = piv(g, -0.07, 0.36, 0); legR = piv(g, 0.07, 0.36, 0);
+    P(g, cyl(0.10, 0.18, 0.56, 7), 0xb44fd6, 0, 0.44, 0);
+    armL = piv(g, -0.12, 0.70, 0); armR = piv(g, 0.12, 0.70, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, cyl(0.032, 0.028, 0.22), 0xb44fd6, s * 0.05, -0.10, 0, 0, 0, -s * 0.28);
+      P(a, sph(0.036, 5, 4), 0x9fd08a, s * 0.08, -0.20, 0.02);
+    });
+    P(armR, cyl(0.018, 0.018, 0.52, 5), 0x7a5230, 0.16, -0.24, 0.04, 0, 0, 0.55);
+    P(armR, boxG(0.06, 0.14, 0.02), 0x7a5230, 0.28, -0.44, 0.04, 0, 0, 0.55);
+    P(g, sph(0.145, 8, 7), 0x9fd08a, 0, 0.88, 0);
+    face(0.88, 0.138, 0.05, 0x2a1f3d, false, null, 0x2a1f3d);
+    P(g, cyl(0.21, 0.23, 0.035, 8), 0x3b2a5c, 0, 0.99, 0, 0, 0, -0.08);
+    P(g, cone(0.12, 0.26, 7), 0x3b2a5c, -0.01, 1.13, 0, 0, 0, 0.08);
+  } else if (key === "skeleton") {
+    legL = piv(g, -0.075, 0.42, 0); legR = piv(g, 0.075, 0.42, 0);
+    [legL, legR].forEach((l) => {
+      P(l, cyl(0.024, 0.022, 0.34), 0xf0ece0, 0, -0.18, 0, 0, 0, 0, 0.65);
+      P(l, boxG(0.085, 0.055, 0.14), 0xf0ece0, 0, -0.42, 0.025, 0, 0, 0, 0.65);
+    });
+    P(g, boxG(0.22, 0.26, 0.14), 0x3a5a8a, 0, 0.36, 0);
+    P(g, cyl(0.105, 0.095, 0.26, 7), 0xf0ece0, 0, 0.72, 0, 0, 0, 0, 0.65);
+    [0.66, 0.73, 0.80].forEach((y) => P(g, boxG(0.19, 0.022, 0.13), 0x2a1f3d, 0, y, 0.01));
+    [-0.065, 0.065].forEach((x) => P(g, boxG(0.04, 0.24, 0.15), 0x3a5a8a, x, 0.62, 0));
+    armL = piv(g, -0.13, 0.81, 0); armR = piv(g, 0.13, 0.81, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, cyl(0.022, 0.02, 0.28), 0xf0ece0, s * 0.05, -0.14, 0, 0, 0, -s * 0.22, 0.65);
+      P(a, sph(0.035, 5, 4), 0xf0ece0, s * 0.08, -0.27, 0, 0, 0, 0, 0.65);
+    });
+    P(g, sph(0.16, 8, 7), 0xf0ece0, 0, 1.00, 0, 0, 0, 0, 0.7);
+    P(g, boxG(0.13, 0.08, 0.12), 0xf0ece0, 0, 0.86, 0.03, 0, 0, 0, 0.7);
+    [-1, 1].forEach((s) => P(g, sph(0.038, 6, 5), 0x2a1f3d, s * 0.058, 1.00, 0.14));
+    P(g, boxG(0.10, 0.022, 0.02), 0x2a1f3d, 0, 0.90, 0.10);
+    P(g, sph(0.168, 8, 6), 0xc82020, 0, 1.07, -0.01);
+    P(g, boxG(0.22, 0.035, 0.16), 0xc82020, 0, 1.08, 0.10);
+  } else if (key === "lady") {
+    legL = piv(g, -0.075, 0.30, 0); legR = piv(g, 0.075, 0.30, 0);
+    [legL, legR].forEach((l) => {
+      P(l, cyl(0.032, 0.028, 0.22), 0xf3c9a5, 0, -0.12, 0);
+      P(l, boxG(0.09, 0.06, 0.14), 0x2a1f3d, 0, -0.30, 0.025);
+    });
+    P(g, cyl(0.105, 0.22, 0.62, 8), 0x3a86c8, 0, 0.53, 0);
+    P(g, boxG(0.18, 0.42, 0.04), 0xffffff, 0, 0.26, 0.14, 0, 0, 0, 0.7);
+    armL = piv(g, -0.125, 0.80, 0); armR = piv(g, 0.125, 0.80, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, cyl(0.04, 0.036, 0.12), 0x3a86c8, s * 0.02, -0.05, 0, 0, 0, -s * 0.2);
+      P(a, cyl(0.03, 0.028, 0.20), 0xf3c9a5, s * 0.055, -0.16, 0, 0, 0, -s * 0.24);
+      P(a, sph(0.036, 5, 4), 0xf3c9a5, s * 0.085, -0.26, 0);
+    });
+    P(g, sph(0.165, 8, 7), 0xf3c9a5, 0, 0.99, 0);
+    P(g, sph(0.175, 8, 7), 0x8a8a90, 0, 1.02, -0.025);
+    P(g, sph(0.085, 7, 6), 0x8a8a90, 0, 1.18, -0.04);
+    face(0.99, 0.155, 0.058, 0x2a1f3d, false, 0xf29bb0);
+  } else if (key === "dog") {
+    legL = piv(g, -0.12, 0.42, -0.18); legR = piv(g, 0.12, 0.42, -0.18);
+    armL = piv(g, -0.12, 0.42, 0.18); armR = piv(g, 0.12, 0.42, 0.18);
+    [legL, legR, armL, armR].forEach((l) => {
+      P(l, boxG(0.09, 0.38, 0.09), 0x6a4a2a, 0, -0.38, 0);
+      P(l, boxG(0.10, 0.06, 0.12), 0x2a1a10, 0, -0.42, 0.02);
+    });
+    P(g, boxG(0.34, 0.30, 0.56), 0x6a4a2a, 0, 0.36, 0);
+    P(g, boxG(0.28, 0.26, 0.26), 0x6a4a2a, 0, 0.62, 0.24);
+    P(g, boxG(0.20, 0.14, 0.18), 0x6a4a2a, 0, 0.64, 0.42);
+    P(g, boxG(0.18, 0.05, 0.14), 0xffffff, 0, 0.62, 0.43, 0, 0, 0, 0.8);
+    P(g, boxG(0.07, 0.06, 0.06), 0x2a1a10, 0, 0.73, 0.49);
+    [-1, 1].forEach((s) => {
+      P(g, boxG(0.07, 0.18, 0.10), 0x2a1a10, s * 0.15, 0.72, 0.20, 0, 0, s * 0.25);
+      P(g, sph(0.03, 5, 4), 0xffffff, s * 0.08, 0.80, 0.36, 0, 0, 0, 0.85);
+      P(g, sph(0.018, 4, 4), 0x2a1a10, s * 0.08, 0.80, 0.38);
+    });
+    const tail = piv(g, 0, 0.62, -0.28);
+    P(tail, cyl(0.028, 0.04, 0.24, 5), 0x2a1a10, 0, 0.10, -0.06, -0.5, 0, 0);
+    extra = (t) => { tail.rotation.z = Math.sin(t * 7) * 0.35; };
+  } else if (key === "owl") {
+    [-0.09, 0.09].forEach((x) => P(g, boxG(0.09, 0.06, 0.14), 0xf2b830, x, 0.0, 0.03));
+    P(g, sph(0.28, 8, 7), 0x7a5a3a, 0, 0.42, 0);
+    P(g, sph(0.22, 7, 6), 0xc8a878, 0, 0.40, 0.11);
+    armL = piv(g, -0.24, 0.55, 0); armR = piv(g, 0.24, 0.55, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => P(a, boxG(0.08, 0.34, 0.22), 0x62462c, s * 0.03, -0.28, 0, 0, 0, -s * 0.15));
+    P(g, sph(0.25, 8, 7), 0x7a5a3a, 0, 0.84, 0.02);
+    [-1, 1].forEach((s) => {
+      P(g, cone(0.065, 0.18, 5), 0x7a5a3a, s * 0.16, 1.08, 0.02, 0, 0, -s * 0.28);
+      P(g, sph(0.078, 6, 5), 0xffffff, s * 0.095, 0.86, 0.21, 0, 0, 0, 0.85);
+      P(g, sph(0.042, 5, 4), 0x2a1f3d, s * 0.095, 0.86, 0.265);
+    });
+    const bk = cone(0.045, 0.11, 4); bk.rotateX(Math.PI / 2);
+    P(g, bk, 0xf2b830, 0, 0.80, 0.27);
+  }
+  g.scale.setScalar(h / 1.3);
+  return { mesh3d: g, limbs: { legL, legR, armL, armR, extra }, parts };
+}
+function syncChar3D(c) {
+  c.body.material.uniforms.map.value = chars3d ? CLEAR_TEX : c.tex2d;
+  c.mesh3d.visible = chars3d;
+  const col = c.body.material.uniforms.uColor.value, hex = col.getHex(), em = c.body.material.uniforms.uEm.value;
+  if (c.lastTint !== hex || c.lastEm !== em) {
+    c.lastTint = hex; c.lastEm = em;
+    c.parts.forEach((p) => {
+      if (hex === 0xffffff) {
+        p.material.uniforms.uColor.value.copy(p.userData.baseCol);
+        p.material.uniforms.uEm.value = p.userData.baseEm;
+      } else if (em < 0.2) {
+        p.material.uniforms.uColor.value.copy(p.userData.baseCol).lerp(col, 0.78);
+        p.material.uniforms.uEm.value = 0.14;
+      } else {
+        p.material.uniforms.uColor.value.copy(p.userData.baseCol).multiply(col);
+      }
+    });
+  }
+}
 function addChar(L, key, x, z, h = 1.3, hot) {
   const s = SPR[key], w = h * s.w / s.h;
   const root = new THREE.Group(); L.scene.add(root);
   const g = new THREE.PlaneGeometry(w, h); g.translate(0, h / 2, 0);
-  const body = new THREE.Mesh(g, mat({ map: s.tex, em: 0.45, side: THREE.DoubleSide }));
+  const body = new THREE.Mesh(g, mat({ map: chars3d ? CLEAR_TEX : s.tex, em: 0.45, side: THREE.DoubleSide }));
   root.add(body);
+  const { mesh3d, limbs, parts } = buildChar3D(key, h);
+  mesh3d.visible = chars3d;
+  body.add(mesh3d);
   const sh = new THREE.Mesh(floorG(w * 0.85, w * 0.42, 1, 1), mat({ map: T.shadow, color: 0x000000, em: 1, alpha: 0.4 }));
   sh.position.y = 0.025; root.add(sh);
   if (hot) { body.userData.hot = hot; L.hots.push(body); }
-  const c = { key, root, body, pos: new THREE.Vector2(x, z), target: null, face: 1, walkT: 0, speed: 2.4, phase: rnd() * 6 };
+  const c = { key, root, body, mesh3d, limbs, parts, tex2d: s.tex, h, pos: new THREE.Vector2(x, z), target: null, face: 1, walkT: 0, speed: 2.4, phase: rnd() * 6 };
   L.chars.push(c);
+  if (L.allChars) L.allChars.push(c);
   return c;
 }
 
@@ -53743,12 +54062,13 @@ function makeTextures2() {
   T.magRack = C(16, 24, (x) => { x.fillStyle = "#5a4a3a"; x.fillRect(0, 0, 16, 24); const c = ["#e04e39", "#3a86c8", "#ffd23f", "#3fae6a", "#e8559a", "#a8a8a8"]; for (let i = 0; i < 6; i++) { x.fillStyle = c[i]; x.fillRect(1 + (i % 2) * 7, 1 + (i >> 1) * 8, 6, 7); } }, false);
   T.worldMap = C(128, 88, (x, w, h) => {
     x.fillStyle = "#5aa84a"; x.fillRect(0, 0, w, h); noise(x, w, h, ["#4a9a3a", "#6ab85a"], 500);
-    x.fillStyle = "#3a7ac8"; x.beginPath(); x.ellipse(0, 70, 30, 30, 0, 0, 7); x.fill(); x.beginPath(); x.ellipse(118, 80, 22, 18, 0, 0, 7); x.fill();
-    x.fillStyle = "#8a7a6a"; [[110, 14], [100, 22], [120, 26]].forEach(([a, b]) => { x.beginPath(); x.moveTo(a - 9, b + 8); x.lineTo(a, b - 8); x.lineTo(a + 9, b + 8); x.fill(); });
+    x.fillStyle = "#e8d8a8"; x.beginPath(); x.ellipse(12, 74, 38, 26, 0, 0, 7); x.fill();
+    x.fillStyle = "#3a7ac8"; x.beginPath(); x.ellipse(8, 78, 32, 22, 0, 0, 7); x.fill(); x.beginPath(); x.ellipse(118, 80, 22, 18, 0, 0, 7); x.fill();
+    x.fillStyle = "#8a7a6a"; [[110, 14], [100, 22], [120, 26], [18, 44]].forEach(([a, b]) => { x.beginPath(); x.moveTo(a - 9, b + 8); x.lineTo(a, b - 8); x.lineTo(a + 9, b + 8); x.fill(); });
     x.fillStyle = "#e8d8a8";
     const P = (vx, vz) => [(vx + 13) / 26 * w, (vz + 9) / 18 * h];
-    const path = [[-8, 3.5], [-3, 2.5], [1, -0.5], [5, 2], [8.5, -3.5]], br = [[-3, 2.5], [-4.2, -4.6]];
-    [path, br].forEach((pts) => { for (let i = 0; i < pts.length - 1; i++) { const [a, b] = P(...pts[i]), [c, d] = P(...pts[i + 1]); for (let k = 0; k <= 1; k += 0.08) x.fillRect(a + (c - a) * k - 1, b + (d - b) * k - 1, 3, 3); } });
+    const path = [[-5.8, 5.4], [-8, 3.5], [-3, 2.5], [1, -0.5], [5, 2], [8.5, -3.5]], br = [[-3, 2.5], [-4.2, -4.6]], mt = [[-8, 3.5], [-8.2, 0.2]];   // mansion road branches off the supermarket; mountain road off the gas station
+    [path, br, mt].forEach((pts) => { for (let i = 0; i < pts.length - 1; i++) { const [a, b] = P(...pts[i]), [c, d] = P(...pts[i + 1]); for (let k = 0; k <= 1; k += 0.08) x.fillRect(a + (c - a) * k - 1, b + (d - b) * k - 1, 3, 3); } });
   });
   T.ramen = C(16, 8, (x) => { x.fillStyle = "#e04e39"; x.fillRect(0, 0, 16, 8); x.fillStyle = "#ffd23f"; x.fillRect(2, 2, 12, 4); x.fillStyle = "#e04e39"; x.fillRect(5, 3, 6, 2); }, false);
   T.forestFloor = C(32, 32, (x) => { x.fillStyle = "#2a3a22"; x.fillRect(0, 0, 32, 32); noise(x, 32, 32, ["#3a4a2a", "#22301c", "#4a3a22"], 240); });
@@ -53796,6 +54116,7 @@ const ITEMS = {
   flashlight: ["🔦", "Flashlight"], chart: ["📜", "Wheel of the year chart"], book: ["📕", "Giant picture book"],
   mouthpiece: ["🎺", "Trumpet mouthpiece"], middle: ["🎺", "Trumpet middle section"], bell: ["🎺", "Trumpet bell"], trumpet: ["🎺", "Crystal trumpet"],
   stoneBow: ["🎀", "Stone hair bow"], stoneDisk: ["⚫", "Stone portal disk"], stoneBall: ["⚽", "Stone soccer ball"], stoneTutu: ["🩰", "Stone tutu"], dogFood: ["🥫", "Can of dog food"],
+  diploma: ["🏆", "Diploma of Excellent Ping-Pong"],
 };
 const CAKE = ["flour", "oil", "sugar", "water", "yeast", "cacao"];
 const has = (id) => S.items.includes(id);
@@ -53882,6 +54203,7 @@ function renderHud() {
     b.innerHTML = `<span class="ico">${ITEMS[id][0]}</span><span>${ITEMS[id][1]}</span>`;
     b.onclick = () => {
       if (talking() || busy) return;
+      if (id === "diploma" && !S.sel && typeof showDiploma === "function") { showDiploma(); return; }
       if (S.sel && S.sel !== id && S.sel !== "power") { const a = S.sel; S.sel = null; if (!combine(a, id)) say([["", "Those don't go together."]]); renderHud(); return; }
       S.sel = S.sel === id ? null : id; renderHud();
     };
@@ -53904,7 +54226,7 @@ function combine(a, b) {
 // short new line instead. Arrays hold a few lines to take turns; a function decides from the story state.
 const RETURNS = {
   beach: [[["", "Back at the crash site. The ship is still sitting in the water."]], [["Jon", "Our poor ship..."]]],
-  pingpong: (n) => S.flags.ppKO ? (n <= 1 ? [["", "The ping-pong station is quiet now."]] : [])
+  pingpong: () => S.flags.ppKO ? pongInvite()
     : [["Ping-pong bad guy", "Back for more? Nobody gets past MY ping-pong station!"]],
   gas: [[["", "Back at the gas station. Still strange and empty..."]], [["Olivia", "This place gives me the creeps."]]],
   roadmap: [[["", "Back on the road map. Where to next?"]]],
@@ -53957,6 +54279,8 @@ LV.mays = () => {
   const dh = group(L, -0.5, 0, -2.45, 0, { name: "Barbie Dream House", say: [{ choices: [
     ["Look at it", () => [["", "May's Barbie Dream House."]]],
     ["Play with it", () => { openDollhouse(); return []; }],
+    ["Lift it with telekinesis", () => [() => floatThing(dh), ["", "May lifts her whole Barbie Dream House into the air with her mind!"],
+      ["May", "Look, the dolls are flying! ...Okay, back down you go."]]],
   ] }] });
   put(L, boxG(1.6, 1.0, 0.9), mat({ color: 0xf07ab0 }), 0, 0, 0, 0, null, dh);
   put(L, planeG(1.6, 1.0), mat({ map: T.dreamFront }), 0, 0, 0.46, 0, null, dh);
@@ -55034,10 +55358,12 @@ LV.beach = () => {
     const m = put(L, new THREE.DodecahedronGeometry(r, 0), mat({ color: 0x8a8090 }), rx, gy(rx, rz) + r * 0.4, rz);
     m.rotation.set(rnd() * 3, rnd() * 3, 0);
   });
-  // signpost inland
+  // signpost inland, plus the jeep once the crew has it
   const sign = group(L, -8.6, gy(-8.6, 4.5), 4.5, 0.5, { name: "Path to the mountain", exit: true, go: "mountainUp", stand: [-8.2, 4.2] });
   put(L, boxG(0.14, 1.9, 0.14), mat({ color: 0x6b4f35 }), 0, 0, 0, 0, null, sign);
   put(L, planeG(1.3, 0.52), mat({ map: label(["MOUNTAIN >"], 80, 14, "#d9c39a", "#3b2a20", "#6b4f35") }), 0, 1.3, 0.08, 0, null, sign);
+  const jeep = group(L, -4.8, gy(-4.8, 3.4), 3.4, 0.35, { ...toJeep([-3.2, 3.0]), show: () => !!S.flags.drove });
+  miniJeep(L, jeep);
   const mtn = new THREE.ConeGeometry(9, 9, 7); 
   put(L, mtn, mat({ color: 0x6a6070 }), -22, 0, 18);
   // the crew: May leads, the others follow
@@ -55049,7 +55375,7 @@ LV.beach = () => {
   let rise = 0;
   L.walk = [-9, 9, -2.4, 6.5];
   L.start = [0, 2];
-  L.entries = { pingpong: [-7.6, 4.2], mountainUp: [-7.6, 4.2] };
+  L.entries = { pingpong: [-7.6, 4.2], mountainUp: [-7.6, 4.2], roadmap: [-1.4, 2.6] };
   // far away inland: the wizard's castle behind the hills and forests, with lightning all around it
   const far = new THREE.Group(); far.position.set(-6, 0, 62); far.rotation.y = Math.PI; L.scene.add(far);
   const fm = mat({ color: 0x3a3048, fog: 0.35 });
@@ -55072,12 +55398,14 @@ LV.beach = () => {
   const ballGlow = put(L, new THREE.SphereGeometry(0.28, 8, 6), glowM, 0, -9, 0);
   const tutuGlow = put(L, new THREE.TorusGeometry(0.34, 0.1, 5, 12).rotateX(Math.PI / 2), glowM, 0, -9, 0);
   let cut = false, jumpT = -9;
-  L.onEnter = [["Everyone", "AHHHHH!"], ["", "The ship falls all the way from space... SPLASH! Right into the water."], ["Everyone", "Shucks!"],
-    ["", "The crew swims to the beach. Then... Jasin's soccer ball and Olivia's tutu start to GLOW!"], () => { S.flags.glowing = true; save(); jumpT = performance.now() / 1000; },
-    ["Jasin", "Whoa! My ball!"], ["Olivia", "My tutu is glowing too! What could cause that?"],
-    () => { cut = true; }, ["", "Far away, behind the hills and forests, there's a castle... with lightning crashing all around it!"],
-    ["Jon", "I wonder if there's a wizard there who can tell us about this?"], () => { cut = false; },
-    ["", "Chapter 2 begins! Now everyone walks together."]];
+  L.onEnter = () => S.flags.ppKO || S.flags.drove
+    ? [["", "Back at the crash site. The ship is still sitting in the water."]]
+    : [["Everyone", "AHHHHH!"], ["", "The ship falls all the way from space... SPLASH! Right into the water."], ["Everyone", "Shucks!"],
+      ["", "The crew swims to the beach. Then... Jasin's soccer ball and Olivia's tutu start to GLOW!"], () => { S.flags.glowing = true; save(); jumpT = performance.now() / 1000; },
+      ["Jasin", "Whoa! My ball!"], ["Olivia", "My tutu is glowing too! What could cause that?"],
+      () => { cut = true; }, ["", "Far away, behind the hills and forests, there's a castle... with lightning crashing all around it!"],
+      ["Jon", "I wonder if there's a wizard there who can tell us about this?"], () => { cut = false; },
+      ["", "Chapter 2 begins! Now everyone walks together."]];
   L.light = { amb: 0x6a6088, dir: [-0.5, -0.7, -0.6], dirCol: 0xd8a8a0, pts: [[[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0xd6a2bd, 14, 60]; L.bg = 0xd6a2bd;
   cam(L, [0, 2.2, 3], [-5, 6, 60], 48, () => cut, 200);
@@ -55150,12 +55478,248 @@ function doMove(k) {
 }
 const PP = { fx: {} };
 
+function showDiploma(lvl = S.flags.pongBeaten || 1) {
+  const c = document.createElement("canvas"); c.width = 320; c.height = 220;
+  const x = c.getContext("2d");
+  x.fillStyle = "#fbf3dc"; x.fillRect(0, 0, 320, 220);
+  x.strokeStyle = "#8a5a28"; x.lineWidth = 6; x.strokeRect(8, 8, 304, 204);
+  x.strokeStyle = "#d4a024"; x.lineWidth = 2; x.strokeRect(14, 14, 292, 192);
+  x.fillStyle = "#2a1f3d"; x.textAlign = "center";
+  x.font = "bold 15px Georgia, serif"; x.fillText("MOUNTAIN PING-PONG STATION", 160, 40);
+  x.font = "bold 19px Georgia, serif"; x.fillStyle = "#8a2820"; x.fillText("DIPLOMA OF EXCELLENT", 160, 68);
+  x.fillText("PING-PONG", 160, 92);
+  x.font = "13px Georgia, serif"; x.fillStyle = "#2a1f3d";
+  x.fillText("Awarded to May, Jon, Jasin & Olivia", 160, 120);
+  x.font = "bold 14px Georgia, serif"; x.fillStyle = "#2f7a4a";
+  x.fillText(`Official Pong Champion · Level ${lvl} / 10`, 160, 146);
+  // Gold seal + miniature paddle
+  x.fillStyle = "#ffd23f"; x.beginPath(); x.arc(255, 168, 20, 0, Math.PI * 2); x.fill();
+  x.strokeStyle = "#b87a10"; x.lineWidth = 2; x.stroke();
+  x.fillStyle = "#8a2820"; x.font = "bold 10px sans-serif"; x.fillText("★ #1 ★", 255, 172);
+  x.fillStyle = "#5a4a3a"; x.font = "italic 12px Georgia, serif"; x.textAlign = "left";
+  x.fillText("Signed: The Ping-Pong Guy", 30, 180);
+  showPeek(c.toDataURL(), `Diploma of Excellent Ping-Pong (Highest beaten: Level ${lvl} of 10). Click anywhere to close.`);
+}
+function pongChoices() {
+  const nextLvl = Math.min(10, (S.flags.pongBeaten || 0) + 1);
+  return [{ choices: [
+    [`Play Pong! (Level ${nextLvl} of 10)`, () => { startPong(nextLvl); return []; }],
+    ["Pick difficulty level (1–10)...", () => pongLevelMenu(0)],
+    ...(has("diploma") ? [["Look at Diploma of Excellent Ping-Pong", () => { showDiploma(); return []; }]] : []),
+    ["Maybe later", () => [["Ping-pong bad guy", "Anytime! My table is always ready for a game."]]],
+  ] }];
+}
+function pongLevelMenu(page = 0) {
+  const lvls = page === 0 ? [1, 2, 3, 4, 5] : [6, 7, 8, 9, 10];
+  return [{ choices: [
+    ...lvls.map((l) => [`Level ${l}${S.flags["pongWon_" + l] ? " ★" : ""}`, () => { startPong(l); return []; }]),
+    [page === 0 ? "Levels 6–10 ▸" : "◂ Levels 1–5", () => pongLevelMenu(page === 0 ? 1 : 0)],
+    ["Back", () => pongChoices()],
+  ] }];
+}
+function pongInvite() {
+  S.flags.ppFriendly = true; save();
+  const best = S.flags.pongBeaten || 0;
+  return [
+    ["Ping-pong bad guy", best
+      ? `Hey, ping-pong champ! You've beaten me up to Level ${best} of 10! Ready for another match?`
+      : "Hey, you're back! Sorry about earlier — I was just grumpy because nobody ever plays ping-pong with me!"],
+    ["Ping-pong bad guy", has("diploma")
+      ? "Want to play a friendly game of Pong? Pick any difficulty from Level 1 to Level 10!"
+      : "Want to play a friendly game of Pong? I have 10 levels of difficulty — beat me and I'll award you my Diploma of Excellent Ping-Pong!"],
+    ...pongChoices(),
+  ];
+}
+function finishPong(lvl, won) {
+  S.flags.ppFriendly = true;
+  if (!won) {
+    save();
+    say([["Ping-pong bad guy", `Good game! Level ${lvl} is tough! Want a rematch or try a different difficulty?`], ...pongChoices()]);
+    return;
+  }
+  S.flags["pongWon_" + lvl] = true;
+  S.flags.pongBeaten = Math.max(S.flags.pongBeaten || 0, lvl);
+  const firstDiploma = !has("diploma") && !S.flags.got_diploma;
+  if (firstDiploma) add("diploma", "got_diploma");
+  else save();
+  say([
+    ["Ping-pong bad guy", `WOW! What a match! You beat me on Level ${lvl} of 10!`],
+    ...(firstDiploma
+      ? [["Ping-pong bad guy", "You've earned my special reward: the official Diploma of Excellent Ping-Pong!"],
+         ["", "Diploma of Excellent Ping-Pong! It goes in your item drawer."],
+         () => showDiploma(S.flags.pongBeaten)]
+      : [["Ping-pong bad guy", `I've updated your Diploma of Excellent Ping-Pong with your Level ${S.flags.pongBeaten} seal!`]]),
+    ...pongChoices(),
+  ]);
+}
+function startPong(initialLvl = 1) {
+  const cv = $("astro"), x = cv.getContext("2d");
+  cv.hidden = false; busy = true; stopSpeaking();
+  let lvl = Math.max(1, Math.min(10, initialLvl || 1));
+  let pScore = 0, cScore = 0, py = 130, cy = 130, prevPy = 130, pVel = 0;
+  let ball = { x: 160, y: 130, vx: 0, vy: 0 }, serveT = 0.55, rally = 0, banner = "", endT = -1, over = false;
+  let keys = { up: false, down: false }, sparks = [];
+  const resetBall = (dir = 1) => {
+    ball.x = 160; ball.y = 130; ball.vx = 0; ball.vy = 0; serveT = 0.55; rally = 0;
+    ball.dir = dir;
+  };
+  const setLevel = (newLvl) => {
+    lvl = Math.max(1, Math.min(10, newLvl));
+    pScore = 0; cScore = 0; py = 130; cy = 130; banner = ""; endT = -1;
+    resetBall(1);
+  };
+  setLevel(lvl);
+  const pt = (e) => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * 320, y: (e.clientY - r.top) / r.height * 240 }; };
+  const move = (e) => {
+    const p = pt(e);
+    if (endT < 0) py = Math.max(54, Math.min(206, p.y));
+  };
+  const down = (e) => {
+    e.preventDefault();
+    const p = pt(e);
+    // Top bar: Exit button [x: 274..316, y: 2..15]
+    if (p.x >= 272 && p.y <= 17) { cleanup(); return; }
+    // Level buttons 1..10 [y: 16..30, x: 12 + i*26]
+    if (p.y >= 15 && p.y <= 31) {
+      for (let i = 0; i < 10; i++) {
+        const bx = 12 + i * 26;
+        if (p.x >= bx && p.x <= bx + 23) { setLevel(i + 1); tone(440 + i * 35, 0.06, "triangle", 0.08); return; }
+      }
+    }
+    if (endT < 0) py = Math.max(54, Math.min(206, p.y));
+  };
+  const key = (e) => {
+    const on = e.type === "keydown";
+    if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") { e.preventDefault(); keys.up = on; }
+    if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") { e.preventDefault(); keys.down = on; }
+    if (on && e.key === "Escape") { e.preventDefault(); cleanup(); }
+    if (on && /^[0-9]$/.test(e.key)) { setLevel(e.key === "0" ? 10 : Number(e.key)); }
+  };
+  cv.addEventListener("pointermove", move); cv.addEventListener("pointerdown", down);
+  window.addEventListener("keydown", key); window.addEventListener("keyup", key);
+  function cleanup(cb) {
+    if (over) return;
+    over = true;
+    cv.removeEventListener("pointermove", move); cv.removeEventListener("pointerdown", down);
+    window.removeEventListener("keydown", key); window.removeEventListener("keyup", key);
+    cv.hidden = true; busy = false;
+    if (cb) cb();
+  }
+  let last = performance.now(), t0 = last;
+  function tick(now) {
+    if (over) return;
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const el = (now - t0) / 1000;
+    const ph = Math.round(42 - (lvl - 1) * 1.3), ch = Math.round(28 + (lvl - 1) * 1.4);
+    if (endT >= 0) {
+      endT -= dt;
+      if (endT <= 0) { const won = pScore >= 3; cleanup(() => finishPong(lvl, won)); return; }
+    } else {
+      if (keys.up) py = Math.max(36 + ph / 2, py - 190 * dt);
+      if (keys.down) py = Math.min(224 - ph / 2, py + 190 * dt);
+      pVel = (py - prevPy) / Math.max(0.008, dt); prevPy = py;
+      if (serveT > 0) {
+        serveT -= dt;
+        if (serveT <= 0) {
+          const spd = 118 + lvl * 13, ang = (rnd() - 0.5) * 0.65;
+          ball.vx = (ball.dir || 1) * Math.cos(ang) * spd;
+          ball.vy = Math.sin(ang) * spd;
+        }
+      } else {
+        ball.x += ball.vx * dt; ball.y += ball.vy * dt;
+        if (ball.y < 40) { ball.y = 40; ball.vy = Math.abs(ball.vy); tone(300, 0.04, "sine", 0.05); }
+        if (ball.y > 220) { ball.y = 220; ball.vy = -Math.abs(ball.vy); tone(300, 0.04, "sine", 0.05); }
+        // Player paddle at x = 24
+        if (ball.vx < 0 && ball.x <= 29 && ball.x >= 18 && Math.abs(ball.y - py) <= ph / 2 + 5) {
+          ball.x = 29; rally++;
+          const spd = Math.min(310, Math.hypot(ball.vx, ball.vy) * 1.045);
+          const hit = Math.max(-1, Math.min(1, (ball.y - py) / (ph / 2)));
+          const ang = hit * 0.85;
+          ball.vx = Math.cos(ang) * spd;
+          ball.vy = Math.sin(ang) * spd + Math.max(-55, Math.min(55, pVel * 0.18));
+          tone(460 + rally * 18, 0.06, "square", 0.08);
+          for (let i = 0; i < 6; i++) sparks.push({ x: 28, y: ball.y, vx: 20 + rnd() * 50, vy: (rnd() - 0.5) * 70, life: 0.25, col: "#ffd23f" });
+        }
+        // CPU paddle at x = 296
+        if (ball.vx > 0 && ball.x >= 291 && ball.x <= 302 && Math.abs(ball.y - cy) <= ch / 2 + 5) {
+          ball.x = 291; rally++;
+          const spd = Math.min(310, Math.hypot(ball.vx, ball.vy) * 1.04);
+          const hit = Math.max(-1, Math.min(1, (ball.y - cy) / (ch / 2)));
+          const ang = hit * 0.78;
+          ball.vx = -Math.cos(ang) * spd;
+          ball.vy = Math.sin(ang) * spd;
+          tone(380 + rally * 18, 0.06, "square", 0.08);
+          for (let i = 0; i < 6; i++) sparks.push({ x: 292, y: ball.y, vx: -20 - rnd() * 50, vy: (rnd() - 0.5) * 70, life: 0.25, col: "#ff7a4a" });
+        }
+        // Scoring
+        if (ball.x < 8) {
+          cScore++; tone(190, 0.16, "sawtooth", 0.09);
+          if (cScore >= 3) { banner = "PING-PONG GUY WINS!"; endT = 1.1; } else resetBall(1);
+        } else if (ball.x > 312) {
+          pScore++; tone(660, 0.14, "triangle", 0.11);
+          for (let i = 0; i < 16; i++) sparks.push({ x: 300, y: ball.y, vx: -30 - rnd() * 80, vy: (rnd() - 0.5) * 110, life: 0.45, col: "#5aff9a" });
+          if (pScore >= 3) { banner = `YOU BEAT LEVEL ${lvl}!`; endT = 1.1; } else resetBall(-1);
+        }
+      }
+      // CPU AI (scales across Levels 1..10)
+      const aiSpd = 66 + lvl * 21;
+      const err = Math.sin(el * 2.8) * (10 - lvl) * 2.5;
+      const targetY = ball.vx > 0 ? ball.y + err : 130 + Math.sin(el * 1.5) * 14;
+      const dy = targetY - cy;
+      cy += Math.sign(dy) * Math.min(Math.abs(dy), aiSpd * dt);
+      cy = Math.max(36 + ch / 2, Math.min(224 - ch / 2, cy));
+    }
+    sparks.forEach((s) => { s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; });
+    sparks = sparks.filter((s) => s.life > 0);
+    // Draw HUD & Table
+    x.fillStyle = "#120e1c"; x.fillRect(0, 0, 320, 240);
+    x.font = FONT; x.textBaseline = "top";
+    x.fillStyle = "#ffd23f"; x.textAlign = "left"; x.fillText(`YOU ${pScore} - ${cScore} CPU  (FIRST TO 3)`, 12, 4);
+    // Exit button
+    x.fillStyle = "#5a2a48"; x.fillRect(274, 2, 38, 12);
+    x.fillStyle = "#fff"; x.textAlign = "center"; x.fillText("EXIT", 293, 4);
+    // Level 1..10 buttons
+    for (let i = 0; i < 10; i++) {
+      const l = i + 1, bx = 12 + i * 26;
+      x.fillStyle = l === lvl ? "#ffd23f" : S.flags["pongWon_" + l] ? "#2f7a4a" : "#2e2444";
+      x.fillRect(bx, 16, 23, 13);
+      x.fillStyle = l === lvl ? "#1a1228" : "#ffffff";
+      x.fillText("L" + l, bx + 11.5, 19);
+    }
+    // Ping-pong table
+    x.fillStyle = "#1f6a3c"; x.fillRect(12, 34, 296, 192);
+    x.strokeStyle = "#f4f4f4"; x.lineWidth = 2; x.strokeRect(13, 35, 294, 190);
+    x.fillStyle = "rgba(255,255,255,0.35)"; x.fillRect(14, 129, 292, 2);
+    for (let y = 37; y < 224; y += 8) { x.fillStyle = "#f4f4f4"; x.fillRect(159, y, 2, 5); }
+    // Paddles
+    x.fillStyle = "#e8669a"; x.fillRect(21, Math.round(py - ph / 2), 6, ph);
+    x.fillStyle = "#ffd23f"; x.fillRect(23, Math.round(py - ph / 2 + 2), 2, ph - 4);
+    x.fillStyle = "#e8542c"; x.fillRect(293, Math.round(cy - ch / 2), 6, ch);
+    x.fillStyle = "#fff4d0"; x.fillRect(295, Math.round(cy - ch / 2 + 2), 2, ch - 4);
+    // Ball & sparks
+    sparks.forEach((s) => { x.fillStyle = s.col; x.fillRect(s.x | 0, s.y | 0, 2, 2); });
+    x.fillStyle = "#ffffff"; x.beginPath(); x.arc(ball.x, ball.y, 4.5, 0, Math.PI * 2); x.fill();
+    if (serveT > 0 && endT < 0) {
+      x.fillStyle = "#ffd23f"; x.textAlign = "center"; x.fillText(`LEVEL ${lvl} OF 10 — READY!`, 160, 96);
+    }
+    if (banner) {
+      x.fillStyle = "rgba(12,8,24,0.82)"; x.fillRect(44, 104, 232, 36);
+      x.strokeStyle = "#ffd23f"; x.strokeRect(44, 104, 232, 36);
+      x.fillStyle = "#ffd23f"; x.textAlign = "center"; x.fillText(banner, 160, 118);
+    }
+    x.fillStyle = "#b8b0d0"; x.textAlign = "center"; x.fillText("MOUSE / ARROWS TO MOVE · CLICK L1–L10", 160, 230);
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
 LV.pingpong = () => {
   const L = newLevel("pingpong", "Ping-pong Station");
   const RW = 12, RD = 8, R = [RW, RD];
   room(L, { w: RW, d: RD, h: 4.2, wall: T.rock, floor: T.stoneFloor, wallRep: 2, floorRep: 1.5, ceil: 0x2a2420, trim: 0x3a3028 });
   // the creepy ping-pong table
-  const table = group(L, 0.8, 0, -1.9, 0, { name: "Ping-pong table", say: [["", "A creepy old ping-pong table, right in the middle of the mountain."]] });
+  const table = group(L, 0.8, 0, -1.9, 0, { name: "Ping-pong table",
+    say: () => S.flags.ppKO ? pongInvite() : [["", "A creepy old ping-pong table, right in the middle of the mountain."]] });
   put(L, boxG(2.8, 0.08, 1.5), mat({ map: T.ppTable }), 0, 0.76, 0, 0, null, table);
   [[-1.3, -0.65], [1.3, -0.65], [-1.3, 0.65], [1.3, 0.65]].forEach(([a, b]) => put(L, boxG(0.08, 0.76, 0.08), mat({ color: 0x2a2a2e }), a, 0, b, 0, null, table));
   put(L, boxG(0.03, 0.18, 1.6), mat({ color: 0xf4f4f4 }), 0, 0.84, 0, 0, null, table);
@@ -55165,7 +55729,7 @@ LV.pingpong = () => {
   });
   // the ping-pong bad guy
   const bad = addChar(L, "pingpong", 2.9, -2.4, 1.75, { name: "Ping-pong bad guy", stand: [1.0, -0.6],
-    say: () => S.flags.ppKO ? [["", "The ping-pong bad guy is knocked out. Zzz..."]] : [["Ping-pong bad guy", "Nobody gets past MY ping-pong station!"], ["", "Click a kid to use their special move."]] });
+    say: () => S.flags.ppKO ? (S.flags.ppFriendly ? pongInvite() : [["", "The ping-pong bad guy is knocked out. Zzz..."]]) : [["Ping-pong bad guy", "Nobody gets past MY ping-pong station!"], ["", "Click a kid to use their special move."]] });
   const zzz = put(L, planeG(0.7, 0.3), mat({ map: label(["Zzz"], 32, 14, "#2a2420", "#ffffff", "#2a2420"), em: 1 }), 3.3, 0.9, -2.2, -0.3);
   // 3D ping-pong paddle (held by bad guy, knocked away by fireball, lifted by May to bonk him)
   const paddle = new THREE.Group(); L.scene.add(paddle);
@@ -55191,13 +55755,14 @@ LV.pingpong = () => {
   if (!L.hots.includes(team.may.body)) L.hots.push(team.may.body);
   L.walk = [-5, 5, -0.8, 3.2];
   L.start = [-2.6, 1.0];
-  L.entries = { beach: [-4.2, 2.4], gas: [4.2, 2.4], mountainUp: [-4.2, 2.4], mountainDown: [4.2, 2.4] };
+  L.entries = { beach: [-4.2, 2.4], gas: [4.2, 2.4], roadmap: [-0.8, 2.2], mountainUp: [-4.2, 2.4], mountainDown: [4.2, 2.4] };
   const back = group(L, -5.6, 0, 2.6, 0, { name: "Path back down the mountain", exit: true, go: "mountainUp", stand: [-4.8, 2.6] });
   put(L, boxG(0.6, 2.4, 1.6), mat({ color: 0x1a1612 }), 0, 0, 0, 0, null, back);
   const fwd = group(L, 5.6, 0, 2.6, 0, { name: "Path down to the gas station", exit: true, stand: [4.8, 2.6],
     run: () => S.flags.ppKO ? goLevel("mountainDown", "pingpong") : say([["", "The ping-pong bad guy blocks the way!"]]) });
   put(L, boxG(0.6, 2.4, 1.6), mat({ color: 0x1a1612 }), 0, 0, 0, 0, null, fwd);
-  L.onEnter = () => S.flags.ppKO ? [] : [["", "The crew runs to the mountain... and right into a creepy ping-pong station!"], ["Ping-pong bad guy", "Nobody gets past MY ping-pong station!"], ["", "He keeps trying to hit them with his ping-pong stick! Click a kid to use their special move."]];
+  group(L, 0, 0, 3.8, 0, { ...toJeep([0, 2.8]), show: () => !!S.flags.drove });
+  L.onEnter = () => S.flags.ppKO ? pongInvite() : [["", "The crew runs to the mountain... and right into a creepy ping-pong station!"], ["Ping-pong bad guy", "Nobody gets past MY ping-pong station!"], ["", "He keeps trying to hit them with his ping-pong stick! Click a kid to use their special move."]];
   L.light = { amb: 0x5a5048, dir: [0.3, -1, -0.4], dirCol: 0x585048, pts: [[[1, 3.2, -1.5], 0x9aff9a, 7], [[-3, 2, 2], 0xffb070, 6], [[0, 0, 0], 0, 1]] };
   L.fog = [0x0e0c0a, 9, 24]; L.bg = 0x0e0c0a;
   cam(L, [-0.8, 3.6, 7.6], [0.4, 0.9, -1.0], 54);
@@ -55216,6 +55781,7 @@ LV.pingpong = () => {
     }
     if (flyT >= 0) { flyT += dt * 1.4; if (flyT > 1) flyT = -1; }
     padGlow.visible = bonkT >= 0;
+    const down = f.ppKO && !f.ppFriendly;
     if (bonkT >= 0) {
       bonkT += dt;
       const k = Math.min(1, bonkT / 0.6);
@@ -55225,16 +55791,16 @@ LV.pingpong = () => {
     } else if (flyT >= 0) {
       paddle.position.set(2.4 - 1.2 * flyT, 1.0 * (1 - flyT) + Math.sin(flyT * Math.PI) * 1.1 + 0.06, -2.2 + 1.6 * flyT);
       paddle.rotation.set(flyT * 4, flyT * 3, flyT * 6);
-    } else if ((f.ppPhase || 0) >= 2 || f.ppKO) {
+    } else if ((f.ppPhase || 0) >= 2 && !f.ppFriendly) {
       paddle.position.set(1.2, 0.06, -0.6);
       paddle.rotation.set(Math.PI / 2, 0.4, 0);
     } else {
       paddle.position.set(2.35, 0.95 + Math.sin(t * 5) * 0.08, -2.2);
       paddle.rotation.set(0, 0, Math.sin(t * 6) * 0.5 + 0.3);
     }
-    bad.body.rotation.z = f.ppKO ? Math.PI / 2 * 0.9 : 0;
-    bad.yOff = f.ppKO ? 0.3 : 0;
-    zzz.visible = !!f.ppKO;
+    bad.body.rotation.z = down ? Math.PI / 2 * 0.9 : 0;
+    bad.yOff = down ? 0.3 : f.ppFriendly ? Math.abs(Math.sin(t * 3.5)) * 0.06 : 0;
+    zzz.visible = !!down;
     zzz.position.y = 0.9 + Math.sin(t * 2) * 0.08;
   };
   return L;
@@ -55489,6 +56055,8 @@ const toJeep = (stand) => ({ name: "Back to the jeep", exit: true, go: "roadmap"
 
 // ---------- the road map ----------
 const MAP_NODES = {
+  beach: { pos: [-5.8, 5.4], name: "Beach", level: "beach" },
+  mountain: { pos: [-8.2, 0.2], name: "Mountain", level: "pingpong" },
   gas: { pos: [-8, 3.5], name: "Gas station", level: "gas" },
   mansion: { pos: [-4.2, -4.6], name: "Secret mansion", level: "mansionOut" },   // its road branches off at the supermarket
   market: { pos: [-3, 2.5], name: "Closed supermarket", level: "market" },
@@ -55527,6 +56095,18 @@ LV.roadmap = () => {
   put(L, floorG(26, 18, 13, 9), mat({ map: T.worldMap }), 0, 0, 0);
   let swampHouse = null;
   const lm = {
+    beach: (g) => {
+      const sand = new THREE.CircleGeometry(0.85, 10); sand.rotateX(-Math.PI / 2);
+      put(L, sand, mat({ color: 0xe8d8a8 }), 0, 0.02, 0, 0, null, g);
+      const sh = put(L, new THREE.CylinderGeometry(0.15, 0.22, 0.7, 7), mat({ color: 0xf4e9ff }), -0.1, 0.26, 0.08, 0, null, g);
+      sh.rotation.z = 0.65;
+      const tip = put(L, new THREE.ConeGeometry(0.15, 0.26, 7), mat({ color: 0xa24fd6 }), -0.34, 0.08, 0.08, 0, null, g);
+      tip.rotation.z = 2.2;
+    },
+    mountain: (g) => {
+      put(L, new THREE.ConeGeometry(0.75, 1.25, 6), mat({ color: 0x6a5e52 }), 0, 0.62, 0, 0, null, g);
+      put(L, boxG(0.45, 0.06, 0.28), mat({ color: 0x2f7a4a }), 0.22, 0.16, 0.35, 0, null, g);
+    },
     gas: (g) => { put(L, boxG(0.8, 0.5, 0.6), mat({ color: 0xc82020 }), 0, 0, 0, 0, null, g); put(L, boxG(1.0, 0.08, 0.8), mat({ color: 0xf0e8d0 }), 0, 0.7, 0, 0, null, g); },
     mansion: (g) => { put(L, boxG(1.0, 0.8, 0.7), mat({ color: 0x3a2a3a }), 0, 0, 0, 0, null, g); put(L, new THREE.ConeGeometry(0.75, 0.6, 4), mat({ color: 0x2a1a2a }), 0, 1.1, 0, 0, null, g); },
     market: (g) => { put(L, boxG(1.1, 0.6, 0.7), mat({ color: 0xd8c8a0 }), 0, 0, 0, 0, null, g); put(L, boxG(1.1, 0.2, 0.05), mat({ color: 0xe04e39 }), 0, 0.55, 0.36, 0, null, g); },
@@ -56630,8 +57210,10 @@ LV.mirrors = () => {
       r.root.position.set(x, r.fy < 0 ? 0 : r.fy > 0 ? 4.9 : 0, z);
       r.root.scale.y = r.fy ? -1 : 1;
       r.body.position.y = c.body.position.y;
-      r.body.scale.set(c.body.scale.x * r.s, c.body.scale.y, 1);
+      r.body.scale.set(c.body.scale.x * r.s, c.body.scale.y, c.body.scale.z);
       r.body.rotation.y = Math.atan2(curCam.position.x - x, curCam.position.z - z);
+      syncChar3D(r);
+      if (r.mesh3d) { r.mesh3d.scale.x = Math.abs(r.mesh3d.scale.x) * (r.body.scale.x < 0 ? -1 : 1); r.mesh3d.rotation.y = c.mesh3d.rotation.y; }
     });
     L.hots.forEach((o, i) => { if (o.userData.shimmer) o.userData.shimmer.material.uniforms.uAlpha.value = 0.4 + Math.sin(t * 2 + i) * 0.15; });
   };
@@ -57839,8 +58421,20 @@ function stepChar(c, dt, t) {
   if (c.hopT > 0) { c.hopT = Math.max(0, c.hopT - dt); hop = Math.sin(Math.min(1, c.hopT / 0.3) * Math.PI) * 0.22; }
   c.body.position.y = (moving ? Math.abs(Math.sin(c.walkT * 11)) * 0.1 : 0) + (c.yOff || 0) + hop;
   const sm = c.scaleMul ?? 1;
-  c.body.scale.set(c.face * (1 + squash * 0.6) * sm, (1 - squash) * sm, 1);
+  c.body.scale.set(c.face * (1 + squash * 0.6) * sm, (1 - squash) * sm, sm);
   c.body.rotation.y = Math.atan2(curCam.position.x - c.pos.x, curCam.position.z - c.pos.y);
+  if (c.mesh3d) {
+    syncChar3D(c);
+    c.mesh3d.scale.x = Math.abs(c.mesh3d.scale.x) * (c.face < 0 ? -1 : 1);
+    c.mesh3d.rotation.y = moving ? 0.42 : 0.18;
+    const sw = moving ? Math.sin(c.walkT * 11) * 0.55 : Math.sin(t * 2.2 + c.phase) * 0.05;
+    const { legL, legR, armL, armR, extra } = c.limbs || {};
+    if (legL) legL.rotation.x = sw;
+    if (legR) legR.rotation.x = -sw;
+    if (armL) armL.rotation.x = -sw * 0.85;
+    if (armR) armR.rotation.x = sw * 0.85;
+    if (extra) extra(t, c.walkT, moving);
+  }
 }
 const tagV = new THREE.Vector3(), tagC = new THREE.Vector3();
 function placeTags() {
@@ -57931,6 +58525,11 @@ $("ps1Btn").onclick = (e) => {
   ps1 = !ps1; G.uSnap.value = ps1 ? 1 : 0;
   e.currentTarget.textContent = "PS1 hint: " + (ps1 ? "on" : "off"); e.currentTarget.setAttribute("aria-pressed", ps1);
   resize();
+};
+$("char3dBtn").onclick = (e) => {
+  chars3d = !chars3d;
+  e.currentTarget.textContent = "3D chars: " + (chars3d ? "on" : "off"); e.currentTarget.setAttribute("aria-pressed", chars3d);
+  Object.values(built).forEach((lv) => (lv.allChars || lv.chars).forEach(syncChar3D));
 };
 $("readBtn").onclick = (e) => {
   voicesOn = !voicesOn; e.currentTarget.textContent = "Voices: " + (voicesOn ? "on" : "off"); e.currentTarget.setAttribute("aria-pressed", voicesOn);
@@ -58163,7 +58762,7 @@ async function start() {
   $("newBtn").onclick = (e) => { e.stopPropagation(); beginGame(true); };
   initDebug();
   if (SHOT && LV[SHOT]) { $("title").hidden = true; goLevel(SHOT); }
-  if (SHOT) window.__mk = { doMove, kidAct, ownerAct, beginGame, get spaceCut() { return spaceCut; }, get spaceWait() { return spaceWait; }, enterShip, openDollhouse, closeDollhouse, get dhParts() { return dhParts; }, setLead, powerOn, usePowerBtn, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
+  if (SHOT) window.__mk = { doMove, kidAct, ownerAct, startPong, finishPong, showDiploma, beginGame, get spaceCut() { return spaceCut; }, get spaceWait() { return spaceWait; }, enterShip, openDollhouse, closeDollhouse, get dhParts() { return dhParts; }, setLead, powerOn, usePowerBtn, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
   requestAnimationFrame(frame);
 }
 start().catch((e) => { msg.hidden = false; msg.textContent = "Something went wrong: " + e.message; console.error(e); });

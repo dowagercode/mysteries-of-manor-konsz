@@ -21,6 +21,8 @@ const toJeep = (stand) => ({ name: "Back to the jeep", exit: true, go: "roadmap"
 
 // ---------- the road map ----------
 const MAP_NODES = {
+  beach: { pos: [-5.8, 5.4], name: "Beach", level: "beach" },
+  mountain: { pos: [-8.2, 0.2], name: "Mountain", level: "pingpong" },
   gas: { pos: [-8, 3.5], name: "Gas station", level: "gas" },
   mansion: { pos: [-4.2, -4.6], name: "Secret mansion", level: "mansionOut" },   // its road branches off at the supermarket
   market: { pos: [-3, 2.5], name: "Closed supermarket", level: "market" },
@@ -59,6 +61,18 @@ LV.roadmap = () => {
   put(L, floorG(26, 18, 13, 9), mat({ map: T.worldMap }), 0, 0, 0);
   let swampHouse = null;
   const lm = {
+    beach: (g) => {
+      const sand = new THREE.CircleGeometry(0.85, 10); sand.rotateX(-Math.PI / 2);
+      put(L, sand, mat({ color: 0xe8d8a8 }), 0, 0.02, 0, 0, null, g);
+      const sh = put(L, new THREE.CylinderGeometry(0.15, 0.22, 0.7, 7), mat({ color: 0xf4e9ff }), -0.1, 0.26, 0.08, 0, null, g);
+      sh.rotation.z = 0.65;
+      const tip = put(L, new THREE.ConeGeometry(0.15, 0.26, 7), mat({ color: 0xa24fd6 }), -0.34, 0.08, 0.08, 0, null, g);
+      tip.rotation.z = 2.2;
+    },
+    mountain: (g) => {
+      put(L, new THREE.ConeGeometry(0.75, 1.25, 6), mat({ color: 0x6a5e52 }), 0, 0.62, 0, 0, null, g);
+      put(L, boxG(0.45, 0.06, 0.28), mat({ color: 0x2f7a4a }), 0.22, 0.16, 0.35, 0, null, g);
+    },
     gas: (g) => { put(L, boxG(0.8, 0.5, 0.6), mat({ color: 0xc82020 }), 0, 0, 0, 0, null, g); put(L, boxG(1.0, 0.08, 0.8), mat({ color: 0xf0e8d0 }), 0, 0.7, 0, 0, null, g); },
     mansion: (g) => { put(L, boxG(1.0, 0.8, 0.7), mat({ color: 0x3a2a3a }), 0, 0, 0, 0, null, g); put(L, new THREE.ConeGeometry(0.75, 0.6, 4), mat({ color: 0x2a1a2a }), 0, 1.1, 0, 0, null, g); },
     market: (g) => { put(L, boxG(1.1, 0.6, 0.7), mat({ color: 0xd8c8a0 }), 0, 0, 0, 0, null, g); put(L, boxG(1.1, 0.2, 0.05), mat({ color: 0xe04e39 }), 0, 0.55, 0.36, 0, null, g); },

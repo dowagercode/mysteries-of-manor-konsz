@@ -21,6 +21,8 @@ LV.mays = () => {
   const dh = group(L, -0.5, 0, -2.45, 0, { name: "Barbie Dream House", say: [{ choices: [
     ["Look at it", () => [["", "May's Barbie Dream House."]]],
     ["Play with it", () => { openDollhouse(); return []; }],
+    ["Lift it with telekinesis", () => [() => floatThing(dh), ["", "May lifts her whole Barbie Dream House into the air with her mind!"],
+      ["May", "Look, the dolls are flying! ...Okay, back down you go."]]],
   ] }] });
   put(L, boxG(1.6, 1.0, 0.9), mat({ color: 0xf07ab0 }), 0, 0, 0, 0, null, dh);
   put(L, planeG(1.6, 1.0), mat({ map: T.dreamFront }), 0, 0, 0.46, 0, null, dh);

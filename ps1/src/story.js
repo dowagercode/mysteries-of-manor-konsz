@@ -16,6 +16,7 @@ const ITEMS = {
   flashlight: ["🔦", "Flashlight"], chart: ["📜", "Wheel of the year chart"], book: ["📕", "Giant picture book"],
   mouthpiece: ["🎺", "Trumpet mouthpiece"], middle: ["🎺", "Trumpet middle section"], bell: ["🎺", "Trumpet bell"], trumpet: ["🎺", "Crystal trumpet"],
   stoneBow: ["🎀", "Stone hair bow"], stoneDisk: ["⚫", "Stone portal disk"], stoneBall: ["⚽", "Stone soccer ball"], stoneTutu: ["🩰", "Stone tutu"], dogFood: ["🥫", "Can of dog food"],
+  diploma: ["🏆", "Diploma of Excellent Ping-Pong"],
 };
 const CAKE = ["flour", "oil", "sugar", "water", "yeast", "cacao"];
 const has = (id) => S.items.includes(id);
@@ -102,6 +103,7 @@ function renderHud() {
     b.innerHTML = `<span class="ico">${ITEMS[id][0]}</span><span>${ITEMS[id][1]}</span>`;
     b.onclick = () => {
       if (talking() || busy) return;
+      if (id === "diploma" && !S.sel && typeof showDiploma === "function") { showDiploma(); return; }
       if (S.sel && S.sel !== id && S.sel !== "power") { const a = S.sel; S.sel = null; if (!combine(a, id)) say([["", "Those don't go together."]]); renderHud(); return; }
       S.sel = S.sel === id ? null : id; renderHud();
     };
@@ -124,7 +126,7 @@ function combine(a, b) {
 // short new line instead. Arrays hold a few lines to take turns; a function decides from the story state.
 const RETURNS = {
   beach: [[["", "Back at the crash site. The ship is still sitting in the water."]], [["Jon", "Our poor ship..."]]],
-  pingpong: (n) => S.flags.ppKO ? (n <= 1 ? [["", "The ping-pong station is quiet now."]] : [])
+  pingpong: () => S.flags.ppKO ? pongInvite()
     : [["Ping-pong bad guy", "Back for more? Nobody gets past MY ping-pong station!"]],
   gas: [[["", "Back at the gas station. Still strange and empty..."]], [["Olivia", "This place gives me the creeps."]]],
   roadmap: [[["", "Back on the road map. Where to next?"]]],

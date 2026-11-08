@@ -542,8 +542,10 @@ LV.mirrors = () => {
       r.root.position.set(x, r.fy < 0 ? 0 : r.fy > 0 ? 4.9 : 0, z);
       r.root.scale.y = r.fy ? -1 : 1;
       r.body.position.y = c.body.position.y;
-      r.body.scale.set(c.body.scale.x * r.s, c.body.scale.y, 1);
+      r.body.scale.set(c.body.scale.x * r.s, c.body.scale.y, c.body.scale.z);
       r.body.rotation.y = Math.atan2(curCam.position.x - x, curCam.position.z - z);
+      syncChar3D(r);
+      if (r.mesh3d) { r.mesh3d.scale.x = Math.abs(r.mesh3d.scale.x) * (r.body.scale.x < 0 ? -1 : 1); r.mesh3d.rotation.y = c.mesh3d.rotation.y; }
     });
     L.hots.forEach((o, i) => { if (o.userData.shimmer) o.userData.shimmer.material.uniforms.uAlpha.value = 0.4 + Math.sin(t * 2 + i) * 0.15; });
   };

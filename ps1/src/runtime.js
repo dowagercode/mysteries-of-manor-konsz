@@ -275,8 +275,20 @@ function stepChar(c, dt, t) {
   if (c.hopT > 0) { c.hopT = Math.max(0, c.hopT - dt); hop = Math.sin(Math.min(1, c.hopT / 0.3) * Math.PI) * 0.22; }
   c.body.position.y = (moving ? Math.abs(Math.sin(c.walkT * 11)) * 0.1 : 0) + (c.yOff || 0) + hop;
   const sm = c.scaleMul ?? 1;
-  c.body.scale.set(c.face * (1 + squash * 0.6) * sm, (1 - squash) * sm, 1);
+  c.body.scale.set(c.face * (1 + squash * 0.6) * sm, (1 - squash) * sm, sm);
   c.body.rotation.y = Math.atan2(curCam.position.x - c.pos.x, curCam.position.z - c.pos.y);
+  if (c.mesh3d) {
+    syncChar3D(c);
+    c.mesh3d.scale.x = Math.abs(c.mesh3d.scale.x) * (c.face < 0 ? -1 : 1);
+    c.mesh3d.rotation.y = moving ? 0.42 : 0.18;
+    const sw = moving ? Math.sin(c.walkT * 11) * 0.55 : Math.sin(t * 2.2 + c.phase) * 0.05;
+    const { legL, legR, armL, armR, extra } = c.limbs || {};
+    if (legL) legL.rotation.x = sw;
+    if (legR) legR.rotation.x = -sw;
+    if (armL) armL.rotation.x = -sw * 0.85;
+    if (armR) armR.rotation.x = sw * 0.85;
+    if (extra) extra(t, c.walkT, moving);
+  }
 }
 const tagV = new THREE.Vector3(), tagC = new THREE.Vector3();
 function placeTags() {
@@ -367,6 +379,11 @@ $("ps1Btn").onclick = (e) => {
   ps1 = !ps1; G.uSnap.value = ps1 ? 1 : 0;
   e.currentTarget.textContent = "PS1 hint: " + (ps1 ? "on" : "off"); e.currentTarget.setAttribute("aria-pressed", ps1);
   resize();
+};
+$("char3dBtn").onclick = (e) => {
+  chars3d = !chars3d;
+  e.currentTarget.textContent = "3D chars: " + (chars3d ? "on" : "off"); e.currentTarget.setAttribute("aria-pressed", chars3d);
+  Object.values(built).forEach((lv) => (lv.allChars || lv.chars).forEach(syncChar3D));
 };
 $("readBtn").onclick = (e) => {
   voicesOn = !voicesOn; e.currentTarget.textContent = "Voices: " + (voicesOn ? "on" : "off"); e.currentTarget.setAttribute("aria-pressed", voicesOn);
@@ -599,7 +616,7 @@ async function start() {
   $("newBtn").onclick = (e) => { e.stopPropagation(); beginGame(true); };
   initDebug();
   if (SHOT && LV[SHOT]) { $("title").hidden = true; goLevel(SHOT); }
-  if (SHOT) window.__mk = { doMove, kidAct, ownerAct, beginGame, get spaceCut() { return spaceCut; }, get spaceWait() { return spaceWait; }, enterShip, openDollhouse, closeDollhouse, get dhParts() { return dhParts; }, setLead, powerOn, usePowerBtn, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
+  if (SHOT) window.__mk = { doMove, kidAct, ownerAct, startPong, finishPong, showDiploma, beginGame, get spaceCut() { return spaceCut; }, get spaceWait() { return spaceWait; }, enterShip, openDollhouse, closeDollhouse, get dhParts() { return dhParts; }, setLead, powerOn, usePowerBtn, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
   requestAnimationFrame(frame);
 }
 start().catch((e) => { msg.hidden = false; msg.textContent = "Something went wrong: " + e.message; console.error(e); });

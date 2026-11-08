@@ -23,10 +23,12 @@ LV.beach = () => {
     const m = put(L, new THREE.DodecahedronGeometry(r, 0), mat({ color: 0x8a8090 }), rx, gy(rx, rz) + r * 0.4, rz);
     m.rotation.set(rnd() * 3, rnd() * 3, 0);
   });
-  // signpost inland
+  // signpost inland, plus the jeep once the crew has it
   const sign = group(L, -8.6, gy(-8.6, 4.5), 4.5, 0.5, { name: "Path to the mountain", exit: true, go: "mountainUp", stand: [-8.2, 4.2] });
   put(L, boxG(0.14, 1.9, 0.14), mat({ color: 0x6b4f35 }), 0, 0, 0, 0, null, sign);
   put(L, planeG(1.3, 0.52), mat({ map: label(["MOUNTAIN >"], 80, 14, "#d9c39a", "#3b2a20", "#6b4f35") }), 0, 1.3, 0.08, 0, null, sign);
+  const jeep = group(L, -4.8, gy(-4.8, 3.4), 3.4, 0.35, { ...toJeep([-3.2, 3.0]), show: () => !!S.flags.drove });
+  miniJeep(L, jeep);
   const mtn = new THREE.ConeGeometry(9, 9, 7); 
   put(L, mtn, mat({ color: 0x6a6070 }), -22, 0, 18);
   // the crew: May leads, the others follow
@@ -38,7 +40,7 @@ LV.beach = () => {
   let rise = 0;
   L.walk = [-9, 9, -2.4, 6.5];
   L.start = [0, 2];
-  L.entries = { pingpong: [-7.6, 4.2], mountainUp: [-7.6, 4.2] };
+  L.entries = { pingpong: [-7.6, 4.2], mountainUp: [-7.6, 4.2], roadmap: [-1.4, 2.6] };
   // far away inland: the wizard's castle behind the hills and forests, with lightning all around it
   const far = new THREE.Group(); far.position.set(-6, 0, 62); far.rotation.y = Math.PI; L.scene.add(far);
   const fm = mat({ color: 0x3a3048, fog: 0.35 });
@@ -61,12 +63,14 @@ LV.beach = () => {
   const ballGlow = put(L, new THREE.SphereGeometry(0.28, 8, 6), glowM, 0, -9, 0);
   const tutuGlow = put(L, new THREE.TorusGeometry(0.34, 0.1, 5, 12).rotateX(Math.PI / 2), glowM, 0, -9, 0);
   let cut = false, jumpT = -9;
-  L.onEnter = [["Everyone", "AHHHHH!"], ["", "The ship falls all the way from space... SPLASH! Right into the water."], ["Everyone", "Shucks!"],
-    ["", "The crew swims to the beach. Then... Jasin's soccer ball and Olivia's tutu start to GLOW!"], () => { S.flags.glowing = true; save(); jumpT = performance.now() / 1000; },
-    ["Jasin", "Whoa! My ball!"], ["Olivia", "My tutu is glowing too! What could cause that?"],
-    () => { cut = true; }, ["", "Far away, behind the hills and forests, there's a castle... with lightning crashing all around it!"],
-    ["Jon", "I wonder if there's a wizard there who can tell us about this?"], () => { cut = false; },
-    ["", "Chapter 2 begins! Now everyone walks together."]];
+  L.onEnter = () => S.flags.ppKO || S.flags.drove
+    ? [["", "Back at the crash site. The ship is still sitting in the water."]]
+    : [["Everyone", "AHHHHH!"], ["", "The ship falls all the way from space... SPLASH! Right into the water."], ["Everyone", "Shucks!"],
+      ["", "The crew swims to the beach. Then... Jasin's soccer ball and Olivia's tutu start to GLOW!"], () => { S.flags.glowing = true; save(); jumpT = performance.now() / 1000; },
+      ["Jasin", "Whoa! My ball!"], ["Olivia", "My tutu is glowing too! What could cause that?"],
+      () => { cut = true; }, ["", "Far away, behind the hills and forests, there's a castle... with lightning crashing all around it!"],
+      ["Jon", "I wonder if there's a wizard there who can tell us about this?"], () => { cut = false; },
+      ["", "Chapter 2 begins! Now everyone walks together."]];
   L.light = { amb: 0x6a6088, dir: [-0.5, -0.7, -0.6], dirCol: 0xd8a8a0, pts: [[[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0xd6a2bd, 14, 60]; L.bg = 0xd6a2bd;
   cam(L, [0, 2.2, 3], [-5, 6, 60], 48, () => cut, 200);
@@ -139,12 +143,248 @@ function doMove(k) {
 }
 const PP = { fx: {} };
 
+function showDiploma(lvl = S.flags.pongBeaten || 1) {
+  const c = document.createElement("canvas"); c.width = 320; c.height = 220;
+  const x = c.getContext("2d");
+  x.fillStyle = "#fbf3dc"; x.fillRect(0, 0, 320, 220);
+  x.strokeStyle = "#8a5a28"; x.lineWidth = 6; x.strokeRect(8, 8, 304, 204);
+  x.strokeStyle = "#d4a024"; x.lineWidth = 2; x.strokeRect(14, 14, 292, 192);
+  x.fillStyle = "#2a1f3d"; x.textAlign = "center";
+  x.font = "bold 15px Georgia, serif"; x.fillText("MOUNTAIN PING-PONG STATION", 160, 40);
+  x.font = "bold 19px Georgia, serif"; x.fillStyle = "#8a2820"; x.fillText("DIPLOMA OF EXCELLENT", 160, 68);
+  x.fillText("PING-PONG", 160, 92);
+  x.font = "13px Georgia, serif"; x.fillStyle = "#2a1f3d";
+  x.fillText("Awarded to May, Jon, Jasin & Olivia", 160, 120);
+  x.font = "bold 14px Georgia, serif"; x.fillStyle = "#2f7a4a";
+  x.fillText(`Official Pong Champion · Level ${lvl} / 10`, 160, 146);
+  // Gold seal + miniature paddle
+  x.fillStyle = "#ffd23f"; x.beginPath(); x.arc(255, 168, 20, 0, Math.PI * 2); x.fill();
+  x.strokeStyle = "#b87a10"; x.lineWidth = 2; x.stroke();
+  x.fillStyle = "#8a2820"; x.font = "bold 10px sans-serif"; x.fillText("★ #1 ★", 255, 172);
+  x.fillStyle = "#5a4a3a"; x.font = "italic 12px Georgia, serif"; x.textAlign = "left";
+  x.fillText("Signed: The Ping-Pong Guy", 30, 180);
+  showPeek(c.toDataURL(), `Diploma of Excellent Ping-Pong (Highest beaten: Level ${lvl} of 10). Click anywhere to close.`);
+}
+function pongChoices() {
+  const nextLvl = Math.min(10, (S.flags.pongBeaten || 0) + 1);
+  return [{ choices: [
+    [`Play Pong! (Level ${nextLvl} of 10)`, () => { startPong(nextLvl); return []; }],
+    ["Pick difficulty level (1–10)...", () => pongLevelMenu(0)],
+    ...(has("diploma") ? [["Look at Diploma of Excellent Ping-Pong", () => { showDiploma(); return []; }]] : []),
+    ["Maybe later", () => [["Ping-pong bad guy", "Anytime! My table is always ready for a game."]]],
+  ] }];
+}
+function pongLevelMenu(page = 0) {
+  const lvls = page === 0 ? [1, 2, 3, 4, 5] : [6, 7, 8, 9, 10];
+  return [{ choices: [
+    ...lvls.map((l) => [`Level ${l}${S.flags["pongWon_" + l] ? " ★" : ""}`, () => { startPong(l); return []; }]),
+    [page === 0 ? "Levels 6–10 ▸" : "◂ Levels 1–5", () => pongLevelMenu(page === 0 ? 1 : 0)],
+    ["Back", () => pongChoices()],
+  ] }];
+}
+function pongInvite() {
+  S.flags.ppFriendly = true; save();
+  const best = S.flags.pongBeaten || 0;
+  return [
+    ["Ping-pong bad guy", best
+      ? `Hey, ping-pong champ! You've beaten me up to Level ${best} of 10! Ready for another match?`
+      : "Hey, you're back! Sorry about earlier — I was just grumpy because nobody ever plays ping-pong with me!"],
+    ["Ping-pong bad guy", has("diploma")
+      ? "Want to play a friendly game of Pong? Pick any difficulty from Level 1 to Level 10!"
+      : "Want to play a friendly game of Pong? I have 10 levels of difficulty — beat me and I'll award you my Diploma of Excellent Ping-Pong!"],
+    ...pongChoices(),
+  ];
+}
+function finishPong(lvl, won) {
+  S.flags.ppFriendly = true;
+  if (!won) {
+    save();
+    say([["Ping-pong bad guy", `Good game! Level ${lvl} is tough! Want a rematch or try a different difficulty?`], ...pongChoices()]);
+    return;
+  }
+  S.flags["pongWon_" + lvl] = true;
+  S.flags.pongBeaten = Math.max(S.flags.pongBeaten || 0, lvl);
+  const firstDiploma = !has("diploma") && !S.flags.got_diploma;
+  if (firstDiploma) add("diploma", "got_diploma");
+  else save();
+  say([
+    ["Ping-pong bad guy", `WOW! What a match! You beat me on Level ${lvl} of 10!`],
+    ...(firstDiploma
+      ? [["Ping-pong bad guy", "You've earned my special reward: the official Diploma of Excellent Ping-Pong!"],
+         ["", "Diploma of Excellent Ping-Pong! It goes in your item drawer."],
+         () => showDiploma(S.flags.pongBeaten)]
+      : [["Ping-pong bad guy", `I've updated your Diploma of Excellent Ping-Pong with your Level ${S.flags.pongBeaten} seal!`]]),
+    ...pongChoices(),
+  ]);
+}
+function startPong(initialLvl = 1) {
+  const cv = $("astro"), x = cv.getContext("2d");
+  cv.hidden = false; busy = true; stopSpeaking();
+  let lvl = Math.max(1, Math.min(10, initialLvl || 1));
+  let pScore = 0, cScore = 0, py = 130, cy = 130, prevPy = 130, pVel = 0;
+  let ball = { x: 160, y: 130, vx: 0, vy: 0 }, serveT = 0.55, rally = 0, banner = "", endT = -1, over = false;
+  let keys = { up: false, down: false }, sparks = [];
+  const resetBall = (dir = 1) => {
+    ball.x = 160; ball.y = 130; ball.vx = 0; ball.vy = 0; serveT = 0.55; rally = 0;
+    ball.dir = dir;
+  };
+  const setLevel = (newLvl) => {
+    lvl = Math.max(1, Math.min(10, newLvl));
+    pScore = 0; cScore = 0; py = 130; cy = 130; banner = ""; endT = -1;
+    resetBall(1);
+  };
+  setLevel(lvl);
+  const pt = (e) => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * 320, y: (e.clientY - r.top) / r.height * 240 }; };
+  const move = (e) => {
+    const p = pt(e);
+    if (endT < 0) py = Math.max(54, Math.min(206, p.y));
+  };
+  const down = (e) => {
+    e.preventDefault();
+    const p = pt(e);
+    // Top bar: Exit button [x: 274..316, y: 2..15]
+    if (p.x >= 272 && p.y <= 17) { cleanup(); return; }
+    // Level buttons 1..10 [y: 16..30, x: 12 + i*26]
+    if (p.y >= 15 && p.y <= 31) {
+      for (let i = 0; i < 10; i++) {
+        const bx = 12 + i * 26;
+        if (p.x >= bx && p.x <= bx + 23) { setLevel(i + 1); tone(440 + i * 35, 0.06, "triangle", 0.08); return; }
+      }
+    }
+    if (endT < 0) py = Math.max(54, Math.min(206, p.y));
+  };
+  const key = (e) => {
+    const on = e.type === "keydown";
+    if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") { e.preventDefault(); keys.up = on; }
+    if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") { e.preventDefault(); keys.down = on; }
+    if (on && e.key === "Escape") { e.preventDefault(); cleanup(); }
+    if (on && /^[0-9]$/.test(e.key)) { setLevel(e.key === "0" ? 10 : Number(e.key)); }
+  };
+  cv.addEventListener("pointermove", move); cv.addEventListener("pointerdown", down);
+  window.addEventListener("keydown", key); window.addEventListener("keyup", key);
+  function cleanup(cb) {
+    if (over) return;
+    over = true;
+    cv.removeEventListener("pointermove", move); cv.removeEventListener("pointerdown", down);
+    window.removeEventListener("keydown", key); window.removeEventListener("keyup", key);
+    cv.hidden = true; busy = false;
+    if (cb) cb();
+  }
+  let last = performance.now(), t0 = last;
+  function tick(now) {
+    if (over) return;
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const el = (now - t0) / 1000;
+    const ph = Math.round(42 - (lvl - 1) * 1.3), ch = Math.round(28 + (lvl - 1) * 1.4);
+    if (endT >= 0) {
+      endT -= dt;
+      if (endT <= 0) { const won = pScore >= 3; cleanup(() => finishPong(lvl, won)); return; }
+    } else {
+      if (keys.up) py = Math.max(36 + ph / 2, py - 190 * dt);
+      if (keys.down) py = Math.min(224 - ph / 2, py + 190 * dt);
+      pVel = (py - prevPy) / Math.max(0.008, dt); prevPy = py;
+      if (serveT > 0) {
+        serveT -= dt;
+        if (serveT <= 0) {
+          const spd = 118 + lvl * 13, ang = (rnd() - 0.5) * 0.65;
+          ball.vx = (ball.dir || 1) * Math.cos(ang) * spd;
+          ball.vy = Math.sin(ang) * spd;
+        }
+      } else {
+        ball.x += ball.vx * dt; ball.y += ball.vy * dt;
+        if (ball.y < 40) { ball.y = 40; ball.vy = Math.abs(ball.vy); tone(300, 0.04, "sine", 0.05); }
+        if (ball.y > 220) { ball.y = 220; ball.vy = -Math.abs(ball.vy); tone(300, 0.04, "sine", 0.05); }
+        // Player paddle at x = 24
+        if (ball.vx < 0 && ball.x <= 29 && ball.x >= 18 && Math.abs(ball.y - py) <= ph / 2 + 5) {
+          ball.x = 29; rally++;
+          const spd = Math.min(310, Math.hypot(ball.vx, ball.vy) * 1.045);
+          const hit = Math.max(-1, Math.min(1, (ball.y - py) / (ph / 2)));
+          const ang = hit * 0.85;
+          ball.vx = Math.cos(ang) * spd;
+          ball.vy = Math.sin(ang) * spd + Math.max(-55, Math.min(55, pVel * 0.18));
+          tone(460 + rally * 18, 0.06, "square", 0.08);
+          for (let i = 0; i < 6; i++) sparks.push({ x: 28, y: ball.y, vx: 20 + rnd() * 50, vy: (rnd() - 0.5) * 70, life: 0.25, col: "#ffd23f" });
+        }
+        // CPU paddle at x = 296
+        if (ball.vx > 0 && ball.x >= 291 && ball.x <= 302 && Math.abs(ball.y - cy) <= ch / 2 + 5) {
+          ball.x = 291; rally++;
+          const spd = Math.min(310, Math.hypot(ball.vx, ball.vy) * 1.04);
+          const hit = Math.max(-1, Math.min(1, (ball.y - cy) / (ch / 2)));
+          const ang = hit * 0.78;
+          ball.vx = -Math.cos(ang) * spd;
+          ball.vy = Math.sin(ang) * spd;
+          tone(380 + rally * 18, 0.06, "square", 0.08);
+          for (let i = 0; i < 6; i++) sparks.push({ x: 292, y: ball.y, vx: -20 - rnd() * 50, vy: (rnd() - 0.5) * 70, life: 0.25, col: "#ff7a4a" });
+        }
+        // Scoring
+        if (ball.x < 8) {
+          cScore++; tone(190, 0.16, "sawtooth", 0.09);
+          if (cScore >= 3) { banner = "PING-PONG GUY WINS!"; endT = 1.1; } else resetBall(1);
+        } else if (ball.x > 312) {
+          pScore++; tone(660, 0.14, "triangle", 0.11);
+          for (let i = 0; i < 16; i++) sparks.push({ x: 300, y: ball.y, vx: -30 - rnd() * 80, vy: (rnd() - 0.5) * 110, life: 0.45, col: "#5aff9a" });
+          if (pScore >= 3) { banner = `YOU BEAT LEVEL ${lvl}!`; endT = 1.1; } else resetBall(-1);
+        }
+      }
+      // CPU AI (scales across Levels 1..10)
+      const aiSpd = 66 + lvl * 21;
+      const err = Math.sin(el * 2.8) * (10 - lvl) * 2.5;
+      const targetY = ball.vx > 0 ? ball.y + err : 130 + Math.sin(el * 1.5) * 14;
+      const dy = targetY - cy;
+      cy += Math.sign(dy) * Math.min(Math.abs(dy), aiSpd * dt);
+      cy = Math.max(36 + ch / 2, Math.min(224 - ch / 2, cy));
+    }
+    sparks.forEach((s) => { s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; });
+    sparks = sparks.filter((s) => s.life > 0);
+    // Draw HUD & Table
+    x.fillStyle = "#120e1c"; x.fillRect(0, 0, 320, 240);
+    x.font = FONT; x.textBaseline = "top";
+    x.fillStyle = "#ffd23f"; x.textAlign = "left"; x.fillText(`YOU ${pScore} - ${cScore} CPU  (FIRST TO 3)`, 12, 4);
+    // Exit button
+    x.fillStyle = "#5a2a48"; x.fillRect(274, 2, 38, 12);
+    x.fillStyle = "#fff"; x.textAlign = "center"; x.fillText("EXIT", 293, 4);
+    // Level 1..10 buttons
+    for (let i = 0; i < 10; i++) {
+      const l = i + 1, bx = 12 + i * 26;
+      x.fillStyle = l === lvl ? "#ffd23f" : S.flags["pongWon_" + l] ? "#2f7a4a" : "#2e2444";
+      x.fillRect(bx, 16, 23, 13);
+      x.fillStyle = l === lvl ? "#1a1228" : "#ffffff";
+      x.fillText("L" + l, bx + 11.5, 19);
+    }
+    // Ping-pong table
+    x.fillStyle = "#1f6a3c"; x.fillRect(12, 34, 296, 192);
+    x.strokeStyle = "#f4f4f4"; x.lineWidth = 2; x.strokeRect(13, 35, 294, 190);
+    x.fillStyle = "rgba(255,255,255,0.35)"; x.fillRect(14, 129, 292, 2);
+    for (let y = 37; y < 224; y += 8) { x.fillStyle = "#f4f4f4"; x.fillRect(159, y, 2, 5); }
+    // Paddles
+    x.fillStyle = "#e8669a"; x.fillRect(21, Math.round(py - ph / 2), 6, ph);
+    x.fillStyle = "#ffd23f"; x.fillRect(23, Math.round(py - ph / 2 + 2), 2, ph - 4);
+    x.fillStyle = "#e8542c"; x.fillRect(293, Math.round(cy - ch / 2), 6, ch);
+    x.fillStyle = "#fff4d0"; x.fillRect(295, Math.round(cy - ch / 2 + 2), 2, ch - 4);
+    // Ball & sparks
+    sparks.forEach((s) => { x.fillStyle = s.col; x.fillRect(s.x | 0, s.y | 0, 2, 2); });
+    x.fillStyle = "#ffffff"; x.beginPath(); x.arc(ball.x, ball.y, 4.5, 0, Math.PI * 2); x.fill();
+    if (serveT > 0 && endT < 0) {
+      x.fillStyle = "#ffd23f"; x.textAlign = "center"; x.fillText(`LEVEL ${lvl} OF 10 — READY!`, 160, 96);
+    }
+    if (banner) {
+      x.fillStyle = "rgba(12,8,24,0.82)"; x.fillRect(44, 104, 232, 36);
+      x.strokeStyle = "#ffd23f"; x.strokeRect(44, 104, 232, 36);
+      x.fillStyle = "#ffd23f"; x.textAlign = "center"; x.fillText(banner, 160, 118);
+    }
+    x.fillStyle = "#b8b0d0"; x.textAlign = "center"; x.fillText("MOUSE / ARROWS TO MOVE · CLICK L1–L10", 160, 230);
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
 LV.pingpong = () => {
   const L = newLevel("pingpong", "Ping-pong Station");
   const RW = 12, RD = 8, R = [RW, RD];
   room(L, { w: RW, d: RD, h: 4.2, wall: T.rock, floor: T.stoneFloor, wallRep: 2, floorRep: 1.5, ceil: 0x2a2420, trim: 0x3a3028 });
   // the creepy ping-pong table
-  const table = group(L, 0.8, 0, -1.9, 0, { name: "Ping-pong table", say: [["", "A creepy old ping-pong table, right in the middle of the mountain."]] });
+  const table = group(L, 0.8, 0, -1.9, 0, { name: "Ping-pong table",
+    say: () => S.flags.ppKO ? pongInvite() : [["", "A creepy old ping-pong table, right in the middle of the mountain."]] });
   put(L, boxG(2.8, 0.08, 1.5), mat({ map: T.ppTable }), 0, 0.76, 0, 0, null, table);
   [[-1.3, -0.65], [1.3, -0.65], [-1.3, 0.65], [1.3, 0.65]].forEach(([a, b]) => put(L, boxG(0.08, 0.76, 0.08), mat({ color: 0x2a2a2e }), a, 0, b, 0, null, table));
   put(L, boxG(0.03, 0.18, 1.6), mat({ color: 0xf4f4f4 }), 0, 0.84, 0, 0, null, table);
@@ -154,7 +394,7 @@ LV.pingpong = () => {
   });
   // the ping-pong bad guy
   const bad = addChar(L, "pingpong", 2.9, -2.4, 1.75, { name: "Ping-pong bad guy", stand: [1.0, -0.6],
-    say: () => S.flags.ppKO ? [["", "The ping-pong bad guy is knocked out. Zzz..."]] : [["Ping-pong bad guy", "Nobody gets past MY ping-pong station!"], ["", "Click a kid to use their special move."]] });
+    say: () => S.flags.ppKO ? (S.flags.ppFriendly ? pongInvite() : [["", "The ping-pong bad guy is knocked out. Zzz..."]]) : [["Ping-pong bad guy", "Nobody gets past MY ping-pong station!"], ["", "Click a kid to use their special move."]] });
   const zzz = put(L, planeG(0.7, 0.3), mat({ map: label(["Zzz"], 32, 14, "#2a2420", "#ffffff", "#2a2420"), em: 1 }), 3.3, 0.9, -2.2, -0.3);
   // 3D ping-pong paddle (held by bad guy, knocked away by fireball, lifted by May to bonk him)
   const paddle = new THREE.Group(); L.scene.add(paddle);
@@ -180,13 +420,14 @@ LV.pingpong = () => {
   if (!L.hots.includes(team.may.body)) L.hots.push(team.may.body);
   L.walk = [-5, 5, -0.8, 3.2];
   L.start = [-2.6, 1.0];
-  L.entries = { beach: [-4.2, 2.4], gas: [4.2, 2.4], mountainUp: [-4.2, 2.4], mountainDown: [4.2, 2.4] };
+  L.entries = { beach: [-4.2, 2.4], gas: [4.2, 2.4], roadmap: [-0.8, 2.2], mountainUp: [-4.2, 2.4], mountainDown: [4.2, 2.4] };
   const back = group(L, -5.6, 0, 2.6, 0, { name: "Path back down the mountain", exit: true, go: "mountainUp", stand: [-4.8, 2.6] });
   put(L, boxG(0.6, 2.4, 1.6), mat({ color: 0x1a1612 }), 0, 0, 0, 0, null, back);
   const fwd = group(L, 5.6, 0, 2.6, 0, { name: "Path down to the gas station", exit: true, stand: [4.8, 2.6],
     run: () => S.flags.ppKO ? goLevel("mountainDown", "pingpong") : say([["", "The ping-pong bad guy blocks the way!"]]) });
   put(L, boxG(0.6, 2.4, 1.6), mat({ color: 0x1a1612 }), 0, 0, 0, 0, null, fwd);
-  L.onEnter = () => S.flags.ppKO ? [] : [["", "The crew runs to the mountain... and right into a creepy ping-pong station!"], ["Ping-pong bad guy", "Nobody gets past MY ping-pong station!"], ["", "He keeps trying to hit them with his ping-pong stick! Click a kid to use their special move."]];
+  group(L, 0, 0, 3.8, 0, { ...toJeep([0, 2.8]), show: () => !!S.flags.drove });
+  L.onEnter = () => S.flags.ppKO ? pongInvite() : [["", "The crew runs to the mountain... and right into a creepy ping-pong station!"], ["Ping-pong bad guy", "Nobody gets past MY ping-pong station!"], ["", "He keeps trying to hit them with his ping-pong stick! Click a kid to use their special move."]];
   L.light = { amb: 0x5a5048, dir: [0.3, -1, -0.4], dirCol: 0x585048, pts: [[[1, 3.2, -1.5], 0x9aff9a, 7], [[-3, 2, 2], 0xffb070, 6], [[0, 0, 0], 0, 1]] };
   L.fog = [0x0e0c0a, 9, 24]; L.bg = 0x0e0c0a;
   cam(L, [-0.8, 3.6, 7.6], [0.4, 0.9, -1.0], 54);
@@ -205,6 +446,7 @@ LV.pingpong = () => {
     }
     if (flyT >= 0) { flyT += dt * 1.4; if (flyT > 1) flyT = -1; }
     padGlow.visible = bonkT >= 0;
+    const down = f.ppKO && !f.ppFriendly;
     if (bonkT >= 0) {
       bonkT += dt;
       const k = Math.min(1, bonkT / 0.6);
@@ -214,16 +456,16 @@ LV.pingpong = () => {
     } else if (flyT >= 0) {
       paddle.position.set(2.4 - 1.2 * flyT, 1.0 * (1 - flyT) + Math.sin(flyT * Math.PI) * 1.1 + 0.06, -2.2 + 1.6 * flyT);
       paddle.rotation.set(flyT * 4, flyT * 3, flyT * 6);
-    } else if ((f.ppPhase || 0) >= 2 || f.ppKO) {
+    } else if ((f.ppPhase || 0) >= 2 && !f.ppFriendly) {
       paddle.position.set(1.2, 0.06, -0.6);
       paddle.rotation.set(Math.PI / 2, 0.4, 0);
     } else {
       paddle.position.set(2.35, 0.95 + Math.sin(t * 5) * 0.08, -2.2);
       paddle.rotation.set(0, 0, Math.sin(t * 6) * 0.5 + 0.3);
     }
-    bad.body.rotation.z = f.ppKO ? Math.PI / 2 * 0.9 : 0;
-    bad.yOff = f.ppKO ? 0.3 : 0;
-    zzz.visible = !!f.ppKO;
+    bad.body.rotation.z = down ? Math.PI / 2 * 0.9 : 0;
+    bad.yOff = down ? 0.3 : f.ppFriendly ? Math.abs(Math.sin(t * 3.5)) * 0.06 : 0;
+    zzz.visible = !!down;
     zzz.position.y = 0.9 + Math.sin(t * 2) * 0.08;
   };
   return L;

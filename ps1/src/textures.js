@@ -288,12 +288,13 @@ function makeTextures2() {
   T.magRack = C(16, 24, (x) => { x.fillStyle = "#5a4a3a"; x.fillRect(0, 0, 16, 24); const c = ["#e04e39", "#3a86c8", "#ffd23f", "#3fae6a", "#e8559a", "#a8a8a8"]; for (let i = 0; i < 6; i++) { x.fillStyle = c[i]; x.fillRect(1 + (i % 2) * 7, 1 + (i >> 1) * 8, 6, 7); } }, false);
   T.worldMap = C(128, 88, (x, w, h) => {
     x.fillStyle = "#5aa84a"; x.fillRect(0, 0, w, h); noise(x, w, h, ["#4a9a3a", "#6ab85a"], 500);
-    x.fillStyle = "#3a7ac8"; x.beginPath(); x.ellipse(0, 70, 30, 30, 0, 0, 7); x.fill(); x.beginPath(); x.ellipse(118, 80, 22, 18, 0, 0, 7); x.fill();
-    x.fillStyle = "#8a7a6a"; [[110, 14], [100, 22], [120, 26]].forEach(([a, b]) => { x.beginPath(); x.moveTo(a - 9, b + 8); x.lineTo(a, b - 8); x.lineTo(a + 9, b + 8); x.fill(); });
+    x.fillStyle = "#e8d8a8"; x.beginPath(); x.ellipse(12, 74, 38, 26, 0, 0, 7); x.fill();
+    x.fillStyle = "#3a7ac8"; x.beginPath(); x.ellipse(8, 78, 32, 22, 0, 0, 7); x.fill(); x.beginPath(); x.ellipse(118, 80, 22, 18, 0, 0, 7); x.fill();
+    x.fillStyle = "#8a7a6a"; [[110, 14], [100, 22], [120, 26], [18, 44]].forEach(([a, b]) => { x.beginPath(); x.moveTo(a - 9, b + 8); x.lineTo(a, b - 8); x.lineTo(a + 9, b + 8); x.fill(); });
     x.fillStyle = "#e8d8a8";
     const P = (vx, vz) => [(vx + 13) / 26 * w, (vz + 9) / 18 * h];
-    const path = [[-8, 3.5], [-3, 2.5], [1, -0.5], [5, 2], [8.5, -3.5]], br = [[-3, 2.5], [-4.2, -4.6]];
-    [path, br].forEach((pts) => { for (let i = 0; i < pts.length - 1; i++) { const [a, b] = P(...pts[i]), [c, d] = P(...pts[i + 1]); for (let k = 0; k <= 1; k += 0.08) x.fillRect(a + (c - a) * k - 1, b + (d - b) * k - 1, 3, 3); } });
+    const path = [[-5.8, 5.4], [-8, 3.5], [-3, 2.5], [1, -0.5], [5, 2], [8.5, -3.5]], br = [[-3, 2.5], [-4.2, -4.6]], mt = [[-8, 3.5], [-8.2, 0.2]];   // mansion road branches off the supermarket; mountain road off the gas station
+    [path, br, mt].forEach((pts) => { for (let i = 0; i < pts.length - 1; i++) { const [a, b] = P(...pts[i]), [c, d] = P(...pts[i + 1]); for (let k = 0; k <= 1; k += 0.08) x.fillRect(a + (c - a) * k - 1, b + (d - b) * k - 1, 3, 3); } });
   });
   T.ramen = C(16, 8, (x) => { x.fillStyle = "#e04e39"; x.fillRect(0, 0, 16, 8); x.fillStyle = "#ffd23f"; x.fillRect(2, 2, 12, 4); x.fillStyle = "#e04e39"; x.fillRect(5, 3, 6, 2); }, false);
   T.forestFloor = C(32, 32, (x) => { x.fillStyle = "#2a3a22"; x.fillRect(0, 0, 32, 32); noise(x, 32, 32, ["#3a4a2a", "#22301c", "#4a3a22"], 240); });

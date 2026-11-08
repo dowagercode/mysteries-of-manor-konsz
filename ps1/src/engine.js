@@ -192,7 +192,7 @@ function wavyString(x, y0, y1, z, wig = 0.12) {
 
 // ---------- levels ----------
 function newLevel(id, name) {
-  return { id, name, scene: new THREE.Scene(), hots: [], chars: [], cams: [], walk: [-3, 3, -1, 2], start: [0, 1], entries: {},
+  return { id, name, scene: new THREE.Scene(), hots: [], chars: [], allChars: [], cams: [], walk: [-3, 3, -1, 2], start: [0, 1], entries: {},
     light: { amb: 0x707080, dir: [0.3, -1, -0.5], dirCol: 0x606060, pts: [] }, fog: [0x000000, 12, 30], bg: 0x000000 };
 }
 function put(L, geo, m, x = 0, y = 0, z = 0, ry = 0, hot, parent) {
@@ -240,17 +240,335 @@ function onWall(L, side, room, tex, w, h, a, y, hot, frameCol, depth = 0.02) {
   put(L, planeG(w, h), mat({ map: tex }), 0, 0, 0.06, 0, null, g);
   return g;
 }
+
+const CLEAR_TEX = C(2, 2, () => {});
+let chars3d = false;
+function buildChar3D(key, h) {
+  const g = new THREE.Group();
+  const parts = [];
+  const P = (par, geo, col, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, em = 0.42) => {
+    const me = new THREE.Mesh(geo, mat({ color: col, em, side: THREE.DoubleSide }));
+    me.position.set(x, y, z); me.rotation.set(rx, ry, rz);
+    me.userData.baseCol = new THREE.Color(col); me.userData.baseEm = em;
+    par.add(me); parts.push(me);
+    return me;
+  };
+  const piv = (par, x, y, z) => { const p = new THREE.Group(); p.position.set(x, y, z); par.add(p); return p; };
+  const cyl = (rt, rb, len, seg = 6) => new THREE.CylinderGeometry(rt, rb, len, seg);
+  const sph = (r, ws = 7, hs = 6) => new THREE.SphereGeometry(r, ws, hs);
+  const cone = (r, len, seg = 6) => new THREE.ConeGeometry(r, len, seg);
+  const face = (y = 1.0, z = 0.165, sep = 0.065, eyeCol = 0x2a1f3d, sparkle = false, cheekCol = null, smileCol = 0x2a1f3d) => {
+    [-1, 1].forEach((s) => {
+      P(g, sph(0.024, 5, 4), eyeCol, s * sep, y + 0.015, z, 0, 0, 0, 0.6);
+      if (sparkle) P(g, sph(0.011, 4, 4), 0xffffff, s * sep + 0.008, y + 0.022, z + 0.012, 0, 0, 0, 0.95);
+      if (cheekCol) P(g, sph(0.025, 5, 4), cheekCol, s * (sep + 0.045), y - 0.025, z - 0.01, 0, 0, 0, 0.55);
+    });
+    if (smileCol != null) P(g, boxG(0.075, 0.018, 0.02), smileCol, 0, y - 0.06, z, 0, 0, 0, 0.5);
+  };
+  let legL = null, legR = null, armL = null, armR = null, extra = null;
+  if (key === "may") {
+    legL = piv(g, -0.08, 0.44, 0); legR = piv(g, 0.08, 0.44, 0);
+    [legL, legR].forEach((l) => {
+      P(l, cyl(0.038, 0.034, 0.36), 0xf3c9a5, 0, -0.18, 0);
+      P(l, boxG(0.095, 0.065, 0.14), 0x8a2c55, 0, -0.44, 0.025);
+    });
+    P(g, cyl(0.095, 0.23, 0.46, 8), 0xe8669a, 0, 0.63, 0);
+    P(g, boxG(0.075, 0.075, 0.02), 0xffffff, 0, 0.58, 0.165, 0, 0, 0, 0.85);
+    P(g, boxG(0.075, 0.075, 0.02), 0xffffff, 0, 0.58, 0.168, 0, 0, Math.PI / 4, 0.85);
+    armL = piv(g, -0.12, 0.81, 0); armR = piv(g, 0.12, 0.81, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, sph(0.052, 6, 5), 0xe8669a, s * 0.015, -0.02, 0);
+      P(a, cyl(0.034, 0.03, 0.27), 0xf3c9a5, s * 0.055, -0.14, 0, 0, 0, -s * 0.26);
+      P(a, sph(0.04, 6, 5), 0xf3c9a5, s * 0.09, -0.26, 0);
+    });
+    P(g, sph(0.18, 8, 7), 0xf3c9a5, 0, 1.01, 0);
+    P(g, sph(0.188, 8, 7), 0x6b3f2a, 0, 1.03, -0.025);
+    [-1, 1].forEach((s) => {
+      P(g, boxG(0.13, 0.07, 0.09), 0x6b3f2a, s * 0.065, 1.11, 0.11, 0, 0, -s * 0.22);
+      P(g, sph(0.095, 7, 6), 0x6b3f2a, s * 0.165, 1.19, -0.01);
+      P(g, sph(0.038, 5, 4), 0xe8669a, s * 0.13, 1.13, 0.045);
+    });
+    face(1.01, 0.168, 0.065, 0x2a1f3d, true, 0xf29bb0);
+  } else if (key === "jon" || key === "jonOval") {
+    legL = piv(g, -0.085, 0.44, 0); legR = piv(g, 0.085, 0.44, 0);
+    [legL, legR].forEach((l) => {
+      P(l, boxG(0.095, 0.12, 0.11), 0x2f4a6e, 0, -0.10, 0);
+      P(l, cyl(0.036, 0.033, 0.28), 0xe9b48a, 0, -0.22, 0);
+      P(l, boxG(0.10, 0.07, 0.15), 0xe04e39, 0, -0.44, 0.025);
+    });
+    P(g, boxG(0.24, 0.12, 0.15), 0x2f4a6e, 0, 0.41, 0);
+    P(g, cyl(0.12, 0.135, 0.35, 7), 0x3a86c8, 0, 0.68, 0);
+    P(g, boxG(0.085, 0.085, 0.02), 0xffd23f, 0, 0.65, 0.13, 0, 0, 0, 0.75);
+    P(g, boxG(0.085, 0.085, 0.02), 0xffd23f, 0, 0.65, 0.133, 0, 0, Math.PI / 4, 0.75);
+    armL = piv(g, -0.135, 0.81, 0); armR = piv(g, 0.135, 0.81, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, cyl(0.045, 0.042, 0.10), 0x3a86c8, s * 0.02, -0.04, 0, 0, 0, -s * 0.2);
+      P(a, cyl(0.034, 0.03, 0.24), 0xe9b48a, s * 0.06, -0.16, 0, 0, 0, -s * 0.25);
+      P(a, sph(0.04, 6, 5), 0xe9b48a, s * 0.095, -0.27, 0);
+    });
+    P(g, sph(0.178, 8, 7), 0xe9b48a, 0, 1.00, 0);
+    P(g, sph(0.182, 7, 6), 0xf0a830, 0, 1.03, -0.03);
+    [[-0.14, 1.15, 0.02, 0.45], [-0.07, 1.22, 0.04, 0.2], [0, 1.24, 0.05, 0], [0.08, 1.22, 0.04, -0.22], [0.15, 1.15, 0.02, -0.48]].forEach(([x, y, z, rz]) => {
+      P(g, cone(0.065, 0.19, 5), 0xf0a830, x, y, z, 0.1, 0, rz);
+    });
+    face(1.00, 0.165, 0.064, 0x2a1f3d, false, null);
+    if (key === "jonOval") {
+      const ov = piv(g, -0.32, 0.58, 0.04);
+      const g1 = cyl(0.12, 0.12, 0.035, 10); g1.rotateX(Math.PI / 2); g1.scale(0.95, 2.8, 1);
+      P(ov, g1, 0x6a2fb0, 0, 0, 0, 0, 0, 0, 0.65);
+      const g2 = cyl(0.095, 0.095, 0.042, 10); g2.rotateX(Math.PI / 2); g2.scale(0.9, 2.6, 1);
+      P(ov, g2, 0xa965e6, 0, 0, 0, 0, 0, 0, 0.85);
+      const g3 = cyl(0.035, 0.035, 0.048, 8); g3.rotateX(Math.PI / 2); g3.scale(0.7, 2.2, 1);
+      P(ov, g3, 0xf1d9ff, -0.025, 0.05, 0, 0, 0, 0, 0.95);
+      extra = (t) => { ov.position.y = 0.58 + Math.sin(t * 3.2) * 0.035; };
+    }
+  } else if (key === "jasin") {
+    legL = piv(g, -0.085, 0.44, 0); legR = piv(g, 0.085, 0.44, 0);
+    [legL, legR].forEach((l) => {
+      P(l, boxG(0.095, 0.12, 0.11), 0xf4f4f4, 0, -0.10, 0);
+      P(l, cyl(0.036, 0.033, 0.28), 0xc68a5e, 0, -0.22, 0);
+      P(l, boxG(0.10, 0.07, 0.15), 0x222222, 0, -0.44, 0.025);
+    });
+    P(g, boxG(0.24, 0.12, 0.15), 0xf4f4f4, 0, 0.41, 0);
+    P(g, cyl(0.12, 0.135, 0.35, 7), 0x3fae6a, 0, 0.68, 0);
+    P(g, boxG(0.022, 0.10, 0.02), 0xffffff, -0.038, 0.63, 0.132, 0, 0, 0, 0.8);
+    P(g, boxG(0.062, 0.10, 0.02), 0xffffff, 0.028, 0.63, 0.132, 0, 0, 0, 0.8);
+    P(g, boxG(0.024, 0.06, 0.022), 0x3fae6a, 0.028, 0.63, 0.135, 0, 0, 0, 0.5);
+    armL = piv(g, -0.135, 0.81, 0); armR = piv(g, 0.135, 0.81, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, cyl(0.045, 0.042, 0.10), 0x3fae6a, s * 0.02, -0.04, 0, 0, 0, -s * 0.2);
+      P(a, cyl(0.034, 0.03, 0.24), 0xc68a5e, s * 0.06, -0.16, 0, 0, 0, -s * 0.25);
+      P(a, sph(0.04, 6, 5), 0xc68a5e, s * 0.095, -0.27, 0);
+    });
+    P(armL, sph(0.082, 7, 6), 0xffffff, -0.07, -0.19, 0.05, 0, 0, 0, 0.7);
+    P(armL, sph(0.038, 5, 4), 0x2a1f3d, -0.07, -0.19, 0.115, 0, 0, 0, 0.5);
+    P(g, sph(0.088, 7, 6), 0xffffff, 0.22, 0.09, 0.11, 0, 0, 0, 0.75);
+    P(g, sph(0.04, 5, 4), 0x2a1f3d, 0.22, 0.11, 0.18, 0, 0, 0, 0.5);
+    P(g, cyl(0.13, 0.13, 0.02, 8), 0xffe066, 0.22, 0.02, 0.11, 0, 0, 0, 0.9);
+    P(g, sph(0.178, 8, 7), 0xc68a5e, 0, 1.00, 0);
+    P(g, sph(0.186, 8, 7), 0x3b2a20, 0, 1.04, -0.025);
+    [[-0.10, 1.16, 0.06], [0, 1.18, 0.08], [0.10, 1.16, 0.06], [-0.14, 1.09, 0.08], [0.14, 1.09, 0.08]].forEach(([x, y, z]) => {
+      P(g, sph(0.068, 6, 5), 0x3b2a20, x, y, z);
+    });
+    face(1.00, 0.165, 0.064, 0x2a1f3d, false, null, null);
+    P(g, boxG(0.105, 0.042, 0.025), 0xffffff, 0, 0.92, 0.16, 0, 0, 0, 0.85);
+  } else if (key === "olivia") {
+    legL = piv(g, -0.075, 0.44, 0); legR = piv(g, 0.075, 0.44, 0);
+    [legL, legR].forEach((l) => {
+      P(l, cyl(0.035, 0.032, 0.36), 0xf6d2b8, 0, -0.18, 0);
+      P(l, boxG(0.09, 0.06, 0.14), 0x8b4fd1, 0, -0.44, 0.025);
+    });
+    P(g, cyl(0.105, 0.115, 0.40, 7), 0x38b2ac, 0, 0.64, 0);
+    P(g, cyl(0.34, 0.38, 0.065, 12), 0x9b5de5, 0, 0.48, 0, 0, 0, 0, 0.55);
+    P(g, cyl(0.24, 0.28, 0.075, 10), 0xecd9ff, 0, 0.485, 0, 0, 0, 0, 0.75);
+    armL = piv(g, -0.12, 0.81, 0); armR = piv(g, 0.12, 0.81, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, cyl(0.032, 0.028, 0.27), 0xf6d2b8, s * 0.05, -0.14, 0, 0, 0, -s * 0.24);
+      P(a, sph(0.038, 6, 5), 0xf6d2b8, s * 0.085, -0.26, 0);
+    });
+    P(g, sph(0.178, 8, 7), 0xf6d2b8, 0, 1.00, 0);
+    P(g, sph(0.186, 8, 7), 0xa8452f, 0, 1.03, -0.025);
+    [-1, 1].forEach((s) => {
+      P(g, boxG(0.13, 0.065, 0.09), 0xa8452f, s * 0.065, 1.11, 0.105, 0, 0, -s * 0.2);
+      P(g, sph(0.038, 5, 4), 0xe8669a, s * 0.18, 1.02, 0.01);
+      P(g, cone(0.068, 0.26, 6), 0xa8452f, s * 0.24, 0.89, -0.01, 0, 0, s * 0.32);
+    });
+    face(1.00, 0.165, 0.064, 0x2a1f3d, true, 0xf29bb0);
+  } else if (key === "wizard") {
+    legL = piv(g, -0.08, 0.22, 0); legR = piv(g, 0.08, 0.22, 0);
+    [legL, legR].forEach((l) => P(l, boxG(0.07, 0.05, 0.14), 0xa08b74, 0, -0.22, 0.03));
+    P(g, cyl(0.10, 0.27, 0.78, 8), 0xb44fd6, 0, 0.47, 0);
+    P(g, cyl(0.11, 0.22, 0.79, 6), 0x8a2fb0, 0, 0.47, -0.01);
+    armL = piv(g, -0.14, 0.80, 0); armR = piv(g, 0.14, 0.80, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, cone(0.095, 0.30, 6), 0xb44fd6, s * 0.08, -0.12, 0, 0, 0, s * 0.45);
+      P(a, sph(0.038, 5, 4), 0xa08b74, s * 0.15, -0.25, 0.02);
+    });
+    P(g, sph(0.155, 8, 7), 0xf1dcc6, 0, 0.96, 0);
+    [-1, 1].forEach((s) => {
+      P(g, sph(0.065, 6, 5), 0xd8d0c4, s * 0.15, 0.99, -0.01);
+      P(g, sph(0.055, 6, 5), 0xd8d0c4, s * 0.13, 0.90, 0.01);
+    });
+    const brd = cone(0.115, 0.32, 6); brd.rotateX(Math.PI);
+    P(g, brd, 0xd8d0c4, 0, 0.77, 0.10);
+    P(g, sph(0.035, 5, 4), 0xf1dcc6, 0, 0.95, 0.155);
+    face(0.97, 0.145, 0.055, 0x2a1f3d, false, null, null);
+    P(g, cyl(0.24, 0.26, 0.05, 8), 0xb44fd6, 0, 1.11, 0);
+    P(g, cyl(0.14, 0.17, 0.08, 7), 0x8a2fb0, 0, 1.17, 0);
+    P(g, cone(0.12, 0.16, 7), 0xb44fd6, 0, 1.27, 0);
+  } else if (key === "witch") {
+    legL = piv(g, -0.08, 0.32, 0); legR = piv(g, 0.08, 0.32, 0);
+    [legL, legR].forEach((l) => {
+      P(l, cyl(0.032, 0.028, 0.24), 0x3f9a47, 0, -0.14, 0);
+      P(l, boxG(0.09, 0.055, 0.15), 0xb44fd6, 0, -0.32, 0.03);
+    });
+    P(g, cyl(0.10, 0.26, 0.64, 8), 0xb44fd6, 0, 0.54, 0);
+    armL = piv(g, -0.13, 0.80, 0); armR = piv(g, 0.13, 0.80, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, cone(0.075, 0.18, 6), 0xb44fd6, s * 0.05, -0.07, 0, 0, 0, s * 0.38);
+      P(a, cyl(0.028, 0.024, 0.20), 0x3f9a47, s * 0.10, -0.18, 0, 0, 0, -s * 0.32);
+      P(a, sph(0.036, 5, 4), 0x3f9a47, s * 0.14, -0.27, 0.02);
+    });
+    [-1, 1].forEach((s) => P(g, cone(0.065, 0.38, 5), 0xcfc6b8, s * 0.17, 0.84, -0.02, 0, 0, s * 0.2));
+    P(g, sph(0.16, 8, 7), 0x6cc070, 0, 0.98, 0);
+    const nose = cone(0.035, 0.14, 5); nose.rotateX(Math.PI / 2);
+    P(g, nose, 0x6cc070, 0, 0.97, 0.20);
+    P(g, boxG(0.09, 0.035, 0.025), 0xffffff, 0, 0.90, 0.15, 0, 0, 0, 0.8);
+    face(0.99, 0.148, 0.055, 0x1d3b1f, false, null, null);
+    P(g, cyl(0.23, 0.25, 0.04, 8), 0x8b2fb8, 0, 1.11, 0);
+    P(g, cone(0.13, 0.24, 7), 0x8b2fb8, 0.02, 1.24, -0.01, -0.1, 0, -0.15);
+  } else if (key === "pingpong") {
+    legL = piv(g, -0.09, 0.38, 0); legR = piv(g, 0.09, 0.38, 0);
+    [legL, legR].forEach((l) => {
+      P(l, cyl(0.04, 0.036, 0.28), 0xf1d3b8, 0, -0.18, 0);
+      P(l, boxG(0.105, 0.07, 0.15), 0x222222, 0, -0.38, 0.025);
+    });
+    P(g, boxG(0.28, 0.14, 0.20), 0xc0392b, 0, 0.34, 0);
+    P(g, sph(0.205, 8, 7), 0xf1d3b8, 0, 0.58, 0.025);
+    P(g, cyl(0.16, 0.195, 0.19, 8), 0xb89a7c, 0, 0.74, 0);
+    armL = piv(g, -0.18, 0.78, 0); armR = piv(g, 0.18, 0.78, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, cyl(0.038, 0.034, 0.24), 0xf1d3b8, s * 0.06, -0.12, 0.03, -0.25, 0, -s * 0.3);
+      P(a, sph(0.042, 6, 5), 0xf1d3b8, s * 0.10, -0.22, 0.06);
+    });
+    // Right hand: orange ping-pong paddle; Left hand: frothy root-beer mug
+    const pad = cyl(0.085, 0.085, 0.022, 8); pad.rotateX(Math.PI / 2);
+    P(armR, pad, 0xe8542c, 0.16, -0.14, 0.10);
+    P(armR, boxG(0.025, 0.07, 0.025), 0x5a3a20, 0.12, -0.20, 0.08, 0, 0, -0.5);
+    P(armL, cyl(0.055, 0.055, 0.12, 7), 0xf0a020, -0.13, -0.24, 0.09);
+    P(armL, cyl(0.062, 0.062, 0.035, 7), 0xfffaf0, -0.13, -0.17, 0.09, 0, 0, 0, 0.8);
+    P(g, sph(0.155, 8, 7), 0xf1d3b8, 0, 0.98, 0);
+    [[-0.08, 1.14], [0, 1.16], [0.08, 1.14]].forEach(([x, y]) => P(g, cone(0.06, 0.14, 5), 0x222222, x, y, 0));
+    [-1, 1].forEach((s) => P(g, boxG(0.065, 0.018, 0.02), 0x222222, s * 0.05, 1.03, 0.15, 0, 0, -s * 0.35));
+    face(0.98, 0.148, 0.052, 0x2a1f3d, false, null, 0x2a1f3d);
+  } else if (key === "apprentice") {
+    // Standing in his little wooden rowboat with an oar
+    P(g, boxG(0.68, 0.16, 0.32), 0x6b4a2f, 0, 0.0, 0);
+    P(g, boxG(0.72, 0.04, 0.35), 0x4a321e, 0, 0.14, 0);
+    legL = piv(g, -0.07, 0.36, 0); legR = piv(g, 0.07, 0.36, 0);
+    P(g, cyl(0.10, 0.18, 0.56, 7), 0xb44fd6, 0, 0.44, 0);
+    armL = piv(g, -0.12, 0.70, 0); armR = piv(g, 0.12, 0.70, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, cyl(0.032, 0.028, 0.22), 0xb44fd6, s * 0.05, -0.10, 0, 0, 0, -s * 0.28);
+      P(a, sph(0.036, 5, 4), 0x9fd08a, s * 0.08, -0.20, 0.02);
+    });
+    P(armR, cyl(0.018, 0.018, 0.52, 5), 0x7a5230, 0.16, -0.24, 0.04, 0, 0, 0.55);
+    P(armR, boxG(0.06, 0.14, 0.02), 0x7a5230, 0.28, -0.44, 0.04, 0, 0, 0.55);
+    P(g, sph(0.145, 8, 7), 0x9fd08a, 0, 0.88, 0);
+    face(0.88, 0.138, 0.05, 0x2a1f3d, false, null, 0x2a1f3d);
+    P(g, cyl(0.21, 0.23, 0.035, 8), 0x3b2a5c, 0, 0.99, 0, 0, 0, -0.08);
+    P(g, cone(0.12, 0.26, 7), 0x3b2a5c, -0.01, 1.13, 0, 0, 0, 0.08);
+  } else if (key === "skeleton") {
+    legL = piv(g, -0.075, 0.42, 0); legR = piv(g, 0.075, 0.42, 0);
+    [legL, legR].forEach((l) => {
+      P(l, cyl(0.024, 0.022, 0.34), 0xf0ece0, 0, -0.18, 0, 0, 0, 0, 0.65);
+      P(l, boxG(0.085, 0.055, 0.14), 0xf0ece0, 0, -0.42, 0.025, 0, 0, 0, 0.65);
+    });
+    P(g, boxG(0.22, 0.26, 0.14), 0x3a5a8a, 0, 0.36, 0);
+    P(g, cyl(0.105, 0.095, 0.26, 7), 0xf0ece0, 0, 0.72, 0, 0, 0, 0, 0.65);
+    [0.66, 0.73, 0.80].forEach((y) => P(g, boxG(0.19, 0.022, 0.13), 0x2a1f3d, 0, y, 0.01));
+    [-0.065, 0.065].forEach((x) => P(g, boxG(0.04, 0.24, 0.15), 0x3a5a8a, x, 0.62, 0));
+    armL = piv(g, -0.13, 0.81, 0); armR = piv(g, 0.13, 0.81, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, cyl(0.022, 0.02, 0.28), 0xf0ece0, s * 0.05, -0.14, 0, 0, 0, -s * 0.22, 0.65);
+      P(a, sph(0.035, 5, 4), 0xf0ece0, s * 0.08, -0.27, 0, 0, 0, 0, 0.65);
+    });
+    P(g, sph(0.16, 8, 7), 0xf0ece0, 0, 1.00, 0, 0, 0, 0, 0.7);
+    P(g, boxG(0.13, 0.08, 0.12), 0xf0ece0, 0, 0.86, 0.03, 0, 0, 0, 0.7);
+    [-1, 1].forEach((s) => P(g, sph(0.038, 6, 5), 0x2a1f3d, s * 0.058, 1.00, 0.14));
+    P(g, boxG(0.10, 0.022, 0.02), 0x2a1f3d, 0, 0.90, 0.10);
+    P(g, sph(0.168, 8, 6), 0xc82020, 0, 1.07, -0.01);
+    P(g, boxG(0.22, 0.035, 0.16), 0xc82020, 0, 1.08, 0.10);
+  } else if (key === "lady") {
+    legL = piv(g, -0.075, 0.30, 0); legR = piv(g, 0.075, 0.30, 0);
+    [legL, legR].forEach((l) => {
+      P(l, cyl(0.032, 0.028, 0.22), 0xf3c9a5, 0, -0.12, 0);
+      P(l, boxG(0.09, 0.06, 0.14), 0x2a1f3d, 0, -0.30, 0.025);
+    });
+    P(g, cyl(0.105, 0.22, 0.62, 8), 0x3a86c8, 0, 0.53, 0);
+    P(g, boxG(0.18, 0.42, 0.04), 0xffffff, 0, 0.26, 0.14, 0, 0, 0, 0.7);
+    armL = piv(g, -0.125, 0.80, 0); armR = piv(g, 0.125, 0.80, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => {
+      P(a, cyl(0.04, 0.036, 0.12), 0x3a86c8, s * 0.02, -0.05, 0, 0, 0, -s * 0.2);
+      P(a, cyl(0.03, 0.028, 0.20), 0xf3c9a5, s * 0.055, -0.16, 0, 0, 0, -s * 0.24);
+      P(a, sph(0.036, 5, 4), 0xf3c9a5, s * 0.085, -0.26, 0);
+    });
+    P(g, sph(0.165, 8, 7), 0xf3c9a5, 0, 0.99, 0);
+    P(g, sph(0.175, 8, 7), 0x8a8a90, 0, 1.02, -0.025);
+    P(g, sph(0.085, 7, 6), 0x8a8a90, 0, 1.18, -0.04);
+    face(0.99, 0.155, 0.058, 0x2a1f3d, false, 0xf29bb0);
+  } else if (key === "dog") {
+    legL = piv(g, -0.12, 0.42, -0.18); legR = piv(g, 0.12, 0.42, -0.18);
+    armL = piv(g, -0.12, 0.42, 0.18); armR = piv(g, 0.12, 0.42, 0.18);
+    [legL, legR, armL, armR].forEach((l) => {
+      P(l, boxG(0.09, 0.38, 0.09), 0x6a4a2a, 0, -0.38, 0);
+      P(l, boxG(0.10, 0.06, 0.12), 0x2a1a10, 0, -0.42, 0.02);
+    });
+    P(g, boxG(0.34, 0.30, 0.56), 0x6a4a2a, 0, 0.36, 0);
+    P(g, boxG(0.28, 0.26, 0.26), 0x6a4a2a, 0, 0.62, 0.24);
+    P(g, boxG(0.20, 0.14, 0.18), 0x6a4a2a, 0, 0.64, 0.42);
+    P(g, boxG(0.18, 0.05, 0.14), 0xffffff, 0, 0.62, 0.43, 0, 0, 0, 0.8);
+    P(g, boxG(0.07, 0.06, 0.06), 0x2a1a10, 0, 0.73, 0.49);
+    [-1, 1].forEach((s) => {
+      P(g, boxG(0.07, 0.18, 0.10), 0x2a1a10, s * 0.15, 0.72, 0.20, 0, 0, s * 0.25);
+      P(g, sph(0.03, 5, 4), 0xffffff, s * 0.08, 0.80, 0.36, 0, 0, 0, 0.85);
+      P(g, sph(0.018, 4, 4), 0x2a1a10, s * 0.08, 0.80, 0.38);
+    });
+    const tail = piv(g, 0, 0.62, -0.28);
+    P(tail, cyl(0.028, 0.04, 0.24, 5), 0x2a1a10, 0, 0.10, -0.06, -0.5, 0, 0);
+    extra = (t) => { tail.rotation.z = Math.sin(t * 7) * 0.35; };
+  } else if (key === "owl") {
+    [-0.09, 0.09].forEach((x) => P(g, boxG(0.09, 0.06, 0.14), 0xf2b830, x, 0.0, 0.03));
+    P(g, sph(0.28, 8, 7), 0x7a5a3a, 0, 0.42, 0);
+    P(g, sph(0.22, 7, 6), 0xc8a878, 0, 0.40, 0.11);
+    armL = piv(g, -0.24, 0.55, 0); armR = piv(g, 0.24, 0.55, 0);
+    [[-1, armL], [1, armR]].forEach(([s, a]) => P(a, boxG(0.08, 0.34, 0.22), 0x62462c, s * 0.03, -0.28, 0, 0, 0, -s * 0.15));
+    P(g, sph(0.25, 8, 7), 0x7a5a3a, 0, 0.84, 0.02);
+    [-1, 1].forEach((s) => {
+      P(g, cone(0.065, 0.18, 5), 0x7a5a3a, s * 0.16, 1.08, 0.02, 0, 0, -s * 0.28);
+      P(g, sph(0.078, 6, 5), 0xffffff, s * 0.095, 0.86, 0.21, 0, 0, 0, 0.85);
+      P(g, sph(0.042, 5, 4), 0x2a1f3d, s * 0.095, 0.86, 0.265);
+    });
+    const bk = cone(0.045, 0.11, 4); bk.rotateX(Math.PI / 2);
+    P(g, bk, 0xf2b830, 0, 0.80, 0.27);
+  }
+  g.scale.setScalar(h / 1.3);
+  return { mesh3d: g, limbs: { legL, legR, armL, armR, extra }, parts };
+}
+function syncChar3D(c) {
+  c.body.material.uniforms.map.value = chars3d ? CLEAR_TEX : c.tex2d;
+  c.mesh3d.visible = chars3d;
+  const col = c.body.material.uniforms.uColor.value, hex = col.getHex(), em = c.body.material.uniforms.uEm.value;
+  if (c.lastTint !== hex || c.lastEm !== em) {
+    c.lastTint = hex; c.lastEm = em;
+    c.parts.forEach((p) => {
+      if (hex === 0xffffff) {
+        p.material.uniforms.uColor.value.copy(p.userData.baseCol);
+        p.material.uniforms.uEm.value = p.userData.baseEm;
+      } else if (em < 0.2) {
+        p.material.uniforms.uColor.value.copy(p.userData.baseCol).lerp(col, 0.78);
+        p.material.uniforms.uEm.value = 0.14;
+      } else {
+        p.material.uniforms.uColor.value.copy(p.userData.baseCol).multiply(col);
+      }
+    });
+  }
+}
 function addChar(L, key, x, z, h = 1.3, hot) {
   const s = SPR[key], w = h * s.w / s.h;
   const root = new THREE.Group(); L.scene.add(root);
   const g = new THREE.PlaneGeometry(w, h); g.translate(0, h / 2, 0);
-  const body = new THREE.Mesh(g, mat({ map: s.tex, em: 0.45, side: THREE.DoubleSide }));
+  const body = new THREE.Mesh(g, mat({ map: chars3d ? CLEAR_TEX : s.tex, em: 0.45, side: THREE.DoubleSide }));
   root.add(body);
+  const { mesh3d, limbs, parts } = buildChar3D(key, h);
+  mesh3d.visible = chars3d;
+  body.add(mesh3d);
   const sh = new THREE.Mesh(floorG(w * 0.85, w * 0.42, 1, 1), mat({ map: T.shadow, color: 0x000000, em: 1, alpha: 0.4 }));
   sh.position.y = 0.025; root.add(sh);
   if (hot) { body.userData.hot = hot; L.hots.push(body); }
-  const c = { key, root, body, pos: new THREE.Vector2(x, z), target: null, face: 1, walkT: 0, speed: 2.4, phase: rnd() * 6 };
+  const c = { key, root, body, mesh3d, limbs, parts, tex2d: s.tex, h, pos: new THREE.Vector2(x, z), target: null, face: 1, walkT: 0, speed: 2.4, phase: rnd() * 6 };
   L.chars.push(c);
+  if (L.allChars) L.allChars.push(c);
   return c;
 }
 
