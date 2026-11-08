@@ -292,7 +292,7 @@ function makeTextures2() {
     x.fillStyle = "#8a7a6a"; [[110, 14], [100, 22], [120, 26]].forEach(([a, b]) => { x.beginPath(); x.moveTo(a - 9, b + 8); x.lineTo(a, b - 8); x.lineTo(a + 9, b + 8); x.fill(); });
     x.fillStyle = "#e8d8a8";
     const P = (vx, vz) => [(vx + 13) / 26 * w, (vz + 9) / 18 * h];
-    const path = [[-8, 3.5], [-3, 2.5], [1, -0.5], [5, 2], [8.5, -3.5]], br = [[-8, 3.5], [-6.5, -2.5]];
+    const path = [[-8, 3.5], [-3, 2.5], [1, -0.5], [5, 2], [8.5, -3.5]], br = [[-3, 2.5], [-4.2, -4.6]];
     [path, br].forEach((pts) => { for (let i = 0; i < pts.length - 1; i++) { const [a, b] = P(...pts[i]), [c, d] = P(...pts[i + 1]); for (let k = 0; k <= 1; k += 0.08) x.fillRect(a + (c - a) * k - 1, b + (d - b) * k - 1, 3, 3); } });
   });
   T.ramen = C(16, 8, (x) => { x.fillStyle = "#e04e39"; x.fillRect(0, 0, 16, 8); x.fillStyle = "#ffd23f"; x.fillRect(2, 2, 12, 4); x.fillStyle = "#e04e39"; x.fillRect(5, 3, 6, 2); }, false);

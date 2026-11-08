@@ -19,13 +19,15 @@
   const step = (n) => log.push(n + ' => ' + M.goal() + (M.sideGoal() ? ' | ' + M.sideGoal() : '') + ' [' + M.S.items.join(',') + ']');
   Object.assign(M.S, { items: [], flags: { started: true, crashed: true, fixed: true } });
   await go('beach'); step('beach');
-  await use('Path to the mountain'); await w(700); await drain(); step('mountain: ' + M.L.id);
+  await use('Path to the mountain'); await w(700); await drain(); step('up the mountain: ' + M.L.id);
+  await use('Path up to the ping-pong station'); await w(700); await drain(); step('mountain: ' + M.L.id);
   await use('Jasin', null, 'Kick'); step('wrong move (jasin first)');
   await use('Jon', null, 'Hide'); step('jon portal');
   await use('Jasin', null, 'Kick'); step('jasin fireball');
   await use('Olivia', null, 'Spin'); step('olivia float');
   await use('May', null, 'Grab'); step('may bonk');
-  await use('Path down to the gas station'); await w(700); await drain(); step('gas: ' + M.L.id);
+  await use('Path down to the gas station'); await w(700); await drain(); step('down the mountain: ' + M.L.id);
+  await use('Road down to the gas station'); await w(700); await drain(); step('gas: ' + M.L.id);
   await use('Squeegee'); await use('Windshield washer container', 'squeegee'); step('mom stone');
   await use('Door into the gas station'); await w(700); await drain();
   await use('Skeleton owner'); step('met owner in ' + M.L.id);

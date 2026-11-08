@@ -22,7 +22,7 @@ const toJeep = (stand) => ({ name: "Back to the jeep", exit: true, go: "roadmap"
 // ---------- the road map ----------
 const MAP_NODES = {
   gas: { pos: [-8, 3.5], name: "Gas station", level: "gas" },
-  mansion: { pos: [-6.5, -2.5], name: "Secret mansion", level: "mansionOut" },
+  mansion: { pos: [-4.2, -4.6], name: "Secret mansion", level: "mansionOut" },   // its road branches off at the supermarket
   market: { pos: [-3, 2.5], name: "Closed supermarket", level: "market" },
   forest: { pos: [1, -0.5], name: "Scary forest", level: "forest" },
   swamp: { pos: [5, 2], name: "Swamp", level: "swamp" },
@@ -45,7 +45,10 @@ function mapGo(id) {
     ["Olivia", "The jeep! We're already taking the jeep to the castle."], ["", "Everyone agrees with Olivia. Using two kinds would probably take longer!"], flag("choseJeep")] : [];
   say([...intro, () => {
     busy = true;
-    mapDrive = { from: new THREE.Vector2(...from.pos), to: new THREE.Vector2(...n.pos), t: 0, done: () => {
+    // the mansion is on a side road from the supermarket, so drives to or from it go through the supermarket
+    const at = S.flags.mapAt || "gas", via = (id === "mansion") !== (at === "mansion") && id !== "market" && at !== "market";
+    const pts = [from.pos, ...(via ? [MAP_NODES.market.pos] : []), n.pos].map((p) => new THREE.Vector2(...p));
+    mapDrive = { pts, from: pts[0], to: pts[1], t: 0, done: () => {
       busy = false; S.flags.mapAt = id; S.flags["visited_" + id] = true; save(); goLevel(n.level, "roadmap"); chaseArrive(id);
     } };
   }]);
@@ -82,6 +85,7 @@ LV.roadmap = () => {
     const at = MAP_NODES[S.flags.mapAt || "gas"].pos;
     if (mapDrive) {
       mapDrive.t = Math.min(1, mapDrive.t + dt / 1.4);
+      if (mapDrive.t >= 1 && mapDrive.pts.length > 2) { mapDrive.pts.shift(); mapDrive.from = mapDrive.pts[0]; mapDrive.to = mapDrive.pts[1]; mapDrive.t = 0; }
       const p = mapDrive.from.clone().lerp(mapDrive.to, mapDrive.t);
       jeep.position.set(p.x, Math.abs(Math.sin(mapDrive.t * 30)) * 0.05, p.y + 0.9);
       jeep.rotation.y = -Math.atan2(mapDrive.to.y - mapDrive.from.y, mapDrive.to.x - mapDrive.from.x);

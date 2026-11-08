@@ -4,6 +4,9 @@
 
 - **The creepy ping-pong station** — in the middle of a mountain. The ping-pong bad guy is there.
 
+- **Buffer scenes** (Dandy, 2026-11-08): a scene of the kids **going up the mountain** before the ping-pong station, and one of them **going down the mountain** after the fight (see [../gameplay.md](../gameplay.md)).
+- **Debug** (Dandy, 2026-11-08): the debug menu should be able to jump to the mountain **after the ping-pong guy is defeated**.
+
 ## Story
 
 - After they swim, they run to a mountain, and then they meet the ping-pong bad guy (at the creepy ping-pong station in the middle of the mountain).

@@ -128,6 +128,8 @@ const RETURNS = {
     : [["Ping-pong bad guy", "Back for more? Nobody gets past MY ping-pong station!"]],
   gas: [[["", "Back at the gas station. Still strange and empty..."]], [["Olivia", "This place gives me the creeps."]]],
   roadmap: [[["", "Back on the road map. Where to next?"]]],
+  mountainUp: [[["", "Back on the steep mountain path."]]],
+  mountainDown: [[["", "Back on the path down the mountain."]]],
   marketIn: [[["May", "So much ramen!"]], [["", "Back inside the supermarket."]]],
   forest: [[["Jasin", "The scary forest again... I still see eyes!"]], [["", "Back in the dark forest."]]],
   swampField: [[["", "Back in the field. The little frogs are still hopping around."]]],

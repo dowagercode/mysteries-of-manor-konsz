@@ -2,6 +2,7 @@
 
 Not placed in the story order yet (see [../open-questions.md](../open-questions.md)).
 
+- **Where the road goes** (Dandy, 2026-11-08): the road to the secret mansion **branches off from the closed supermarket** ([06-supermarket.md](06-supermarket.md)).
 - **The secret mansion** — very creepy, 8 miles away. They take the creepy jeep.
 - How to get there: Olivia gives ideas (jeep, bike, train). The kids in the story each pick: May says the bike. Jon says the bike. Jasin says the train. Olivia says the jeep, because they're already going to use the jeep to get to the castle. They all agreed with Olivia: the jeep, because they were already going to take it, and using two types would probably take longer.
 - First room they see: the kitchen. Second room they see: the living room. The player chooses: words on the screen say "left" or "right." Left goes to the living room, right goes to the kitchen.

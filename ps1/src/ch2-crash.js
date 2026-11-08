@@ -24,7 +24,7 @@ LV.beach = () => {
     m.rotation.set(rnd() * 3, rnd() * 3, 0);
   });
   // signpost inland
-  const sign = group(L, -8.6, gy(-8.6, 4.5), 4.5, 0.5, { name: "Path to the mountain", exit: true, go: "pingpong", stand: [-8.2, 4.2] });
+  const sign = group(L, -8.6, gy(-8.6, 4.5), 4.5, 0.5, { name: "Path to the mountain", exit: true, go: "mountainUp", stand: [-8.2, 4.2] });
   put(L, boxG(0.14, 1.9, 0.14), mat({ color: 0x6b4f35 }), 0, 0, 0, 0, null, sign);
   put(L, planeG(1.3, 0.52), mat({ map: label(["MOUNTAIN >"], 80, 14, "#d9c39a", "#3b2a20", "#6b4f35") }), 0, 1.3, 0.08, 0, null, sign);
   const mtn = new THREE.ConeGeometry(9, 9, 7); 
@@ -38,7 +38,7 @@ LV.beach = () => {
   let rise = 0;
   L.walk = [-9, 9, -2.4, 6.5];
   L.start = [0, 2];
-  L.entries = { pingpong: [-7.6, 4.2] };
+  L.entries = { pingpong: [-7.6, 4.2], mountainUp: [-7.6, 4.2] };
   // far away inland: the wizard's castle behind the hills and forests, with lightning all around it
   const far = new THREE.Group(); far.position.set(-6, 0, 62); far.rotation.y = Math.PI; L.scene.add(far);
   const fm = mat({ color: 0x3a3048, fog: 0.35 });
@@ -180,11 +180,11 @@ LV.pingpong = () => {
   if (!L.hots.includes(team.may.body)) L.hots.push(team.may.body);
   L.walk = [-5, 5, -0.8, 3.2];
   L.start = [-2.6, 1.0];
-  L.entries = { beach: [-4.2, 2.4], gas: [4.2, 2.4] };
-  const back = group(L, -5.6, 0, 2.6, 0, { name: "Path back to the beach", exit: true, go: "beach", stand: [-4.8, 2.6] });
+  L.entries = { beach: [-4.2, 2.4], gas: [4.2, 2.4], mountainUp: [-4.2, 2.4], mountainDown: [4.2, 2.4] };
+  const back = group(L, -5.6, 0, 2.6, 0, { name: "Path back down the mountain", exit: true, go: "mountainUp", stand: [-4.8, 2.6] });
   put(L, boxG(0.6, 2.4, 1.6), mat({ color: 0x1a1612 }), 0, 0, 0, 0, null, back);
   const fwd = group(L, 5.6, 0, 2.6, 0, { name: "Path down to the gas station", exit: true, stand: [4.8, 2.6],
-    run: () => S.flags.ppKO ? goLevel("gas", "pingpong") : say([["", "The ping-pong bad guy blocks the way!"]]) });
+    run: () => S.flags.ppKO ? goLevel("mountainDown", "pingpong") : say([["", "The ping-pong bad guy blocks the way!"]]) });
   put(L, boxG(0.6, 2.4, 1.6), mat({ color: 0x1a1612 }), 0, 0, 0, 0, null, fwd);
   L.onEnter = () => S.flags.ppKO ? [] : [["", "The crew runs to the mountain... and right into a creepy ping-pong station!"], ["Ping-pong bad guy", "Nobody gets past MY ping-pong station!"], ["", "He keeps trying to hit them with his ping-pong stick! Click a kid to use their special move."]];
   L.light = { amb: 0x5a5048, dir: [0.3, -1, -0.4], dirCol: 0x585048, pts: [[[1, 3.2, -1.5], 0x9aff9a, 7], [[-3, 2, 2], 0xffb070, 6], [[0, 0, 0], 0, 1]] };
@@ -289,8 +289,8 @@ LV.gas = () => {
   const team = crew(L, -4, 4);
   L.walk = [-11, 11, -3.6, 8];
   L.start = [-4, 4];
-  L.entries = { pingpong: [-9, 6.5], gasShop: [-3.7, -3.6] };
-  const back = group(L, -11.5, 0, 6.5, 0, { name: "Road back to the mountain", exit: true, go: "pingpong", stand: [-10.6, 6.5] });
+  L.entries = { pingpong: [-9, 6.5], mountainDown: [-9, 6.5], gasShop: [-3.7, -3.6] };
+  const back = group(L, -11.5, 0, 6.5, 0, { name: "Road back to the mountain", exit: true, go: "mountainDown", stand: [-10.6, 6.5] });
   put(L, boxG(0.14, 1.6, 0.14), mat({ color: 0x6b4f35 }), 0, 0, 0, 0, null, back);
   put(L, planeG(1.2, 0.4), mat({ map: label(["< MOUNTAIN"], 80, 14, "#d9c39a", "#3b2a20", "#6b4f35") }), 0, 1.3, 0.08, 0, null, back);
   L.onEnter = [["", "Down the mountain road, there's a gas station. A very strange, empty place..."], ["", "Three old cars are parked here. One of them is a creepy jeep!"]];
