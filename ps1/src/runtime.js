@@ -6,35 +6,11 @@ const TEX = {}, RAW = {};
 const built = {};
 let L = null, curCam = null, ps1 = true, castOpen = false, busy = false, spaceCut = false, spaceWait = false;
 
-const SPARKLE_HOTS = {
-  Sugar: () => !S.flags.got_sugar, Oil: () => !S.flags.got_oil, Flour: () => !S.flags.got_flour, Cacao: () => !S.flags.got_cacao,
-  Yeast: () => !S.flags.got_yeast, "Space flower": () => !S.flags.got_flower, "Pile of papers": () => !S.flags.gotBoxKey,
-  "Olivia's memory pills": () => S.flags.gotMap && !S.flags.gotPills, "Locked box": () => !S.flags.gotKeycard && has("boxKey"),
-  Flashlight: () => !S.flags.got_flashlight, Squeegee: () => !S.flags.got_squeegee,
-  "Windshield washer container": () => !S.flags.got_momStone, "Magazine rack": () => !S.flags.got_dadStone,
-  "Sink cupboard": () => !S.flags.got_wifeStone, Toilet: () => L && L.id === "gasRest" && !S.flags.got_marketKey,
-  "Mac and cheese box": () => !S.flags.macMoved, "Straw hat": () => S.flags.ladyFree && !S.flags.got_hat,
-  "Old shirt": () => !S.flags.got_shirt, "Bundle of twigs": () => !S.flags.got_twigs,
-  "Big tree with a hole": () => !S.flags.got_head, Straw: () => !S.flags.got_straw, Clothesline: () => !S.flags.got_robes,
-  Closet: () => !S.flags.got_chart, "Giant picture book": () => !S.flags.got_book,
-  "Stone hair bow": () => has("flashlight") && !S.flags.got_stoneBow, "Stone portal disk": () => has("flashlight") && !S.flags.got_stoneDisk,
-  "Stone soccer ball": () => has("flashlight") && !S.flags.got_stoneBall, "Stone tutu": () => has("flashlight") && !S.flags.got_stoneTutu,
-  "Can of dog food": () => !S.flags.got_dogFood, "Map of notes": () => !S.flags.got_songMap,
-};
+// Star burst when May gets an item (no hint sparkles on items: kids explore to find them).
 function addRoomSparkles(lv) {
-  const sg = new THREE.OctahedronGeometry(0.065, 0), sm = mat({ color: 0xffe860, em: 1 });
-  const list = [];
-  lv.hots.forEach((o) => {
-    const h = o.userData.hot, check = h && SPARKLE_HOTS[h.name];
-    if (!check) return;
-    const wp = o.getWorldPosition(new THREE.Vector3());
-    const g = new THREE.Group(); g.position.set(wp.x, Math.max(0.35, wp.y + 0.45), wp.z); lv.scene.add(g);
-    const a = new THREE.Mesh(sg, sm), b = new THREE.Mesh(sg, sm);
-    g.add(a, b); list.push({ g, a, b, o, check, seed: list.length * 1.7 });
-  });
   const burstG = new THREE.OctahedronGeometry(0.07, 0), burstM = mat({ color: 0xfff27a, em: 1 });
   const burst = Array.from({ length: 6 }, () => { const m = new THREE.Mesh(burstG, burstM); m.visible = false; lv.scene.add(m); return m; });
-  lv.sparkles = { list, burst, burstT: -1, burstPos: new THREE.Vector3() };
+  lv.sparkles = { burst, burstT: -1, burstPos: new THREE.Vector3() };
 }
 function itemCue() {
   if (!L || !L.player) return;
@@ -48,20 +24,6 @@ function itemCue() {
 function updateSparkles(t, dt) {
   if (!L || !L.sparkles) return;
   const sp = L.sparkles;
-  sp.list.forEach((s) => {
-    const h = s.o.userData.hot;
-    const show = (!h.show || h.show()) && s.check();
-    s.g.visible = !!show;
-    if (!show) return;
-    const wp = s.o.getWorldPosition(new THREE.Vector3());
-    s.g.position.set(wp.x, Math.max(0.35, wp.y + 0.42), wp.z);
-    const a1 = t * 2.6 + s.seed;
-    s.a.position.set(Math.cos(a1) * 0.22, Math.sin(t * 3.4 + s.seed) * 0.1, Math.sin(a1) * 0.22);
-    s.b.position.set(-Math.cos(a1) * 0.18, 0.14 + Math.cos(t * 3.1 + s.seed) * 0.08, -Math.sin(a1) * 0.18);
-    const sc = 0.6 + 0.5 * Math.abs(Math.sin(t * 4 + s.seed));
-    s.a.scale.setScalar(sc); s.b.scale.setScalar(1.1 - sc * 0.5);
-    s.a.rotation.y = t * 3; s.b.rotation.x = t * 3;
-  });
   if (sp.burstT >= 0) {
     sp.burstT += dt * 1.8;
     const k = sp.burstT;
