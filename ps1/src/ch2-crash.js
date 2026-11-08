@@ -143,7 +143,8 @@ function doMove(k) {
 }
 const PP = { fx: {} };
 
-function showDiploma(lvl = S.flags.pongBeaten || 1) {
+const PONG_NAMES = ["", "Easy", "Medium", "Hard"];
+function showDiploma(lvl = Math.min(3, S.flags.pongBeaten || 1)) {
   const c = document.createElement("canvas"); c.width = 320; c.height = 220;
   const x = c.getContext("2d");
   x.fillStyle = "#fbf3dc"; x.fillRect(0, 0, 320, 220);
@@ -156,59 +157,50 @@ function showDiploma(lvl = S.flags.pongBeaten || 1) {
   x.font = "13px Georgia, serif"; x.fillStyle = "#2a1f3d";
   x.fillText("Awarded to May, Jon, Jasin & Olivia", 160, 120);
   x.font = "bold 14px Georgia, serif"; x.fillStyle = "#2f7a4a";
-  x.fillText(`Official Pong Champion · Level ${lvl} / 10`, 160, 146);
+  x.fillText(`Official Pong Champion · Level ${lvl} / 3 (${PONG_NAMES[lvl]})`, 160, 146);
   // Gold seal + miniature paddle
   x.fillStyle = "#ffd23f"; x.beginPath(); x.arc(255, 168, 20, 0, Math.PI * 2); x.fill();
   x.strokeStyle = "#b87a10"; x.lineWidth = 2; x.stroke();
   x.fillStyle = "#8a2820"; x.font = "bold 10px sans-serif"; x.fillText("★ #1 ★", 255, 172);
   x.fillStyle = "#5a4a3a"; x.font = "italic 12px Georgia, serif"; x.textAlign = "left";
   x.fillText("Signed: The Ping-Pong Guy", 30, 180);
-  showPeek(c.toDataURL(), `Diploma of Excellent Ping-Pong (Highest beaten: Level ${lvl} of 10). Click anywhere to close.`);
+  showPeek(c.toDataURL(), `Diploma of Excellent Ping-Pong (Level ${lvl} of 3 — ${PONG_NAMES[lvl]}). Click anywhere to close.`);
 }
 function pongChoices() {
-  const nextLvl = Math.min(10, (S.flags.pongBeaten || 0) + 1);
   return [{ choices: [
-    [`Play Pong! (Level ${nextLvl} of 10)`, () => { startPong(nextLvl); return []; }],
-    ["Pick difficulty level (1–10)...", () => pongLevelMenu(0)],
+    ...[1, 2, 3].map((l) => [`Play Level ${l}: ${PONG_NAMES[l]}${S.flags["pongWon_" + l] ? " ★" : ""}`, () => { startPong(l); return []; }]),
     ...(has("diploma") ? [["Look at Diploma of Excellent Ping-Pong", () => { showDiploma(); return []; }]] : []),
     ["Maybe later", () => [["Ping-pong bad guy", "Anytime! My table is always ready for a game."]]],
   ] }];
 }
-function pongLevelMenu(page = 0) {
-  const lvls = page === 0 ? [1, 2, 3, 4, 5] : [6, 7, 8, 9, 10];
-  return [{ choices: [
-    ...lvls.map((l) => [`Level ${l}${S.flags["pongWon_" + l] ? " ★" : ""}`, () => { startPong(l); return []; }]),
-    [page === 0 ? "Levels 6–10 ▸" : "◂ Levels 1–5", () => pongLevelMenu(page === 0 ? 1 : 0)],
-    ["Back", () => pongChoices()],
-  ] }];
-}
 function pongInvite() {
   S.flags.ppFriendly = true; save();
-  const best = S.flags.pongBeaten || 0;
+  const best = Math.min(3, S.flags.pongBeaten || 0);
   return [
     ["Ping-pong bad guy", best
-      ? `Hey, ping-pong champ! You've beaten me up to Level ${best} of 10! Ready for another match?`
+      ? `Hey, ping-pong champ! You've beaten me on Level ${best} of 3! Ready for another match?`
       : "Hey, you're back! Sorry about earlier — I was just grumpy because nobody ever plays ping-pong with me!"],
     ["Ping-pong bad guy", has("diploma")
-      ? "Want to play a friendly game of Pong? Pick any difficulty from Level 1 to Level 10!"
-      : "Want to play a friendly game of Pong? I have 10 levels of difficulty — beat me and I'll award you my Diploma of Excellent Ping-Pong!"],
+      ? "Want to play a friendly game of Pong? Pick any of the 3 difficulty levels!"
+      : "Want to play a friendly game of Pong? I have 3 levels of difficulty — beat me and I'll award you my Diploma of Excellent Ping-Pong!"],
     ...pongChoices(),
   ];
 }
 function finishPong(lvl, won) {
+  lvl = Math.max(1, Math.min(3, lvl));
   S.flags.ppFriendly = true;
   if (!won) {
     save();
-    say([["Ping-pong bad guy", `Good game! Level ${lvl} is tough! Want a rematch or try a different difficulty?`], ...pongChoices()]);
+    say([["Ping-pong bad guy", "Good game! That was close! Want to try again?"], ...pongChoices()]);
     return;
   }
   S.flags["pongWon_" + lvl] = true;
-  S.flags.pongBeaten = Math.max(S.flags.pongBeaten || 0, lvl);
+  S.flags.pongBeaten = Math.min(3, Math.max(S.flags.pongBeaten || 0, lvl));
   const firstDiploma = !has("diploma") && !S.flags.got_diploma;
   if (firstDiploma) add("diploma", "got_diploma");
   else save();
   say([
-    ["Ping-pong bad guy", `WOW! What a match! You beat me on Level ${lvl} of 10!`],
+    ["Ping-pong bad guy", `WOW! What a shot! You beat me on Level ${lvl} (${PONG_NAMES[lvl]})!`],
     ...(firstDiploma
       ? [["Ping-pong bad guy", "You've earned my special reward: the official Diploma of Excellent Ping-Pong!"],
          ["", "Diploma of Excellent Ping-Pong! It goes in your item drawer."],
@@ -220,7 +212,7 @@ function finishPong(lvl, won) {
 function startPong(initialLvl = 1) {
   const cv = $("astro"), x = cv.getContext("2d");
   cv.hidden = false; busy = true; stopSpeaking();
-  let lvl = Math.max(1, Math.min(10, initialLvl || 1));
+  let lvl = Math.max(1, Math.min(3, initialLvl || 1));
   let pScore = 0, cScore = 0, py = 130, cy = 130, prevPy = 130, pVel = 0;
   let ball = { x: 160, y: 130, vx: 0, vy: 0 }, serveT = 0.55, rally = 0, banner = "", endT = -1, over = false;
   let keys = { up: false, down: false }, sparks = [];
@@ -229,7 +221,7 @@ function startPong(initialLvl = 1) {
     ball.dir = dir;
   };
   const setLevel = (newLvl) => {
-    lvl = Math.max(1, Math.min(10, newLvl));
+    lvl = Math.max(1, Math.min(3, newLvl));
     pScore = 0; cScore = 0; py = 130; cy = 130; banner = ""; endT = -1;
     resetBall(1);
   };
@@ -242,13 +234,13 @@ function startPong(initialLvl = 1) {
   const down = (e) => {
     e.preventDefault();
     const p = pt(e);
-    // Top bar: Exit button [x: 274..316, y: 2..15]
+    // Top bar: Exit button [x: 272..316, y: 2..16]
     if (p.x >= 272 && p.y <= 17) { cleanup(); return; }
-    // Level buttons 1..10 [y: 16..30, x: 12 + i*26]
+    // Level buttons 1..3 [y: 16..30, x: 12 + i*92, width: 84]
     if (p.y >= 15 && p.y <= 31) {
-      for (let i = 0; i < 10; i++) {
-        const bx = 12 + i * 26;
-        if (p.x >= bx && p.x <= bx + 23) { setLevel(i + 1); tone(440 + i * 35, 0.06, "triangle", 0.08); return; }
+      for (let i = 0; i < 3; i++) {
+        const bx = 12 + i * 92;
+        if (p.x >= bx && p.x <= bx + 84) { setLevel(i + 1); tone(440 + i * 80, 0.06, "triangle", 0.08); return; }
       }
     }
     if (endT < 0) py = Math.max(54, Math.min(206, p.y));
@@ -258,7 +250,7 @@ function startPong(initialLvl = 1) {
     if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") { e.preventDefault(); keys.up = on; }
     if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") { e.preventDefault(); keys.down = on; }
     if (on && e.key === "Escape") { e.preventDefault(); cleanup(); }
-    if (on && /^[0-9]$/.test(e.key)) { setLevel(e.key === "0" ? 10 : Number(e.key)); }
+    if (on && /^[1-3]$/.test(e.key)) { setLevel(Number(e.key)); }
   };
   cv.addEventListener("pointermove", move); cv.addEventListener("pointerdown", down);
   window.addEventListener("keydown", key); window.addEventListener("keyup", key);
@@ -275,18 +267,18 @@ function startPong(initialLvl = 1) {
     if (over) return;
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     const el = (now - t0) / 1000;
-    const ph = Math.round(42 - (lvl - 1) * 1.3), ch = Math.round(28 + (lvl - 1) * 1.4);
+    const ph = 54 - (lvl - 1) * 4, ch = 26 + (lvl - 1) * 3;
     if (endT >= 0) {
       endT -= dt;
       if (endT <= 0) { const won = pScore >= 3; cleanup(() => finishPong(lvl, won)); return; }
     } else {
-      if (keys.up) py = Math.max(36 + ph / 2, py - 190 * dt);
-      if (keys.down) py = Math.min(224 - ph / 2, py + 190 * dt);
+      if (keys.up) py = Math.max(36 + ph / 2, py - 200 * dt);
+      if (keys.down) py = Math.min(224 - ph / 2, py + 200 * dt);
       pVel = (py - prevPy) / Math.max(0.008, dt); prevPy = py;
       if (serveT > 0) {
         serveT -= dt;
         if (serveT <= 0) {
-          const spd = 118 + lvl * 13, ang = (rnd() - 0.5) * 0.65;
+          const spd = 96 + lvl * 12, ang = (rnd() - 0.5) * 0.55;
           ball.vx = (ball.dir || 1) * Math.cos(ang) * spd;
           ball.vy = Math.sin(ang) * spd;
         }
@@ -294,23 +286,23 @@ function startPong(initialLvl = 1) {
         ball.x += ball.vx * dt; ball.y += ball.vy * dt;
         if (ball.y < 40) { ball.y = 40; ball.vy = Math.abs(ball.vy); tone(300, 0.04, "sine", 0.05); }
         if (ball.y > 220) { ball.y = 220; ball.vy = -Math.abs(ball.vy); tone(300, 0.04, "sine", 0.05); }
-        // Player paddle at x = 24
-        if (ball.vx < 0 && ball.x <= 29 && ball.x >= 18 && Math.abs(ball.y - py) <= ph / 2 + 5) {
-          ball.x = 29; rally++;
-          const spd = Math.min(310, Math.hypot(ball.vx, ball.vy) * 1.045);
+        // Player paddle at x = 24 (generous hit window)
+        if (ball.vx < 0 && ball.x <= 30 && ball.x >= 16 && Math.abs(ball.y - py) <= ph / 2 + 7) {
+          ball.x = 30; rally++;
+          const spd = Math.min(205, Math.hypot(ball.vx, ball.vy) * 1.04);
           const hit = Math.max(-1, Math.min(1, (ball.y - py) / (ph / 2)));
-          const ang = hit * 0.85;
+          const ang = hit * 0.78;
           ball.vx = Math.cos(ang) * spd;
-          ball.vy = Math.sin(ang) * spd + Math.max(-55, Math.min(55, pVel * 0.18));
+          ball.vy = Math.sin(ang) * spd + Math.max(-45, Math.min(45, pVel * 0.16));
           tone(460 + rally * 18, 0.06, "square", 0.08);
           for (let i = 0; i < 6; i++) sparks.push({ x: 28, y: ball.y, vx: 20 + rnd() * 50, vy: (rnd() - 0.5) * 70, life: 0.25, col: "#ffd23f" });
         }
         // CPU paddle at x = 296
-        if (ball.vx > 0 && ball.x >= 291 && ball.x <= 302 && Math.abs(ball.y - cy) <= ch / 2 + 5) {
+        if (ball.vx > 0 && ball.x >= 291 && ball.x <= 302 && Math.abs(ball.y - cy) <= ch / 2 + 4) {
           ball.x = 291; rally++;
-          const spd = Math.min(310, Math.hypot(ball.vx, ball.vy) * 1.04);
+          const spd = Math.min(205, Math.hypot(ball.vx, ball.vy) * 1.03);
           const hit = Math.max(-1, Math.min(1, (ball.y - cy) / (ch / 2)));
-          const ang = hit * 0.78;
+          const ang = hit * 0.7;
           ball.vx = -Math.cos(ang) * spd;
           ball.vy = Math.sin(ang) * spd;
           tone(380 + rally * 18, 0.06, "square", 0.08);
@@ -326,10 +318,11 @@ function startPong(initialLvl = 1) {
           if (pScore >= 3) { banner = `YOU BEAT LEVEL ${lvl}!`; endT = 1.1; } else resetBall(-1);
         }
       }
-      // CPU AI (scales across Levels 1..10)
-      const aiSpd = 66 + lvl * 21;
-      const err = Math.sin(el * 2.8) * (10 - lvl) * 2.5;
-      const targetY = ball.vx > 0 ? ball.y + err : 130 + Math.sin(el * 1.5) * 14;
+      // Kid-friendly CPU AI across Levels 1..3 (slow reaction & wander so it's fun to beat)
+      const aiSpd = 46 + lvl * 18;
+      const err = Math.sin(el * 2.3) * (4 - lvl) * 10;
+      const reactX = 110 + (3 - lvl) * 20;
+      const targetY = ball.vx > 0 && ball.x > reactX ? ball.y + err : 130 + Math.sin(el * 1.4) * 16;
       const dy = targetY - cy;
       cy += Math.sign(dy) * Math.min(Math.abs(dy), aiSpd * dt);
       cy = Math.max(36 + ch / 2, Math.min(224 - ch / 2, cy));
@@ -343,13 +336,13 @@ function startPong(initialLvl = 1) {
     // Exit button
     x.fillStyle = "#5a2a48"; x.fillRect(274, 2, 38, 12);
     x.fillStyle = "#fff"; x.textAlign = "center"; x.fillText("EXIT", 293, 4);
-    // Level 1..10 buttons
-    for (let i = 0; i < 10; i++) {
-      const l = i + 1, bx = 12 + i * 26;
+    // Level 1..3 buttons
+    for (let i = 0; i < 3; i++) {
+      const l = i + 1, bx = 12 + i * 92;
       x.fillStyle = l === lvl ? "#ffd23f" : S.flags["pongWon_" + l] ? "#2f7a4a" : "#2e2444";
-      x.fillRect(bx, 16, 23, 13);
+      x.fillRect(bx, 16, 84, 13);
       x.fillStyle = l === lvl ? "#1a1228" : "#ffffff";
-      x.fillText("L" + l, bx + 11.5, 19);
+      x.fillText(`L${l} ${PONG_NAMES[l].toUpperCase()}`, bx + 42, 19);
     }
     // Ping-pong table
     x.fillStyle = "#1f6a3c"; x.fillRect(12, 34, 296, 192);
@@ -365,14 +358,14 @@ function startPong(initialLvl = 1) {
     sparks.forEach((s) => { x.fillStyle = s.col; x.fillRect(s.x | 0, s.y | 0, 2, 2); });
     x.fillStyle = "#ffffff"; x.beginPath(); x.arc(ball.x, ball.y, 4.5, 0, Math.PI * 2); x.fill();
     if (serveT > 0 && endT < 0) {
-      x.fillStyle = "#ffd23f"; x.textAlign = "center"; x.fillText(`LEVEL ${lvl} OF 10 — READY!`, 160, 96);
+      x.fillStyle = "#ffd23f"; x.textAlign = "center"; x.fillText(`LEVEL ${lvl}: ${PONG_NAMES[lvl].toUpperCase()} — READY!`, 160, 96);
     }
     if (banner) {
       x.fillStyle = "rgba(12,8,24,0.82)"; x.fillRect(44, 104, 232, 36);
       x.strokeStyle = "#ffd23f"; x.strokeRect(44, 104, 232, 36);
       x.fillStyle = "#ffd23f"; x.textAlign = "center"; x.fillText(banner, 160, 118);
     }
-    x.fillStyle = "#b8b0d0"; x.textAlign = "center"; x.fillText("MOUSE / ARROWS TO MOVE · CLICK L1–L10", 160, 230);
+    x.fillStyle = "#b8b0d0"; x.textAlign = "center"; x.fillText("MOUSE / ARROWS TO MOVE · CLICK L1–L3", 160, 230);
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
