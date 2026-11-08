@@ -10,7 +10,8 @@
 | `ch1-ship.js` | Chapter 1: the spaceship rooms and puzzles |
 | `ch2-crash.js` | Chapter 2: crash site, ping-pong fight, gas station |
 | `ch3-road.js` | Chapter 3: road map, supermarket, forest, field, swamp, secret mansion |
-| `ch4-castle.js` | Chapter 4: the wizard's castle |
+| `ch4-castle.js` | Chapter 4: the wizard's castle, inside and out (up to the dogs of darkness) |
+| `ch5-chase.js` | Chapter 5: the dogs, the apprentice, chasing the walking house, the mansion music maze, the wedding, going home |
 | `debug.js` | The debug panel (Shift+D or `#debug`) |
 | `runtime.js` | Room switching, dialogue and voices, input, door tags, frame loop, buttons, start-up |
 

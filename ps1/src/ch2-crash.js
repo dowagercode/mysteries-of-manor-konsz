@@ -43,6 +43,11 @@ LV.beach = () => {
   const olivia = addChar(L, "olivia", -2.4, 3.4, 1.3, { name: "Olivia", say: [["Olivia", "Watch this!"]] });
   jon.follow = may; jasin.follow = jon; olivia.follow = jasin;
   L.player = may;
+  // the finale: the wizard, the witch, and the apprentice help fix the ship
+  [["wizard", 2.4, 0.4, 1.9, "Wizard", "Have a wonderful trip, kids!"], ["witch", 3.4, 0.9, 1.8, "Witch", "Come back and visit. We'll have TEA."], ["apprentice", 1.4, -0.2, 1.5, "Apprentice", "Bye, friends!"]].forEach(([k, x, z, h, n, line1]) => {
+    const c = addChar(L, k, x, z, h, { name: n, say: [[n, line1]] }); c.show = c.body.userData.hot.show = () => !!S.flags.finale;
+  });
+  let rise = 0;
   L.walk = [-9, 9, -2.4, 6.5];
   L.start = [0, 2];
   L.entries = { pingpong: [-7.6, 4.2] };
@@ -79,8 +84,9 @@ LV.beach = () => {
   cam(L, [0, 2.2, 3], [-5, 6, 60], 48, () => cut, 200);
   cam(L, [-1, 4.2, 12.5], [0.5, 0.4, -3], 50, (p) => p.x < 3, 200);
   cam(L, [8.5, 1.6, 4.5], [3.5, 1.0, -6], 56, null, 200);
-  L.update = (t) => {
-    ship.position.y = -0.7 + Math.sin(t * 1.1) * 0.08; ship.rotation.z = Math.sin(t * 0.8) * 0.03;
+  L.update = (t, dt) => {
+    if (S.flags.shipUp && rise < 1) rise = Math.min(1, rise + (dt || 0.016) * 0.25);
+    ship.position.y = -0.7 + Math.sin(t * 1.1) * 0.08 + rise * rise * 9; ship.rotation.z = Math.sin(t * 0.8) * 0.03 + rise * 0.3;
     const flash = Math.sin(t * 7.3) * Math.sin(t * 2.1) > 0.82;
     bolts.forEach((b, i) => (b.visible = flash && (Math.floor(t * 3) + i) % 2 === 0));
     const g = !!S.flags.glowing;

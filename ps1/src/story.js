@@ -15,7 +15,7 @@ const ITEMS = {
   hat: ["👒", "Straw hat"], scarecrowKit: ["🧑‍🌾", "Giant scarecrow"], shirt: ["👕", "Old shirt"], twigs: ["🪵", "Bundle of twigs"], straw: ["🌾", "Straw"], head: ["🗿", "Stone head"], robes: ["🥋", "Priest robes"],
   flashlight: ["🔦", "Flashlight"], chart: ["📜", "Wheel of the year chart"], book: ["📕", "Giant picture book"],
   mouthpiece: ["🎺", "Trumpet mouthpiece"], middle: ["🎺", "Trumpet middle section"], bell: ["🎺", "Trumpet bell"], trumpet: ["🎺", "Crystal trumpet"],
-  stoneBow: ["🎀", "Stone hair bow"], stoneDisk: ["⚫", "Stone portal disk"], stoneBall: ["⚽", "Stone soccer ball"], stoneTutu: ["🩰", "Stone tutu"],
+  stoneBow: ["🎀", "Stone hair bow"], stoneDisk: ["⚫", "Stone portal disk"], stoneBall: ["⚽", "Stone soccer ball"], stoneTutu: ["🩰", "Stone tutu"], dogFood: ["🥫", "Can of dog food"],
 };
 const CAKE = ["flour", "oil", "sugar", "water", "yeast", "cacao"];
 const has = (id) => S.items.includes(id);

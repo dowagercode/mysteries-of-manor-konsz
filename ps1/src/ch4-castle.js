@@ -109,7 +109,7 @@ LV.castle = () => {
   signpost(L, -6.4, 3.4, "< AROUND BACK", { name: "Path around behind the castle", exit: true, go: "castleBack", stand: [-5.8, 3.2] });
   crew(L, 0, 3.2);
   L.walk = [-5, 5, 2.4, 5.5]; L.start = [0, 3.2];
-  L.entries = { roadmap: [4.6, 3.4], castleBack: [-5.2, 3.2], reception: [0, -17] };
+  L.entries = { roadmap: [4.6, 3.4], castleBack: [-5.2, 3.2], reception: [0, -17], atrium: [0, -16.4] };
   L.onEnter = () => S.flags.rocksDone ? [] : [["", "A vast, barren landscape up in the mountain. The wizard's castle is very far away..."],
     ["", "The gigantic front door is closed, and very dangerous rocks are in the way. Up in the sky, the clouds are drifting in a strange pattern..."]];
   L.light = { amb: 0x707080, dir: [0.4, -1, -0.5], dirCol: 0x606070, pts: [[[0, 5, -22], 0xffe08a, 8], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
@@ -117,7 +117,7 @@ LV.castle = () => {
   cam(L, [0, 5.5, 11], [0, 2.5, -8], 56, (p) => p.y > -14, 200);
   cam(L, [3.5, 3.0, -11], [0, 2.4, -21], 56, null, 200);
   L.update = (t) => {
-    if (S.flags.rocksDone) { L.walk = [-3, 3, -18, -15.5]; } else { L.walk = [-5, 5, 2.4, 5.5]; if (!S.rockPat) newRockPattern(); }
+    if (S.flags.rocksDone) { L.walk = [-5, 5, -18, 5.5]; } else { L.walk = [-5, 5, 2.4, 5.5]; if (!S.rockPat) newRockPattern(); }
     // the clouds puff in the order of the safe rocks, then pause, over and over
     const seq = S.rockPat || [0, 1, 2], cyc = t % 4.2, idx = Math.floor(cyc / 0.9);
     clouds.forEach((g, c) => {
@@ -596,11 +596,6 @@ function swampCutscene() {
     ["", "The two of them hop into her house... and the house stands up on its big bird legs and walks away!"],
     ["", "Back at the castle..."], () => { CUT = null; save(); goLevel("atrium", "cut"); setTimeout(() => say(dogLines()), 450); }]), 450);
 }
-function dogLines() {
-  return [["Dogs of darkness", "GRRRRRR..."], ["", "Three vicious hounds, the dogs of darkness, surround the kids!"],
-    ["", "(How the kids beat the dogs of darkness: the kids are still writing it!)"], flag("dogsEnd"),
-    ["", "To be continued... Thanks for playing Mysteries of Manor Konsz!"]];
-}
 LV.atrium = () => {
   const L = newLevel("atrium", "The Atrium");
   const tx = CT();
@@ -620,6 +615,7 @@ LV.atrium = () => {
   });
   const back = group(L, 0, 0, 5.6, Math.PI, { name: "Door back to the sphinx", go: "castleUp", stand: [0, 4.4] });
   put(L, planeG(1.3, 2.4), mat({ map: doorC("#d8b070") }), 0, 0, 0, 0, null, back);
+  addSlide(L);
   crew(L, 0.8, 2.4);
   L.walk = [-5, 5, -1.6, 4.6]; L.start = [0.8, 2.4];
   L.entries = { mirrors: [0.8, 2.4], castleUp: [0, 4.0] };
@@ -634,8 +630,8 @@ LV.atrium = () => {
 // ---------- goals for the castle ----------
 function castleGoal(here) {
   const f = S.flags;
-  if (f.dogsEnd) return "To be continued! The kids are still writing how to beat the dogs of darkness.";
-  if (f.dogsOut) return "The dogs of darkness! (The kids are still writing this part.)";
+  if (f.dogsBeaten) return chaseGoal(here);
+  if (f.dogsOut) return "The dogs of darkness are in the way! What could keep them busy? (Click a dog.)";
   if (f.shattered) return "The wizard is in the atrium! Talk to him.";
   if (has("trumpet")) return "Blow the crystal trumpet at the giant mirror in the hall of mirrors!";
   if (f.sphinxPassed) {

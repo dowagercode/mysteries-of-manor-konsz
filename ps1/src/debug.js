@@ -31,7 +31,11 @@ const CHECKPOINTS = (() => {
     ["Ch4: hall of mirrors (with flashlight)", "mirrors", { got_flashlight: 1 }, ["chart", "flashlight"]],
     ["Ch4: blow the trumpet", "mirrors", { chairMoved: 1, got_book: 1, got_mouthpiece: 1, fogClear: 1, got_middle: 1, placed_may: 1, placed_jon: 1, placed_jasin: 1, placed_olivia: 1, got_bell: 1, got_trumpet: 1 }, ["chart", "flashlight", "trumpet"]],
     ["Ch4: the wizard in the atrium", "atrium", { shattered: 1 }, ["chart", "flashlight"]],
-    ["Ch4: the end (dogs of darkness)", "atrium", { dogsOut: 1, wizSwamp: 1, witchFree: 1, houseGone: 1, dogsEnd: 1 }, ["chart", "flashlight"]],
+    ["Ch5: the dogs of darkness", "atrium", { dogsOut: 1, wizSwamp: 1, witchFree: 1, houseGone: 1 }, ["chart", "flashlight", "dogFood"]],
+    ["Ch5: the apprentice", "swamp", { dogsBeaten: 1, dogsFed: 1, mapAt: "swamp" }, ["chart", "flashlight"]],
+    ["Ch5: chase the walking house", "roadmap", { apprJoined: 1, chaseStep: 0 }, ["chart", "flashlight"]],
+    ["Ch5: the music maze", "mansionMusic", { chaseStep: 3, chaseDone: 1, mapAt: "mansion" }, ["chart", "flashlight"]],
+    ["Ch5: the wedding", "mansionTop", { got_songMap: 1, songStep: 14, songDone: 1 }, ["chart", "flashlight"]],
   ];
   let flags = { started: 1 };
   return steps.map(([name, room, add, items]) => { flags = { ...flags, ...add }; return { name, room, flags: { ...flags }, items }; });

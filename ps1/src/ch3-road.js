@@ -22,7 +22,7 @@ const toJeep = (stand) => ({ name: "Back to the jeep", exit: true, go: "roadmap"
 // ---------- the road map ----------
 const MAP_NODES = {
   gas: { pos: [-8, 3.5], name: "Gas station", level: "gas" },
-  mansion: { pos: [-6.5, -2.5], name: "Secret mansion", level: "mansion" },
+  mansion: { pos: [-6.5, -2.5], name: "Secret mansion", level: "mansionOut" },
   market: { pos: [-3, 2.5], name: "Closed supermarket", level: "market" },
   forest: { pos: [1, -0.5], name: "Scary forest", level: "forest" },
   swamp: { pos: [5, 2], name: "Swamp", level: "swamp" },
@@ -46,7 +46,7 @@ function mapGo(id) {
   say([...intro, () => {
     busy = true;
     mapDrive = { from: new THREE.Vector2(...from.pos), to: new THREE.Vector2(...n.pos), t: 0, done: () => {
-      busy = false; S.flags.mapAt = id; S.flags["visited_" + id] = true; save(); goLevel(n.level, "roadmap");
+      busy = false; S.flags.mapAt = id; S.flags["visited_" + id] = true; save(); goLevel(n.level, "roadmap"); chaseArrive(id);
     } };
   }]);
 }
@@ -72,6 +72,7 @@ LV.roadmap = () => {
   [[-0.3, 0.2], [0.3, 0.2], [-0.3, -0.2], [0.3, -0.2]].forEach(([a, b]) => { const w = new THREE.CylinderGeometry(0.12, 0.12, 0.08, 8); w.rotateX(Math.PI / 2); put(L, w, mat({ color: 0x1a1a1e }), a, 0.12, b, 0, null, jeep); });
   L.player = addChar(L, "may", 0, 7, 1.3); L.player.show = () => false;
   L.walk = [0, 0, 7, 7]; L.start = [0, 7];
+  const chaseUpd = chaseMap(L);
   L.onEnter = [["", "The road map! The little jeep shows where the crew has been. Click a stop to drive there."]];
   L.light = { amb: 0xa0a0a8, dir: [0.3, -1, -0.4], dirCol: 0x707070, pts: [[[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0x9ab8e8, 30, 90]; L.bg = 0x9ab8e8;
@@ -85,6 +86,7 @@ LV.roadmap = () => {
       jeep.rotation.y = -Math.atan2(mapDrive.to.y - mapDrive.from.y, mapDrive.to.x - mapDrive.from.x);
       if (mapDrive.t >= 1) { const d = mapDrive.done; mapDrive = null; d(); }
     } else jeep.position.set(at[0], 0, at[1] + 0.9);
+    chaseUpd(t);
   };
   return L;
 };
@@ -405,9 +407,9 @@ LV.swamp = () => {
   line(L, lineG([new THREE.Vector3(-1, 1.75, 0), new THREE.Vector3(1, 1.75, 0)]), 0x2a2a2a, line1);
   const robes = [-0.5, 0.1, 0.6].map((x) => put(L, planeG(0.45, 0.8), mat({ color: 0x2a2440, side: THREE.DoubleSide }), x, 0.95, 0, 0, null, line1));
   // the apprentice in his boat, and the scarecrow spot
-  const appr = addChar(L, "apprentice", -1.8, -6.0, 1.6, { name: "Apprentice", stand: [-1.8, -3.0], say: () => S.flags.scarecrow ? [] : [["Apprentice", "Um... hi. I'm supposed to be a bad guy..."], ["", "He's sitting in his boat and won't leave it. Maybe something spooky would scare him off..."]],
+  const appr = addChar(L, "apprentice", -1.8, -6.0, 1.6, { name: "Apprentice", stand: [-1.8, -3.0], say: () => S.flags.dogsBeaten ? apprenticeAct() : S.flags.scarecrow ? [] : [["Apprentice", "Um... hi. I'm supposed to be a bad guy..."], ["", "He's sitting in his boat and won't leave it. Maybe something spooky would scare him off..."]],
     use: Object.fromEntries([...SCARE, "scarecrowKit"].map((x) => [x, () => [["", "He'd only be scared if something spooky popped up in the fog. Try the old post by the water."]]])) });
-  appr.show = appr.body.userData.hot.show = () => !S.flags.scarecrow;
+  appr.show = appr.body.userData.hot.show = () => !S.flags.scarecrow || (!!S.flags.dogsBeaten && !S.flags.apprJoined && CUT !== "swamp");
   const boat = group(L, -1.8, -0.1, -6.0, 0.4, { name: "The apprentice's boat", stand: [-1.8, -3.0], show: () => !!S.flags.scarecrow, exit: true,
     run: () => { if (!S.flags.boatTaken) { S.flags.boatTaken = true; save(); } say([["", "The kids hop in the apprentice's boat and row out to the spaceship in the water."], () => goLevel("hub", "swamp")]); } });
   const hull = new THREE.CylinderGeometry(0.5, 0.35, 2.2, 8, 1, false, 0, Math.PI); hull.rotateZ(Math.PI / 2); hull.rotateX(Math.PI);
@@ -459,10 +461,11 @@ LV.mansion = () => {
   onWall(L, "back", R, doorTex("#3a2a20", "#6a5040"), 1.3, 2.3, 2.6, 0, { name: "Right", go: "mansionKitchen", stand: [2.6, -1.3] });
   onWall(L, "back", R, label(["LEFT"], 40, 14, "#1a1010", "#e8d0a0", "#1a1010"), 1.0, 0.35, -2.6, 2.5, null);
   onWall(L, "back", R, label(["RIGHT"], 44, 14, "#1a1010", "#e8d0a0", "#1a1010"), 1.0, 0.35, 2.6, 2.5, null);
-  onWall(L, "left", R, doorTex("#3a2a20", "#6a5040"), 1.2, 2.2, 1.6, 0, { name: "Back to the jeep", exit: true, go: "roadmap", stand: [-4.3, 1.6] });
+  onWall(L, "left", R, doorTex("#3a2a20", "#6a5040"), 1.2, 2.2, 1.6, 0, { name: "Front door", go: "mansionOut", stand: [-4.3, 1.6] });
+  onWall(L, "right", R, doorTex("#3a2a20", "#b86ae8"), 1.2, 2.2, 1.6, 0, { name: "Door to the music hall", go: "mansionMusic", stand: [4.3, 1.6], show: () => !!S.flags.chaseDone });
   crew(L, -1.5, 1.4);
   L.walk = [-4.3, 4.3, -1.35, 2.5]; L.start = [-1.5, 1.4];
-  L.entries = { roadmap: [-3.8, 1.6], mansionLiving: [-2.6, -0.9], mansionKitchen: [2.6, -0.9] };
+  L.entries = { mansionOut: [-3.8, 1.6], mansionLiving: [-2.6, -0.9], mansionKitchen: [2.6, -0.9], mansionMusic: [3.8, 1.6] };
   L.onEnter = [["", "The secret mansion. Very creepy..."], ["", "Two doors: left or right?"]];
   L.light = { amb: 0x4a4048, dir: [0.3, -1, -0.5], dirCol: 0x403840, pts: [[[0, 3, 0], 0xffb070, 6], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
   L.fog = [0x0a080a, 9, 22]; L.bg = 0x0a080a;
@@ -503,6 +506,9 @@ LV.mansionKitchen = () => {
   put(L, boxG(3.4, 0.08, 1.2), mat({ color: 0x5a3a28 }), 0, 0.8, 0, 0, null, table);
   [[-1.5, -0.5], [1.5, -0.5], [-1.5, 0.5], [1.5, 0.5]].forEach(([a, b]) => put(L, boxG(0.08, 0.8, 0.08), mat({ color: 0x3a2a1a }), a, 0, b, 0, null, table));
   const foods = [0xe04e39, 0xf2b830, 0x3fae4a, 0xe8559a, 0xd8a060, 0xa86a3a, 0xf0e8d0];
+  const can = group(L, 3.4, 0, -2.4, 0, { name: "Can of dog food", show: () => !S.flags.got_dogFood, say: () => take("dogFood") });
+  put(L, new THREE.CylinderGeometry(0.16, 0.16, 0.3, 10), mat({ color: 0xc83a3a }), 0, 0, 0, 0, null, can);
+  put(L, new THREE.CylinderGeometry(0.165, 0.165, 0.12, 10), mat({ color: 0xf0e8d0 }), 0, 0.1, 0, 0, null, can);
   for (let i = 0; i < 14; i++) put(L, i % 2 ? new THREE.SphereGeometry(0.14, 6, 4) : boxG(0.24, 0.18, 0.2), mat({ color: foods[i % foods.length] }), -1.4 + (i % 7) * 0.45, 0.95, -0.3 + Math.floor(i / 7) * 0.5, 0, null, table);
   crew(L, -1.6, 1.4);
   L.walk = [-3.8, 3.8, -1.35, 2.5]; L.start = [-1.6, 1.4];
