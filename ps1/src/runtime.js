@@ -203,7 +203,7 @@ function useHot(o) {
   });
 }
 // Every way out of the current room, as buttons under the goal.
-const isExit = (h) => h.exit || h.go || (h.run && /^(Door|Armory|Jon's purple portal)/.test(h.name));
+const isExit = (h) => h.exit || h.go || (h.run && /^(Door|Armory|Jon's portal)/.test(h.name));
 function exitName(h) {
   return h.name.replace(/^Door to the /, "").replace(/^Door to /, "").replace(/^(Path|Road) (back )?(down )?to the /, "").replace(" (climb in)", "").replace(/^./, (c) => c.toUpperCase());
 }
@@ -366,7 +366,7 @@ const INTRO = [
   () => { spaceCut = true; },
   ["", "The kids are flying their giant spaceship to Woolley Mountain..."],
   ["", "...but the ship is stalled in space, and it can't move!"],
-  ["", "Jon is the engineer, but he's hiding in his portable hole."],
+  ["", "Jon is the engineer, but he's hiding in his portal."],
   () => { spaceWait = true; $("hover").textContent = "Click the spaceship to go inside!"; },
 ];
 // Intro ends in space; clicking the ship cuts to May in the hallway.

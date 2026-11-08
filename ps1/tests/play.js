@@ -24,7 +24,7 @@
   log.push('waiting in space: spaceWait=' + M.spaceWait + ' spaceCut=' + M.spaceCut);
   M.enterShip(); await drain();
   step('start: room=' + M.L.id + ' spaceCut=' + M.spaceCut);
-  await go('jons'); await use("Jon's purple portal (climb in)"); await w(800); await drain(); step('in oval');
+  await go('jons'); await use("Jon's portal (climb in)"); await w(800); await drain(); step('in oval');
   await use('Jon'); step('talked Jon');
   await use('Pile of papers'); step('papers');
   await go('olivias'); await use('Olivia'); step('asked Olivia');

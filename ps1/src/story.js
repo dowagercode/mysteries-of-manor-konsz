@@ -54,7 +54,7 @@ function goal() {
     return "Everyone made it to the beach! Run to the mountain.";
   }
   if (f.gaveCake && !f.fixed) return has("map") ? "Jon is in the engine room. Give him the engine room map so he can fix the engine!" : "Jon needs the engine room schematics. Get the map from the mouse in the kitchen!";
-  if (has("cake")) return "Bring the chocolate cake to Jon. He's inside his purple portal in his room.";
+  if (has("cake")) return "Bring the chocolate cake to Jon. He's inside his portal in his room.";
   if (f.gavePills) {
     const n = CAKE.filter((c) => f["got_" + c]).length;
     if (n === 6) return "May has all 6 ingredients! Bake the cake at the pink stove in the kitchen.";
@@ -67,7 +67,7 @@ function goal() {
   if (has("tuna") && has("opener")) return "Click the can opener in your item drawer, then click the can of tuna.";
   if (has("tuna")) return "Something rattles in the can of tuna! Look for a way to open it. (Try the kitchen drawers.)";
   if (f.askedOlivia) return "Olivia needs her memory pills. They're in the locked engine room. Maybe check the fridge?";
-  if (!f.metJon) return "Jon is hiding in his purple portal. Go to Jon's room and climb inside to talk to him.";
+  if (!f.metJon) return "Jon is hiding in his portal. Go to Jon's room and climb inside to talk to him.";
   return "Ask the crew what's going on with Jon. (Try Olivia's room.)";
 }
 function sideGoal() {
@@ -78,7 +78,7 @@ function sideGoal() {
     if (f.armoryOpen) return "Flashlight: it's in the armory, through the door in the control room.";
     if (has("keycard")) return "Flashlight: open the armory in the control room with the keycard.";
     if (has("boxKey")) return "Flashlight: the armory needs a keycard. The little key opens a locked box in the engine room.";
-    return "Flashlight: the armory needs a keycard. Is there anything under the papers in Jon's purple portal?";
+    return "Flashlight: the armory needs a keycard. Is there anything under the papers in Jon's portal?";
   }
   if (f.drove) {
     if (has("head")) return "Side mystery: whose stone head is this? Maybe it belongs to a statue somewhere.";

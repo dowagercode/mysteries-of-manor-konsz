@@ -139,7 +139,7 @@ LV.olivias = () => {
 };
 
 LV.hideout = () => {
-  const L = newLevel("hideout", "Inside Jon's Hole");
+  const L = newLevel("hideout", "Inside Jon's Portal");
   const R = 4;
   const wall = new THREE.CylinderGeometry(R, R, 4.2, 16, 4, true); wall.translate(0, 2.1, 0);
   put(L, wall, mat({ map: T.holeWall, em: 0.55, side: THREE.BackSide, rep: [4, 1] }));
@@ -177,7 +177,7 @@ LV.hideout = () => {
   L.player = addChar(L, "may", -1.6, 1.4, 1.3);
   L.walk = [-3, 3, -2.2, 2.4];
   L.start = [-1.6, 1.4]; L.entries = { jons: [-1.6, 1.4] };
-  L.onEnter = [["", "May climbs inside Jon's purple portal. It's a cozy round room!"]];
+  L.onEnter = [["", "May climbs inside Jon's portal. It's a cozy round room!"]];
   L.light = { amb: 0x8a70b0, dir: [0.2, -1, -0.4], dirCol: 0x806898, pts: [[[-2.6, 3.6, -2.6], 0xfff0c0, 5], [[1, 2.5, 0], 0xd0a0ff, 6], [[0, 0, 0], 0, 1]] };
   L.fog = [0x2a1450, 9, 22]; L.bg = 0x2a1450;
   cam(L, [0.8, 2.7, 4.6], [0, 0.9, -1.2], 58);
@@ -385,14 +385,14 @@ LV.hub = () => {
   return L;
 };
 
-// Jon's room, from the kids' drawing: all blue, "Me" on everything, the purple portal standing up.
+// Jon's room, from the kids' drawing: all blue, "Me" on everything, the portal standing up.
 LV.jons = () => {
   const L = newLevel("jons", "Jon's Room");
   const RW = 9, RD = 6, R = [RW, RD];
   room(L, { w: RW, d: RD, wall: T.jonWall2, floor: T.jonFloor, ceil: 0xb8d0ea, trim: 0x3a86c8 });
   const meDoor = doorTex("#3a86c8", "#eef6ff", (x) => { x.fillStyle = "#3a86c8"; x.font = FONT; x.textBaseline = "top"; x.fillText("Me", 8, 22); });
   onWall(L, "back", R, meDoor, 1.15, 2.1, -3.4, 0, toHall());
-  onWall(L, "back", R, TEX.jonPicture, 1.2, 1.12, -0.9, 1.65, { name: "Picture", say: [["", "A picture of Jon next to his purple portal. He's saying \"Me\"."]] }, 0xd8a0f0);
+  onWall(L, "back", R, TEX.jonPicture, 1.2, 1.12, -0.9, 1.65, { name: "Picture", say: [["", "A picture of Jon next to his portal. He's saying \"Me\"."]] }, 0xd8a0f0);
   onWall(L, "back", R, label(["JON'S", "ROOM"], 72, 36, "#f0f8ff", "#3a86c8", "#3a86c8", (x) => {
     x.fillStyle = "#3a86c8"; [[0, 0], [66, 0], [0, 30], [66, 30]].forEach(([a, b]) => x.fillRect(a, b, 6, 6));
   }), 1.5, 0.75, 1.3, 2.4, { name: "Sign: Jon's room", say: [["", "\"Jon's room\", in blue."]] });
@@ -417,8 +417,8 @@ LV.jons = () => {
   const cacao = group(L, 0.5, 0, -2.6, 0, { name: "Cacao", show: () => !S.flags.got_cacao, say: () => take("cacao") });
   put(L, new THREE.CylinderGeometry(0.15, 0.15, 0.36, 7), mat({ color: 0x6b3a20 }), 0, 0.18, 0, 0, null, cacao);
   put(L, new THREE.CylinderGeometry(0.16, 0.16, 0.06, 7), mat({ color: 0xffd23f }), 0, 0.38, 0, 0, null, cacao);
-  // the purple portal, standing up
-  const oval = group(L, 3.75, 0, -0.9, -0.7, { name: "Jon's purple portal (climb in)", stand: [3.0, -0.4] });
+  // the portal, standing up
+  const oval = group(L, 3.75, 0, -0.9, -0.7, { name: "Jon's portal (climb in)", stand: [3.0, -0.4] });
   const disc = new THREE.CircleGeometry(1, 16); disc.scale(0.55, 1.12, 1); disc.translate(0, 1.2, 0);
   put(L, disc, mat({ map: T.portal, em: 1, rep: [1.5, 1.5], scroll: [0.05, 0.08], side: THREE.DoubleSide }), 0, 0, 0, 0, null, oval);
   const rim = new THREE.RingGeometry(0.97, 1.1, 16); rim.scale(0.55, 1.12, 1); rim.translate(0, 1.2, 0);
@@ -708,7 +708,7 @@ function clueTarget() {
   const f = S.flags;
   if (f.crashed) return null;
   if (f.gaveCake) return has("map") ? ["engine", "Jon"] : ["hub", "Kitchen mouse"];
-  if (has("cake")) return ["jons", "Jon's purple portal (climb in)"];
+  if (has("cake")) return ["jons", "Jon's portal (climb in)"];
   if (f.gavePills) {
     const order = [["sugar", "mays", "Sugar"], ["oil", "jasins", "Oil"], ["flour", "olivias", "Flour"], ["cacao", "jons", "Cacao"], ["water", "bath", "Sink"], ["yeast", "storage", "Yeast"]];
     const m = order.find((o) => !f["got_" + o[0]]);
@@ -719,7 +719,7 @@ function clueTarget() {
   if (has("key")) return ["hall", "Door to the engine room"];
   if (has("tuna")) return ["hub", "Kitchen drawers"];
   if (f.askedOlivia) return ["hub", "Fridge"];
-  if (!f.metJon) return ["jons", "Jon's purple portal (climb in)"];
+  if (!f.metJon) return ["jons", "Jon's portal (climb in)"];
   return ["olivias", "Olivia"];
 }
 function addClueTrail(lv) {
@@ -791,7 +791,7 @@ function mouseAct() {
 function oliviaAct() {
   const f = S.flags;
   if (has("pills")) return [() => { remove("pills"); f.gavePills = true; save(); }, ["Olivia", "My memory pills!"],
-    ["Olivia", "Now I remember! Jon likes chocolate cake a LOT!"], ["", "To get Jon out of his hole, May needs to make him a chocolate cake!"]];
+    ["Olivia", "Now I remember! Jon likes chocolate cake a LOT!"], ["", "To get Jon out of his portal, May needs to make him a chocolate cake!"]];
   if (f.gavePills) return [["Olivia", "Jon likes chocolate cake a LOT!"]];
   return [["May", "What's going on with Jon?"], flag("askedOlivia"), ["Olivia", "I don't know. I can't tell you unless you bring me my memory pills."]];
 }
@@ -800,7 +800,7 @@ function giveCake() {
     ["May", "You can have it if you come out and fix the ship!"],
     () => { const j = L && L.chars.find((c) => c.key === "jon"); if (j) { j.hopT = 0.45; j.target = new THREE.Vector2(-2.2, -1.5); } },
     ["Jon", "Okay! I'll come out and fix the ship!"],
-    flag("gaveCake"), ["", "Jon climbs out of his hole and heads to the engine room!"]];
+    flag("gaveCake"), ["", "Jon climbs out of his portal and heads to the engine room!"]];
 }
 function jonHoleAct() {
   if (has("cake")) return giveCake();
