@@ -34,3 +34,6 @@
 ## The dogs of darkness
 
 - 3 vicious hounds. The wizard sets them on the kids in the castle atrium, then vanishes to join the witch in her house ([zones/09-wizard-castle.md](zones/09-wizard-castle.md)).
+- **How it ends with the wizard and the witch** (2026-11-08): at the top of the mansion, the kids, wearing the witch's ministry robes, offer to marry them. They are happy and stop fighting the kids. (See [zones/secret-mansion.md](zones/secret-mansion.md).)
+- Why they were bad (2026-11-08): the wizard and witch were just grumpy because they were lonely. Now they are happy, and the world is going to be more pleasant.
+- At the end, the wizard, the witch, and the apprentice help fix the kids' ship. The apprentice joins the kids in the search for the chicken house and gives the hint about the marriage.

@@ -41,6 +41,8 @@ The notes are split into one file per topic and one file per place, so you only 
 - Do they know about Manor Konsz yet (on the spaceship)? Not really; they only heard about it from rumors.
 - The story begins with May, in her room.
 - CHANGED: the ball and the tutu should start glowing when they land on the beach ([zones/02-crash-site.md](zones/02-crash-site.md)). (Earlier idea, now replaced: at the start, May finds Jasin, and his ball is glowing, and they wonder why.)
+- **The real reason things glow** (2026-11-08): because they are very special kids who have been chosen by the **great earth spirit** to bring joy and kindness to the world. The wizard and witch were just grumpy because they were lonely, but now they are happy and the world is going to be more pleasant.
+- **Going home** (2026-11-08): the wizard, the witch, and the apprentice help fix the ship. Then the kids fly on to **Woolley Mountain** (where they were going at the start).
 
 ## The world
 

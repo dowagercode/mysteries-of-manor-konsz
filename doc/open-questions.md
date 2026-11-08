@@ -22,3 +22,17 @@ These are in the playable game, but the kids didn't decide them. Ask the kids to
 - Dangerous rocks: 3 rows of 3 rocks; clouds puff up in an order and you hop in that order; a wrong rock slides you back.
 - Castle door: the wizard peeks out, then "to be continued." Truck entrance behind the castle is empty. (Kids, 2026-11-08: keep it for now; it goes to the castle kitchen, which connects to the main reception area where they have tea. See zones/09.)
 - Secret mansion: optional stop on the road map; the TV only shows fuzz.
+
+### Game update through the dogs of darkness (2026-11-08, commit 0472755) — new guesses to check with the kids
+
+- Coffee question answer choices: milk and sugar / black / iced with whipped cream / not sure. (Every answer leads to "she only drinks TEA", then poof.)
+- Wrong sphinx answers: treasure / worm / rock. Wrong owl answers: cookies / naps / socks.
+- Sphinx letters went in the suggested order: S Yule, E Ostara, E Litha, D Mabon. Past room reward = mouthpiece.
+- Which door goes where in the wheel hall, and each festival room's decorations.
+- Past-room distractions: a giant teddy bear, a bouncy ball, and blocks.
+- Future room: the adult statues are told apart by hair: buns, spiky, messy, long.
+- Atrium: the kids can say "No way!" or "Let us think about it"; both lead to refusing.
+- The sphinx is a stand-in (no drawing yet). Drawings needed: sphinx, castle rooms.
+- If the kids skipped the armory, they row back to the ship for the flashlight.
+- Castle reception hall is locked from the kitchen side until the kids come in through the front door.
+- Snack is served in the "reception hall" with lemonade and muffins (kids said they "have tea" in the main reception area; check which).
