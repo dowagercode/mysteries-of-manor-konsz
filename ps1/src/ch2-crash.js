@@ -57,7 +57,7 @@ LV.beach = () => {
     for (let i = 0; i < 7; i++) { pts.push(new THREE.Vector3(px, py, bz)); px += (rnd() - 0.5) * 2.2; py -= 2.2; }
     const l = line(L, lineG(pts), 0xfff6a0, far); l.visible = false; return l;
   });
-  const glowM = mat({ color: 0xfff27a, em: 1, alpha: 0.5 });
+  const glowM = mat({ color: 0x3ff0ff, em: 1, alpha: 0.5 });   // cyan glow on the ball and tutu
   const ballGlow = put(L, new THREE.SphereGeometry(0.28, 8, 6), glowM, 0, -9, 0);
   const tutuGlow = put(L, new THREE.TorusGeometry(0.34, 0.1, 5, 12).rotateX(Math.PI / 2), glowM, 0, -9, 0);
   let cut = false, jumpT = -9;
@@ -165,7 +165,7 @@ LV.pingpong = () => {
   // effects
   const portalG = new THREE.CircleGeometry(1, 16); portalG.scale(0.6, 1.1, 1); portalG.translate(0, 1.2, 0);
   const portal = put(L, portalG, mat({ map: T.portal, em: 1, rep: [1.5, 1.5], scroll: [0.05, 0.08], side: THREE.DoubleSide }), -2.2, 0, 0.6, 0.3);
-  const ball = put(L, new THREE.IcosahedronGeometry(0.2, 1), mat({ color: 0xff9a30, em: 1 }), 0, -5, 0);
+  const ball = put(L, new THREE.IcosahedronGeometry(0.2, 1), mat({ color: 0x3ff0ff, em: 1 }), 0, -5, 0);
   const team = crew(L, -2.6, 1.0);
   const kids = [team.may, team.jon, team.jasin, team.olivia];
   let fireT = -1, bonkT = -1, flyT = -1;
