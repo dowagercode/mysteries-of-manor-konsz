@@ -55088,17 +55088,31 @@ LV.swampField = () => {
 
 // ---------- the swamp and the witch ----------
 const SCARE = ["twigs", "shirt", "hat", "straw"];
+const SCARE_WHERE = { twigs: "a bundle of twigs (scary forest)", shirt: "an old shirt (scary forest)", hat: "a straw hat (closed supermarket)", straw: "straw (the field by the swamp)" };
+const scareParts = () => (has("scarecrowKit") ? 4 : SCARE.filter((x) => has(x)).length);
+const scareMissing = () => (has("scarecrowKit") ? [] : SCARE.filter((x) => !has(x)).map((x) => SCARE_WHERE[x]));
+const SCARE_BUILT = [() => { SCARE.forEach(remove); remove("scarecrowKit"); S.flags.scarecrow = true; save(); },
+  ["", "The kids stand the giant scarecrow up on the old post in the fog. Spooky!"],
+  ["", "They hide and watch... The apprentice sees the scarecrow looming in the fog!"], ["Apprentice", "AAAH! A monster!"],
+  ["", "The apprentice runs away and leaves his boat behind!"]];
 function scarecrowAct() {
   const f = S.flags;
   if (f.scarecrow) return [["", "The giant scarecrow looms in the fog. Spooky!"]];
-  const n = SCARE.filter(has).length;
-  if (n < 4) return [["", "A foggy spot near the water, right where the apprentice can see it."], ...(f.woodyMet && !has("flower") && !f.boatTaken ? [["", `May could make something spooky here... (scarecrow parts: ${n} of 4)`]] : [])];
-  return [["", "A foggy spot near the water."], { choices: [
-    ["Build a giant scarecrow", () => [() => { SCARE.forEach(remove); f.scarecrow = true; save(); },
-      ["", "The kids tie the twigs together, put on the old shirt and the straw hat, and stuff it all with straw. A giant scarecrow!"],
-      ["", "They hide and watch... The apprentice sees the scarecrow looming in the fog!"], ["Apprentice", "AAAH! A monster!"],
-      ["", "The apprentice runs away and leaves his boat behind!"]]],
+  if (scareParts() < 4) {
+    const miss = scareMissing();
+    return [["", "An old wooden post sticking out of the fog, right where the apprentice can see it. A perfect spot for something spooky..."],
+      ["", `To make a giant scarecrow, May still needs: ${miss.join(", ")}.`]];
+  }
+  return [["", "An old wooden post sticking out of the fog, right where the apprentice can see it."], { choices: [
+    ["Build the giant scarecrow here", () => [...(has("scarecrowKit") ? [] : [["", "The kids tie the twigs together, put on the old shirt and the straw hat, and stuff it all with straw."]]), ...SCARE_BUILT]],
     ["Not yet", () => []]] }];
+}
+// Putting scarecrow parts together in the item drawer
+function scarecrowCombine() {
+  if (scareParts() < 4) return say([["", `That's the start of a scarecrow! Still needed: ${scareMissing().join(", ")}.`]]);
+  if (L && L.id === "swamp") return say([["", "The kids put the scarecrow together right by the water..."], ...SCARE_BUILT]);
+  SCARE.forEach(remove); add("scarecrowKit");
+  say([["", "The kids tie the twigs together, put on the old shirt and the straw hat, and stuff it all with straw. A giant scarecrow! Now take it to the swamp, where the apprentice can see it."]]);
 }
 function witchAct() {
   const f = S.flags;
@@ -55145,15 +55159,19 @@ LV.swamp = () => {
   line(L, lineG([new THREE.Vector3(-1, 1.75, 0), new THREE.Vector3(1, 1.75, 0)]), 0x2a2a2a, line1);
   const robes = [-0.5, 0.1, 0.6].map((x) => put(L, planeG(0.45, 0.8), mat({ color: 0x2a2440, side: THREE.DoubleSide }), x, 0.95, 0, 0, null, line1));
   // the apprentice in his boat, and the scarecrow spot
-  const appr = addChar(L, "apprentice", -1.8, -6.0, 1.6, { name: "Apprentice", stand: [-1.8, -3.0], say: () => S.flags.scarecrow ? [] : [["Apprentice", "Um... hi. I'm supposed to be a bad guy..."], ["", "He's sitting in his boat and won't leave it."]] });
+  const appr = addChar(L, "apprentice", -1.8, -6.0, 1.6, { name: "Apprentice", stand: [-1.8, -3.0], say: () => S.flags.scarecrow ? [] : [["Apprentice", "Um... hi. I'm supposed to be a bad guy..."], ["", "He's sitting in his boat and won't leave it. Maybe something spooky would scare him off..."]],
+    use: Object.fromEntries([...SCARE, "scarecrowKit"].map((x) => [x, () => [["", "He'd only be scared if something spooky popped up in the fog. Try the old post by the water."]]])) });
   appr.show = appr.body.userData.hot.show = () => !S.flags.scarecrow;
   const boat = group(L, -1.8, -0.1, -6.0, 0.4, { name: "The apprentice's boat", stand: [-1.8, -3.0], show: () => !!S.flags.scarecrow, exit: true,
     run: () => { if (!S.flags.boatTaken) { S.flags.boatTaken = true; save(); } say([["", "The kids hop in the apprentice's boat and row out to the spaceship in the water."], () => goLevel("hub", "swamp")]); } });
   const hull = new THREE.CylinderGeometry(0.5, 0.35, 2.2, 8, 1, false, 0, Math.PI); hull.rotateZ(Math.PI / 2); hull.rotateX(Math.PI);
   put(L, hull, mat({ color: 0x6a4a2a, side: THREE.DoubleSide }), 0, 0.35, 0, 0, null, boat);
-  const spot = group(L, 4.6, 0, -3.2, 0, { name: "Foggy spot", say: () => scarecrowAct(), use: Object.fromEntries(SCARE.map((s) => [s, scarecrowAct])) });
-  const fogBlob = new THREE.SphereGeometry(0.6, 6, 4); fogBlob.scale(1.6, 0.4, 1);
+  const scareUse = Object.fromEntries([...SCARE, "scarecrowKit"].map((x) => [x, scarecrowAct]));
+  const spot = group(L, 4.6, 0, -3.2, 0, { name: "Old post in the fog", stand: [4.0, -2.4], say: () => scarecrowAct(), use: scareUse, show: () => !S.flags.scarecrow });
+  const fogBlob = new THREE.SphereGeometry(0.6, 6, 4); fogBlob.scale(1.8, 0.45, 1.2);
   put(L, fogBlob, mat({ color: 0xc8d0c8, em: 0.5 }), 0, 0.15, 0, 0, null, spot);
+  put(L, boxG(0.16, 2.0, 0.16), mat({ color: 0x6a4a2a }), 0, 0, 0, 0, null, spot);
+  put(L, boxG(1.0, 0.12, 0.12), mat({ color: 0x6a4a2a }), 0, 1.6, 0, 0, null, spot);
   const scare = new THREE.Group(); scare.position.set(4.6, 0, -3.4); L.scene.add(scare);
   put(L, boxG(0.12, 3.2, 0.12), mat({ color: 0x7a5a3a }), 0, 0, 0, 0, null, scare);
   put(L, boxG(2.2, 0.12, 0.12), mat({ color: 0x7a5a3a }), 0, 2.3, 0, 0, null, scare);
@@ -55375,7 +55393,12 @@ function roadGoal() {
     if (f.boatTaken) return "Row to the ship and find the space flower on the kitchen windowsill. Then bring it to Woody.";
     if (f.scarecrow) return "The apprentice ran away! Take his boat out to the ship.";
     const n = SCARE.filter((x) => has(x)).length;
-    if (f.sawSwamp) return `Scare the apprentice out of his boat with a giant scarecrow! (twigs, an old shirt, a straw hat, straw: ${n} of 4)`;
+    if (has("scarecrowKit")) return "Take the giant scarecrow to the old post in the fog at the swamp.";
+    if (f.sawSwamp) {
+      const miss = scareMissing();
+      return miss.length ? `Scare the apprentice off his boat with a giant scarecrow! Still needed: ${miss.join(", ")}.`
+        : "May has all 4 scarecrow parts! Build it at the old post in the fog by the water (or put the parts together in the item drawer).";
+    }
     return "Woody wants a space flower. It's on the ship, out in the water. Take the footpath to the swamp to find a boat.";
   }
   if (f.ladyFree) return here === "forest" ? "Click the eyes in the dark... and wait. Something big might show up." : here === "marketIn" && !f.metLady ? "Talk to the shopkeeper lady." : "Drive to the scary forest.";
@@ -55460,7 +55483,7 @@ const ITEMS = {
   boxKey: ["🔑", "Little key"], keycard: ["💳", "Keycard"], flower: ["🌸", "Space flower"],
   squeegee: ["🧽", "Squeegee"], momStone: ["🪨", "Mom stone"], dadStone: ["🪨", "Dad stone"], wifeStone: ["🪨", "Wife stone"],
   jeepKeys: ["🚙", "Jeep keys"], marketKey: ["🗝️", "Supermarket key"],
-  hat: ["👒", "Straw hat"], shirt: ["👕", "Old shirt"], twigs: ["🪵", "Bundle of twigs"], straw: ["🌾", "Straw"], head: ["🗿", "Stone head"], robes: ["🥋", "Priest robes"],
+  hat: ["👒", "Straw hat"], scarecrowKit: ["🧑‍🌾", "Giant scarecrow"], shirt: ["👕", "Old shirt"], twigs: ["🪵", "Bundle of twigs"], straw: ["🌾", "Straw"], head: ["🗿", "Stone head"], robes: ["🥋", "Priest robes"],
 };
 const CAKE = ["flour", "oil", "sugar", "water", "yeast", "cacao"];
 const has = (id) => S.items.includes(id);
@@ -55543,6 +55566,7 @@ function renderHud() {
   $("selHint").textContent = S.sel ? `Using: ${ITEMS[S.sel][1]}. Click something to use it on, or click it again to put it back.` : "";
 }
 function combine(a, b) {
+  if ((SCARE.includes(a) || a === "scarecrowKit") && (SCARE.includes(b) || b === "scarecrowKit")) { scarecrowCombine(); return true; }
   if ([a, b].sort().join("+") === "opener+tuna") {
     remove("tuna"); remove("opener"); add("key");
     say([["", "May opens the can of tuna... there's a key inside! It's the engine room key!"]]);
