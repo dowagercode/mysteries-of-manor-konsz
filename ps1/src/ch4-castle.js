@@ -149,7 +149,7 @@ LV.castleBack = () => {
   // delivery station overhang and loading dock platform
   put(L, boxG(7.8, 0.28, 1.8), mat({ color: 0x4a4252 }), 0.8, 3.55, 1.5, 0, null, wall);
   put(L, boxG(7.6, 0.35, 1.4), mat({ color: 0x585060 }), 0.8, 0, 1.4, 0, null, wall);
-  put(L, planeG(3.2, 0.45), mat({ map: label(["DELIVERY STATION"], 116, 14, "#3a3048", "#ffd23f", "#6a6070") }), 0.8, 3.9, 1.02, 0, null, wall);
+  put(L, planeG(3.6, 0.45), mat({ map: label(["DELIVERY STATION"], 148, 16, "#3a3048", "#ffd23f", "#6a6070") }), 0.8, 3.9, 1.02, 0, null, wall);
   // the truck bay (roll-up door) and the small access door beside it
   const garage = group(L, -0.4, 0.35, -5.95, 0, { name: "Truck entrance", exit: true, stand: [-0.4, -3.4], go: "castleKitchen" });
   put(L, planeG(4, 3.2), mat({ map: T.garage }), 0, 0, 0, 0, null, garage);
@@ -157,12 +157,12 @@ LV.castleBack = () => {
   put(L, planeG(1.1, 2.1), mat({ map: doorC("#8a6a4a") }), 0, 0, 0, 0, null, accessDoor);
   put(L, boxG(1.2, 0.35, 0.7), mat({ color: 0x4a4252 }), 0, -0.35, 0.7, 0, null, accessDoor);
   // the delivery truck backed up near the bay
-  const truck = group(L, -4.6, 0, -3.6, 0.25, { name: "Old truck", say: [["", "An old delivery truck parked by the truck bay. What does the wizard get delivered?"]] });
+  const truck = group(L, -4.7, 0, -4.0, 0.25, { name: "Old truck", say: [["", "An old delivery truck parked by the truck bay. What does the wizard get delivered?"]] });
   put(L, boxG(2.6, 1.8, 1.5), mat({ color: 0x8a8a90 }), 0.4, 0.4, 0, 0, null, truck);
   put(L, boxG(1.1, 1.2, 1.4), mat({ color: 0x5a6a8a }), -1.5, 0.4, 0, 0, null, truck);
   [[-1.4, 0.75], [1.0, 0.75], [-1.4, -0.75], [1.0, -0.75]].forEach(([a, b]) => { const w = new THREE.CylinderGeometry(0.4, 0.4, 0.2, 10); w.rotateX(Math.PI / 2); put(L, w, mat({ color: 0x1a1a1e }), a, 0.4, b, 0, null, truck); });
   // pile of tires
-  const tires = group(L, -3.2, 0, -5.2, 0, { name: "Pile of tires", say: [["", "A big pile of old rubber tires stacked by the delivery bay."]] });
+  const tires = group(L, -2.9, 0, -5.1, 0, { name: "Pile of tires", say: [["", "A big pile of old rubber tires stacked by the delivery bay."]] });
   const tireM = mat({ color: 0x1e1e24 }), rimM = mat({ color: 0x7a7a84 });
   [[0, 0.14, 0, 0, 0], [0.06, 0.42, -0.04, 0.08, 0.1], [-0.05, 0.7, 0.03, -0.1, 0], [0.72, 0.14, 0.18, 0, 0], [0.52, 0.44, 0.22, 0.65, 0.3]].forEach(([tx, ty, tz, rx, rz]) => {
     const tg = new THREE.TorusGeometry(0.32, 0.13, 7, 12); tg.rotateX(Math.PI / 2);
@@ -171,7 +171,7 @@ LV.castleBack = () => {
     const rm = put(L, rg, rimM, tx, ty - 0.04, tz, 0, null, tires); rm.rotation.set(rx, 0, rz);
   });
   // barbecue grill with glowing coals and smoke
-  const grill = group(L, -4.6, 0, 0.8, 0.4, { name: "Grill", say: [["", "A backyard barbecue grill! The coals are still warm."]] });
+  const grill = group(L, -4.6, 0, -1.2, 0.4, { name: "Grill", say: [["", "A backyard barbecue grill! The coals are still warm."]] });
   const darkM = mat({ color: 0x222228 }), legM = mat({ color: 0x7a7a84 });
   [[-0.35, -0.25], [0.35, -0.25], [-0.35, 0.25], [0.35, 0.25]].forEach(([lx, lz]) => put(L, boxG(0.06, 0.75, 0.06), legM, lx, 0, lz, 0, null, grill));
   put(L, boxG(1.0, 0.42, 0.68), darkM, 0, 0.7, 0, 0, null, grill);
@@ -180,7 +180,7 @@ LV.castleBack = () => {
   const lid = put(L, boxG(1.02, 0.18, 0.68), mat({ color: 0xb82828 }), 0, 1.42, -0.28, 0, null, grill); lid.rotation.x = -0.95;
   const gSmoke = [0, 1, 2].map(() => put(L, new THREE.SphereGeometry(0.14, 6, 4), mat({ color: 0xd8d8e0, em: 0.4, alpha: 0.6 }), 0, 1.3, 0, 0, null, grill));
   // lawn chair recliner
-  const chair = group(L, -2.2, 0, 1.1, -0.35, { name: "Lawn chair recliner", say: [["", "A striped lawn chair recliner. The wizard must like relaxing back here!"]] });
+  const chair = group(L, -2.3, 0, -1.3, -0.35, { name: "Lawn chair recliner", say: [["", "A striped lawn chair recliner. The wizard must like relaxing back here!"]] });
   const frameM = mat({ color: 0xd8dce4 }), stripeM = mat({ color: 0x2a9ad8 }), stripe2M = mat({ color: 0xf4f0e0 });
   [[-0.38, -0.55], [0.38, -0.55], [-0.38, 0.55], [0.38, 0.55]].forEach(([lx, lz]) => put(L, boxG(0.05, 0.38, 0.05), frameM, lx, 0, lz, 0, null, chair));
   put(L, boxG(0.82, 0.06, 1.25), stripeM, 0, 0.36, 0.1, 0, null, chair);
@@ -190,7 +190,7 @@ LV.castleBack = () => {
   [-0.22, 0, 0.22].forEach((sx) => put(L, boxG(0.1, 0.94, 0.07), stripe2M, sx, 0, 0, 0, null, backRest));
   [-0.42, 0.42].forEach((ax) => put(L, boxG(0.08, 0.05, 0.75), frameM, ax, 0.58, -0.1, 0, null, chair));
   // Jacuzzi hot tub with warm glowing bubbling water
-  const jacuzzi = group(L, 3.6, 0, -0.8, 0, { name: "Jacuzzi", say: [["", "A bubbling hot Jacuzzi! Even an evil wizard likes a nice warm soak."]] });
+  const jacuzzi = group(L, 4.1, 0, -2.1, 0, { name: "Jacuzzi", say: [["", "A bubbling hot Jacuzzi! Even an evil wizard likes a nice warm soak."]] });
   const tubWood = mat({ color: 0x7a4a2a }), rimWood = mat({ color: 0x9a643c });
   put(L, new THREE.CylinderGeometry(1.35, 1.28, 0.95, 12), tubWood, 0, 0.48, 0, 0, null, jacuzzi);
   const tubRim = new THREE.RingGeometry(1.02, 1.38, 12); tubRim.rotateX(-Math.PI / 2);

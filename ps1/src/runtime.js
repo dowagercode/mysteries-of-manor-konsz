@@ -578,7 +578,7 @@ async function start() {
   $("newBtn").onclick = (e) => { e.stopPropagation(); beginGame(true); };
   initDebug();
   if (SHOT && LV[SHOT]) { $("title").hidden = true; goLevel(SHOT); }
-  if (SHOT) window.__mk = { doMove, kidAct, ownerAct, beginGame, get spaceCut() { return spaceCut; }, get spaceWait() { return spaceWait; }, enterShip, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
+  if (SHOT) window.__mk = { doMove, kidAct, ownerAct, beginGame, get spaceCut() { return spaceCut; }, get spaceWait() { return spaceWait; }, enterShip, openDollhouse, closeDollhouse, get dhParts() { return dhParts; }, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
   requestAnimationFrame(frame);
 }
 start().catch((e) => { msg.hidden = false; msg.textContent = "Something went wrong: " + e.message; console.error(e); });
