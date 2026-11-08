@@ -118,3 +118,35 @@ function combine(a, b) {
   }
   return false;
 }
+
+// Coming back to a place (doc/gameplay.md): the first visit tells the story; later visits get a
+// short new line instead. Arrays hold a few lines to take turns; a function decides from the story state.
+const RETURNS = {
+  beach: [[["", "Back at the crash site. The ship is still sitting in the water."]], [["Jon", "Our poor ship..."]]],
+  pingpong: (n) => S.flags.ppKO ? (n <= 1 ? [["", "The ping-pong station is quiet now."]] : [])
+    : [["Ping-pong bad guy", "Back for more? Nobody gets past MY ping-pong station!"]],
+  gas: [[["", "Back at the gas station. Still strange and empty..."]], [["Olivia", "This place gives me the creeps."]]],
+  roadmap: [[["", "Back on the road map. Where to next?"]]],
+  marketIn: [[["May", "So much ramen!"]], [["", "Back inside the supermarket."]]],
+  forest: [[["Jasin", "The scary forest again... I still see eyes!"]], [["", "Back in the dark forest."]]],
+  swampField: [[["", "Back in the field. The little frogs are still hopping around."]]],
+  swamp: [[["", "Back at the foggy swamp."]]],
+  mansion: [[["Olivia", "The creepy mansion again. Left or right?"]]],
+  mansionLiving: [[["", "Back in the living room with the ripped couch."]]],
+  mansionKitchen: [[["Jasin", "The kitchen again. Still lots of food!"]]],
+  mansionOut: [[["", "Back outside the huge, creepy mansion."]]],
+  mansionMusic: [[["", "Back in the music hall with the giant xylophone."]]],
+  castle: [[["", "Back out on the mountain by the wizard's castle."]]],
+  castleBack: [[["", "Back behind the castle. The Jacuzzi is still bubbling."]]],
+  castleKitchen: [[["May", "It still smells like muffins in here!"]]],
+  reception: [[["", "Back in the reception hall."]]],
+  wheelHall: [[["", "Back in the hall with 8 doors."]]],
+  castleUp: [[["", "Back at the top of the stairs."]]],
+  mirrors: [[["Jon", "So many of us!"]], [["", "Back in the hall of mirrors."]]],
+  pastRoom: [[["", "Through the PAST mirror again... toddlers again!"]]],
+  presentRoom: (n) => S.flags.fogClear ? (n <= 1 ? [["", "Back in the PRESENT room. The fog is gone now."]] : [])
+    : [["", "Back in the foggy PRESENT room."], ...fogAct()],
+  engine: () => S.flags.gotMap ? [] : [["", "Still a maze of pipes. May needs a map!"]],
+  armory: [[["", "Back in the armory."]]],
+  hideout: [[["", "Back inside Jon's portal."]]],
+};

@@ -74,9 +74,28 @@ function goLevel(id, from) {
     setTimeout(() => {
       fade.style.opacity = 0; busy = false;
       if (LV_SKIP_ENTER.has(id)) { LV_SKIP_ENTER.delete(id); L.entered = true; }
-      if (L.onEnter && !L.entered) { L.entered = true; say(typeof L.onEnter === "function" ? L.onEnter() : L.onEnter); }
+      arrive(L);
     }, 60);
   }, 260);
+}
+// First visit tells the place's story; coming back gets a short line (RETURNS in story.js).
+// Visits are saved, so a reload doesn't replay stories. L.entered = true skips one arrival (a cutscene covered it).
+function arrive(L) {
+  if (!L.onEnter) return;
+  const seen = S.flags.seen || (S.flags.seen = {}), was = seen[L.id];
+  const lines = typeof L.onEnter === "function" ? L.onEnter() : L.onEnter;
+  const key = lines.filter(Array.isArray).map((l) => l[1]).join("|");
+  const skip = !!L.entered; L.entered = false;
+  const n = was ? was.n + (skip ? 0 : 1) : 0;
+  seen[L.id] = { k: key, n }; save();
+  if (skip) return;
+  if (!was) { say(lines); return; }
+  let r = RETURNS[L.id];
+  if (typeof r === "function") r = r(n);
+  else if (lines.some((l) => l && l.choices) || key !== was.k) r = lines;   // a puzzle question, or something changed
+  else if (n <= (r ? r.length : 1)) r = r ? r[n - 1] : [["", "Back in the " + L.name.replace(/^The /, "") + "."]];
+  else r = [];
+  if (r.length) say(r);
 }
 
 // ---------- dialogue box ----------
