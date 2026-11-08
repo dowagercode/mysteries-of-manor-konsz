@@ -2884,14 +2884,18 @@ $("readBtn").onclick = (e) => {
   voicesOn = !voicesOn; e.currentTarget.textContent = "Voices: " + (voicesOn ? "on" : "off"); e.currentTarget.setAttribute("aria-pressed", voicesOn);
   if (!voicesOn) stopSpeaking();
 };
-$("fullBtn").onclick = () => { if (document.fullscreenElement) document.exitFullscreen(); else $("game").requestFullscreen?.(); };
+$("fullBtn").onclick = () => {
+  const d = document, el = $("game");
+  if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+  else (el.requestFullscreen || el.webkitRequestFullscreen)?.call(el);
+};
 let restartArmed = false;
 $("restartBtn").onclick = (e) => {
   if (!restartArmed) { restartArmed = true; e.currentTarget.textContent = "Really start over?"; setTimeout(() => { restartArmed = false; $("restartBtn").textContent = "Start over"; }, 3000); return; }
   try { localStorage.removeItem(SAVE_KEY); } catch {}
   location.reload();
 };
-document.addEventListener("fullscreenchange", () => setTimeout(resize, 50));
+["fullscreenchange", "webkitfullscreenchange"].forEach((ev) => document.addEventListener(ev, () => setTimeout(resize, 50)));
 const INTRO = [["", "The kids' giant spaceship is stalled in space, and it can't move."], ["", "Jon is the engineer, but he's hiding in his secret hole!"], ["", "Help May get Jon out so he can fix the ship."]];
 function beginGame(fresh) {
   $("title").hidden = true;
