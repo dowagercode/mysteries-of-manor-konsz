@@ -1,0 +1,10 @@
+# 4. The gas station
+
+## Place
+
+- **Zone: the gas station** — further inland from the beach; this is where they find the vehicles. A very surreal place. There's one person working, and it's kind of empty. There aren't many good things to eat; it's all a little bit old. There are 3 cars parked there, and one of them is the jeep. The gas station attendant is a kind of skeleton guy who doesn't ever speak, but just kind of smiles. To get the jeep, the kids make a bargain with the gas station owner and bring him something he wants: 3 different stones around the outskirts of the gas station. The stones are special to him: one has a picture of his mother, one has a picture of his father, and the last one has a picture of his wife — but they're all skeletons.
+
+## Items and puzzles
+
+- **Supermarket key** — sitting on top of the toilet in the gas station restroom → opens the locked closed supermarket (first stop on the road map).
+- **Three family stones** — around the outskirts of the gas station (one is hidden in the windshield wiper fluid container for cleaning windshields; one is in the bathroom, underneath the bathroom sink; and the last one is in a magazine rack with some old magazines and various travel brochures). Which picture is in which spot: the **dad** stone is in the magazine rack (in the "Local Rocks" magazine), and the **wife** stone is under the bathroom sink. That leaves the **mom** stone in the windshield washer container (worked out by leaving the other two out — kids to confirm). What's in the way: the kids use the squeegee to fish the stone out of the windshield washer container; the sink has a cupboard to open; and at the magazine rack, the right magazine must be removed to find the stone. The right magazine is the one that says **Local Rocks**. Other magazines on the rack: Fishing, Caves, Maps, Road Stops, and Comics. → bring all 3 to the skeleton gas station owner as a bargain → he gives the kids the jeep. One stone has a picture of his mother, one his father, and one his wife (all skeletons).
