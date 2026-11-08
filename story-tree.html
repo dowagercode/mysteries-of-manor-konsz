@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Manor Konsz Story Tree</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+  /* Layout: one trunk per chapter running down the page; side quests branch to the right; gaps are dashed knots on the trunk. */
+  :root {
+    --paper: #fbf9fd; --ink: #241a36; --muted: #6a5f80; --line: #cfc4e2;
+    --trunk: #8b4fd1; --card: #ffffff; --side: #2c8a7c; --side-bg: #eaf6f3;
+    --gap: #c4661c; --gap-bg: #fff3e6; --game: #3a6ad8; --game-bg: #eaf0fd;
+    --display: "Patrick Hand", "Comic Sans MS", "Chalkboard SE", cursive;
+    --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #16111f; --ink: #ece6f8; --muted: #a99fc0; --line: #3a3050;
+      --trunk: #b88af0; --card: #1f1830; --side: #5cc8b6; --side-bg: #13302b;
+      --gap: #f0a050; --gap-bg: #33220f; --game: #8ab0ff; --game-bg: #18223c; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #16111f; --ink: #ece6f8; --muted: #a99fc0; --line: #3a3050;
+    --trunk: #b88af0; --card: #1f1830; --side: #5cc8b6; --side-bg: #13302b;
+    --gap: #f0a050; --gap-bg: #33220f; --game: #8ab0ff; --game-bg: #18223c; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--paper); color: var(--ink); font: 15px/1.5 var(--body); margin: 0; }
+  .wrap { max-width: 980px; margin: 0 auto; padding-block: 28px 48px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  h1, h2, h3 { font-family: var(--display); font-weight: 400; text-wrap: balance; margin: 0; line-height: 1.1; }
+  h1 { font-size: 2.6rem; }
+  h2 { font-size: 1.9rem; color: var(--trunk); }
+  h3 { font-size: 1.35rem; }
+  p { margin: 0; }
+  .lede { color: var(--muted); max-width: 64ch; margin-top: 6px; }
+  header { display: grid; gap: 14px; margin-bottom: 26px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 22px; height: 14px; border-radius: 3px; border: 2px solid; display: inline-block; }
+  .sw.k-main { border-color: var(--trunk); background: var(--card); }
+  .sw.k-side { border-color: var(--side); background: var(--side-bg); }
+  .sw.k-gap { border-color: var(--gap); border-style: dashed; background: var(--gap-bg); }
+  .sw.k-game { border-color: var(--game); background: var(--game-bg); }
+
+  .chapter { margin-top: 30px; display: grid; gap: 10px; }
+  .chapter > .head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .chapter > .head .who { color: var(--muted); font-size: 14px; }
+  .trunk { position: relative; display: grid; gap: 14px; padding-left: 26px; }
+  .trunk::before { content: ""; position: absolute; left: 9px; top: 6px; bottom: 6px; width: 3px; background: var(--trunk); border-radius: 2px; }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; position: relative; align-items: start; }
+  @media (min-width: 760px) { .row.has-side { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
+  .row::before { content: ""; position: absolute; left: -22px; top: 16px; width: 12px; height: 12px; border-radius: 50%; background: var(--paper); border: 3px solid var(--trunk); }
+  .row.knot::before { border-color: var(--gap); border-style: dashed; }
+
+  .card { background: var(--card); border: 2px solid var(--trunk); border-radius: 10px; padding: 12px 14px; display: grid; gap: 7px; min-width: 0; break-inside: avoid; }
+  .card .place { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  dl { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 10px; font-size: 14px; }
+  dt { font-weight: 700; color: var(--muted); }
+  dd { margin: 0; }
+  ol.chain { margin: 0; padding-left: 20px; font-size: 14px; display: grid; gap: 2px; }
+  .items { display: flex; flex-wrap: wrap; gap: 5px; }
+  .item { font-size: 12.5px; border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; white-space: nowrap; }
+  .side { border-color: var(--side); background: var(--side-bg); position: relative; }
+  .side .tag { color: var(--side); }
+  @media (min-width: 760px) { .side::before { content: ""; position: absolute; left: -12px; top: 18px; width: 10px; border-top: 3px dotted var(--side); } }
+  .gap { border: 2px dashed var(--gap); background: var(--gap-bg); }
+  .gap .tag { color: var(--gap); }
+  .gap ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; font-size: 14px; }
+  .note-game { border-left: 4px solid var(--game); background: var(--game-bg); border-radius: 0 6px 6px 0; padding: 6px 10px; font-size: 13.5px; }
+  .note-game b { color: var(--game); }
+  .quote { font-family: var(--display); font-size: 1.12rem; }
+
+  .summary { margin-top: 38px; display: grid; gap: 12px; }
+  .summary ol { margin: 0; padding-left: 22px; display: grid; gap: 7px; max-width: 75ch; }
+  .summary li b { font-weight: 700; }
+  .two { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 760px) { .two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+  .box { border: 2px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 8px; break-inside: avoid; }
+  .box ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+  footer { margin-top: 34px; color: var(--muted); font-size: 12.5px; }
+
+  @page { size: letter; margin: 0.55in 0.6in; }
+  @media print {
+    /* Paper always uses the light palette, whatever the screen theme. */
+    :root, :root[data-theme="dark"], :root:not([data-theme="light"]) {
+      --paper: #fff; --ink: #1d1530; --muted: #5a5070; --line: #cfc4e2;
+      --trunk: #7a3fc4; --card: #fff; --side: #1f7a6c; --side-bg: #eef8f5;
+      --gap: #b8580f; --gap-bg: #fff6ec; --game: #2f5cc4; --game-bg: #eef3fd; color-scheme: light;
+    }
+    body { font-size: 10.5pt; }
+    .wrap { padding: 0; max-width: none; }
+    h1 { font-size: 26pt; }
+    h2 { font-size: 20pt; }
+    h3 { font-size: 14pt; }
+    /* Plain blocks break between pages more predictably than grids. */
+    .chapter, .trunk, .summary { display: block; }
+    .trunk > .row, .summary > * { margin-bottom: 10px; }
+    .row.has-side { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+    .side::before { content: ""; position: absolute; left: -12px; top: 18px; width: 10px; border-top: 3px dotted var(--side); }
+    /* Never split a story idea: each row (with its side quest), each gap knot, each box stays on one page. */
+    .row, .card, .box, .gap, .keep, .summary ol li, header { break-inside: avoid; page-break-inside: avoid; }
+    .chapter > .head, .keep .head { break-after: avoid; page-break-after: avoid; }
+    .summary h2 { break-after: avoid; page-break-after: avoid; }
+    .chapter { margin-top: 18px; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Mysteries of Manor Konsz: Story Tree</h1>
+      <p class="lede">Every place, puzzle, and item from the design notes, in story order. Dashed orange knots are the places where the story still needs connecting to reach the end. Updated November 8, 2026.</p>
+    </div>
+    <div class="legend">
+      <span><i class="sw k-main"></i>Main path</span>
+      <span><i class="sw k-side"></i>Side quest or optional</span>
+      <span><i class="sw k-gap"></i>Needs connecting</span>
+      <span><i class="sw k-game"></i>Game note (filled in, or needs an update)</span>
+    </div>
+  </header>
+
+  <section class="row knot" style="margin-left:26px">
+    <div class="card gap">
+      <span class="tag">Connect: before the story starts</span>
+      <ul>
+        <li>Why are the kids on a giant spaceship, and where are they going? Do they know about Manor Konsz yet?</li>
+        <li>What's the first strange thing they notice?</li>
+        <li>When do the kids first see Jasin's ball and Olivia's tutu glow? That's why they want to visit the wizard, so it should happen early.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- CHAPTER 1 -->
+  <section class="chapter">
+    <div class="head"><h2>Chapter 1 · The spaceship</h2><span class="who">You play as May · the ship is stalled in space</span></div>
+    <div class="trunk">
+      <div class="row">
+        <div class="card">
+          <div class="place"><h3>Jon's room · his portal</h3><span class="tag">The problem</span></div>
+          <dl>
+            <dt>Who</dt><dd>Jon, the engineer, hiding inside his portal (his purple oval that turns into a room).</dd>
+            <dt>Problem</dt><dd>The ship won't move until Jon fixes the engine, but he won't come out. He heard on the iPad that there are bad guys.</dd>
+          </dl>
+          <p class="quote">"No ma'am!" · "I know who I'm hiding from... but I'm NOT telling!" · (thinking) "It's the bad guys..."</p>
+        </div>
+      </div>
+      <div class="row has-side">
+        <div class="card">
+          <div class="place"><h3>Olivia's room</h3><span class="tag">Ask the crew</span></div>
+          <p class="quote">"I don't know. I can't tell you unless you bring me my memory pills."</p>
+          <dl><dt>Pills</dt><dd>In the engine room, which is locked.</dd></dl>
+        </div>
+        <div class="card side">
+          <span class="tag">Optional · grab it early</span>
+          <h3>Space flower</h3>
+          <p>On the kitchen windowsill. Smart players take it now. Woody wants it in Chapter 3.</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="card">
+          <div class="place"><h3>Kitchen + rec room</h3><span class="tag">Find the engine key</span></div>
+          <ol class="chain">
+            <li>Search the fridge: mango, apple, moldy cheese, garlic, pickled herring, kimchi, expired milk, good milk, <b>can of tuna</b>.</li>
+            <li>Kitchen drawers: knife, soup scoop, corkscrew, bottle opener, foil, whisk, <b>can opener</b>.</li>
+            <li>Open the tuna with the can opener: <b>engine room key</b> inside.</li>
+            <li>Give the <b>moldy cheese</b> to the kitchen mouse: it trades the <b>engine room map</b> (schematics).</li>
+          </ol>
+          <div class="items"><span class="item">can of tuna</span><span class="item">can opener</span><span class="item">engine room key</span><span class="item">moldy cheese</span><span class="item">engine room map</span></div>
+        </div>
+      </div>
+      <div class="row has-side">
+        <div class="card">
+          <div class="place"><h3>Engine room</h3><span class="tag">A maze of pipes</span></div>
+          <p>Unlock it with the key. With the map, May finds <b>Olivia's memory pills</b>. The engine is offline and leaking.</p>
+        </div>
+        <div class="card side">
+          <span class="tag">Side quest · the armory</span>
+          <h3>Keycard chain</h3>
+          <ol class="chain">
+            <li>Little key under the pile of papers inside Jon's portal.</li>
+            <li>It opens the locked box in the engine room: <b>keycard</b>.</li>
+            <li>Keycard opens the <b>armory</b> in the control room: weird space weapons.</li>
+            <li><b>Flashlight</b> is in the armory. It's needed inside the wizard's castle.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="row">
+        <div class="card">
+          <div class="place"><h3>Back to Olivia, then all over the ship</h3><span class="tag">The cake</span></div>
+          <p>Pills help Olivia remember: <span class="quote">"Jon likes chocolate cake a LOT!"</span></p>
+          <dl>
+            <dt>May's room</dt><dd>sugar</dd><dt>Olivia's room</dt><dd>flour</dd><dt>Jasin's room</dt><dd>oil</dd>
+            <dt>Jon's room</dt><dd>cacao (a lot)</dd><dt>Bathroom</dt><dd>water (a little)</dd><dt>Storage</dt><dd>yeast</dd>
+          </dl>
+          <p>Bake it at the pink stove. Give the cake to Jon: he comes out to fix the ship.</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="card">
+          <div class="place"><h3>Engine room · Jon fixes it</h3><span class="tag">Chapter end</span></div>
+          <p>Jon needs the mouse's map (the schematics) to repair the engine. It works... then asteroids hit, and the ship falls from space into the water.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="row knot" style="margin-left:26px">
+    <div class="card gap">
+      <span class="tag">Connect: armory and flashlight</span>
+      <ul>
+        <li>The armory isn't in the ship's room list yet. Where does it go? (The game has it behind the control room.)</li>
+        <li>The flashlight is needed in the castle, but the ship ends up in the water. If the kids skip the armory, how do they get back for it? (The apprentice's boat could take them, like the space flower trip.)</li>
+        <li>Names and uses of the weird space weapons. "Pile of papers" or "pilot papers"?</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- CHAPTER 2 -->
+  <section class="chapter">
+    <div class="head"><h2>Chapter 2 · After the crash</h2><span class="who">The whole crew walks together</span></div>
+    <div class="trunk">
+      <div class="row">
+        <div class="card">
+          <div class="place"><h3>Crash site · the beach</h3><span class="tag">Splashdown</span></div>
+          <p class="quote">"AHHHHH!" ... "Shucks!"</p>
+          <p>They swim to the beach, then run to the mountain.</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="card">
+          <div class="place"><h3>Creepy ping-pong station</h3><span class="tag">Team Combo fight</span></div>
+          <dl><dt>Who</dt><dd>The ping-pong bad guy (paddle in one hand, beer in the other). On the bad guy team.</dd></dl>
+          <ol class="chain">
+            <li>He attacks: <b>Jon</b> hides everyone in his portal.</li>
+            <li>Before Olivia comes out: <b>Jasin</b> kicks his glowing soccer ball like a fireball.</li>
+            <li>He attacks again: <b>Olivia</b> spins and everyone floats.</li>
+            <li><b>May</b> grabs the ping-pong stick with her mind and bonks him. Knocked out.</li>
+          </ol>
+          <p class="note-game"><b>Filled in by the game:</b> the fireball knocks the paddle out of his hand.</p>
+        </div>
+      </div>
+      <div class="row has-side">
+        <div class="card">
+          <div class="place"><h3>Gas station</h3><span class="tag">Get the jeep</span></div>
+          <dl><dt>Who</dt><dd>A skeleton owner who never speaks, just smiles. Three old cars; one is the creepy jeep.</dd>
+          <dt>Trade</dt><dd>Three family stones (all skeleton pictures) for the jeep.</dd></dl>
+          <ol class="chain">
+            <li><b>Dad</b>: behind the "Local Rocks" magazine (also Fishing, Caves, Maps, Road Stops, Comics).</li>
+            <li><b>Wife</b>: in the cupboard under the restroom sink.</li>
+            <li><b>Mom</b>: fished out of the windshield washer container with the squeegee.</li>
+          </ol>
+          <p class="note-game"><b>Check with the kids:</b> the mom stone spot isn't confirmed. The game has the owner tap three stone-shaped spots on his counter.</p>
+        </div>
+        <div class="card side">
+          <span class="tag">Item for later</span>
+          <h3>Supermarket key</h3>
+          <p>On top of the toilet in the gas station restroom.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="row knot" style="margin-left:26px">
+    <div class="card gap">
+      <span class="tag">Connect: the secret mansion</span>
+      <ul>
+        <li>Where does the secret mansion fit? It's 8 miles away, and they take the jeep there after Olivia's "jeep, bike, or train?" talk.</li>
+        <li>Inside: left goes to the living room (ripped spider couch, a TV that's hard to use, a mean dog), right goes to the kitchen (lots of food). The kids run to the kitchen. What's the mansion's mystery, and what do they get there?</li>
+      </ul>
+      <p class="note-game"><b>In the game:</b> an optional stop on the road map.</p>
+    </div>
+  </section>
+
+  <!-- CHAPTER 3 -->
+  <section class="chapter">
+    <div class="head"><h2>Chapter 3 · The road trip</h2><span class="who">A road map like Super Mario World: supermarket → forest → swamp</span></div>
+    <div class="trunk">
+      <div class="row has-side">
+        <div class="card">
+          <div class="place"><h3>Closed supermarket</h3><span class="tag">Stop 1</span></div>
+          <ol class="chain">
+            <li>Locked: open it with the supermarket key.</li>
+            <li>Piles of ramen and one mac and cheese box. Move the box: the shopkeeper lady is buried underneath.</li>
+            <li>May lifts the ramen with telekinesis. The ramen fell in an earthquake from one of the wizard's experiments.</li>
+            <li>The lady explains how to get to the swamp, and warns them to avoid the witch.</li>
+          </ol>
+        </div>
+        <div class="card side">
+          <span class="tag">Scarecrow part</span>
+          <h3>Straw hat</h3>
+          <p>Under the rubble where the lady was buried.</p>
+        </div>
+      </div>
+      <div class="row has-side">
+        <div class="card">
+          <div class="place"><h3>Scary forest</h3><span class="tag">Stop 2</span></div>
+          <dl>
+            <dt>Who</dt><dd>Pairs of eyes (raccoons, possums...). Later: <b>Woody</b>, a giant tree monster.</dd>
+            <dt>Problem</dt><dd>Sleeping trees block the road.</dd>
+            <dt>Fix</dt><dd>Bring Woody the space flower. The trees wake up and walk away.</dd>
+          </dl>
+          <p class="quote">"I wish I had a space flower..."</p>
+          <p>If they don't have it, <b>Jasin</b> remembers the flower on the ship's windowsill.</p>
+        </div>
+        <div class="card side">
+          <span class="tag">Found in the forest</span>
+          <div class="items"><span class="item">old shirt</span><span class="item">bundle of twigs</span><span class="item">statue head (stuck in a big tree)</span></div>
+          <p class="note-game"><b>Filled in by the game:</b> the creatures, Woody showing up after a while, and May using telekinesis to pull out the head.</p>
+        </div>
+      </div>
+      <div class="row has-side">
+        <div class="card">
+          <div class="place"><h3>Field on the edge of the swamp</h3><span class="tag">On foot</span></div>
+          <p>Grass, straw, little frogs, and a headless stone statue on a rearing horse. Put the head back and the statue turns and speaks a riddle:</p>
+          <p class="quote">"Follow the wheel of the year."</p>
+          <p class="note-game"><b>Game needs an update:</b> the game still has the old idea (the statue tells about a truck entrance).</p>
+        </div>
+        <div class="card side">
+          <span class="tag">Scarecrow part</span>
+          <h3>Straw</h3><p>In the field.</p>
+        </div>
+      </div>
+      <div class="row has-side">
+        <div class="card">
+          <div class="place"><h3>The swamp</h3><span class="tag">Stop 3</span></div>
+          <p>The witch's house stands on big bird legs, with a little tower and a smoking chimney. Her apprentice sits in a boat.</p>
+          <ol class="chain">
+            <li>The kids find the witch. As they walk away, she secretly waves her wand to trap them in the swamp.</li>
+            <li><b>Jasin</b> hears it and kicks his soccer ball into her guts. She falls down.</li>
+            <li>They lock her in a cage in her house. Then they drive the jeep to the castle.</li>
+          </ol>
+          <p class="quote">"You'll be stuck in my swamp forever!" · "Oof... my guts..." · "Let me OUT of this cage!"</p>
+        </div>
+        <div class="card side">
+          <span class="tag">Only if they need the space flower</span>
+          <h3>Steal the apprentice's boat</h3>
+          <ol class="chain">
+            <li>Build a giant scarecrow: twigs, old shirt, straw hat, straw stuffing.</li>
+            <li>The apprentice sees it looming in the fog and runs away.</li>
+            <li>Row the boat to the ship, get the space flower, and bring it to Woody.</li>
+          </ol>
+          <h3 style="margin-top:6px">Priest disguises</h3>
+          <p>Found exploring around the witch's house.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="row knot" style="margin-left:26px">
+    <div class="card gap">
+      <span class="tag">Connect: the bad guy team</span>
+      <ul>
+        <li>The wizard, the witch, and the ping-pong bad guy are a team. Are they the "bad guys" Jon heard about on the iPad? How do the kids find out the wizard is behind it?</li>
+        <li>The apprentice starts bad and becomes good. When does he switch sides, and how does he help?</li>
+        <li>What is the "witch's ministry" (the priest disguises), and why would the wizard want to join it?</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- CHAPTER 4 -->
+  <section class="chapter">
+    <div class="head"><h2>Chapter 4 · The wizard's castle</h2><span class="who">50 miles away, still in Manor Konsz</span></div>
+    <div class="trunk">
+      <div class="row">
+        <div class="card">
+          <div class="place"><h3>The barren mountain</h3><span class="tag">Dangerous rocks</span></div>
+          <p>A vast, empty landscape. The gigantic front door is closed and far away. The kids cross the dangerous rocks by copying a pattern in the clouds, which keeps changing.</p>
+          <p class="note-game"><b>Filled in by the game:</b> three rows of three rocks; the clouds puff up in order.</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="card">
+          <div class="place"><h3>Gigantic front door</h3><span class="tag">The disguise</span></div>
+          <p>The kids dress as priests from the witch's ministry and try to convince the wizard to join them.</p>
+          <p>"Finally, she noticed me!" He invites them in for lemonade and muffins. When the kids ask about the glowing, he asks how the witch likes her coffee (she only drinks tea) and disappears.</p>
+          <p>Then a spiral staircase goes up to the level with the eight-room hall.</p>
+          <p><b>Other way in:</b> the truck entrance behind the castle (kept for now) goes to the kitchen, which connects to the main reception area where they have tea.</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="card">
+          <div class="place"><h3>Wheel-of-the-year hall</h3><span class="tag">Maze · 8 rooms</span></div>
+          <p>Eight rooms named for the festivals, out of order. Enter them in wheel order (Samhain, Yule, Imbolc, Ostara, Beltane, Litha, Lughnasadh, Mabon) to raise a staircase in the center room. Going in the wrong order does nothing.</p>
+          <dl><dt>Hint</dt><dd>The statue's riddle, and a wheel chart under a cloth in a closet in the Samhain room.</dd></dl>
+        </div>
+      </div>
+      <div class="row">
+        <div class="card">
+          <div class="place"><h3>Upper level · the sphinx</h3><span class="tag">Riddle</span></div>
+          <p class="quote">"I'm buried in the ground, but I'm not treasure. Give me water and sun, and I'll grow."</p>
+          <p>Answer: <b>SEED</b>. One letter is hidden in each of four downstairs rooms: Yule, Ostara, Litha, Mabon.</p>
+          <p class="note-game"><b>Check with the kids:</b> which letter goes in which room (Story Keeper suggested S, E, E, D in wheel order).</p>
+        </div>
+      </div>
+      <div class="row">
+        <div class="card">
+          <div class="place"><h3>Hall of mirrors</h3><span class="tag">Three hidden rooms</span></div>
+          <dl>
+            <dt>Past</dt><dd>The kids turn into toddlers among giant furniture. Move a chair, stand on a book, reach the cookie on the table, eat it: the trumpet's <b>mouthpiece</b> (kids to confirm).</dd>
+            <dt>Present</dt><dd>Normal size, but foggy: use the <b>flashlight</b>. A giant tree with an owl and its riddle: <span class="quote">"The more you take, the more you leave behind."</span> Answer: <b>footsteps</b>. Reward: the <b>middle section</b>.</dd>
+            <dt>Future</dt><dd>Dark: use the <b>flashlight</b>. Statues of the kids as grown-ups. Put each kid's stone item on the right statue (May: hair bow · Jon: portal disk · Jasin: soccer ball · Olivia: tutu). Reward: the <b>bell</b>.</dd>
+          </dl>
+          <div class="items"><span class="item">crystal trumpet: mouthpiece</span><span class="item">middle section</span><span class="item">bell</span></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="card">
+          <div class="place"><h3>The atrium</h3><span class="tag">The wizard</span></div>
+          <p>Put the crystal trumpet together and blow it: the hall of mirrors shatters. The kids are in a large atrium, and the wizard is there, laughing at them.</p>
+          <p>The kids ask him about the glowing mysteries. He says their things are glowing because they should give them to him. The kids refuse, and he starts the fight:</p>
+          <p class="quote">"You little twerps, you think you can fight us? Try to defeat these dogs of darkness."</p>
+          <dl><dt>Then</dt><dd>He sets the <b>dogs of darkness</b> (3 vicious hounds) on the kids and vanishes to join the witch in her house.</dd><dt>Dogs</dt><dd>The kids throw them a can of dog food from the mansion's kitchen. Or they throw the glowing ball: the dogs chase it, opening the way to the emergency exit (a slide down and out to the outside again).</dd></dl>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="row knot" style="margin-left:26px">
+    <div class="card gap">
+      <span class="tag">Connect: getting to the end</span>
+      <ul>
+        <li>Cutscene: the wizard goes to the witch and lets her out of the cage, the house starts moving, then back to the kids. Clues to find it: chicken feathers where it was last, and wind blowing at the place it will be next (go out to the map and back in to see it). It goes to all the places on the map, and the kids must catch it 3 times to finally get to it. The first two times, it runs away and leaves feathers. The third time, it ends at the mansion exterior. The kids climb inside, but the wizard and the witch run out into the mansion, and the kids must find them in a maze there.</li>
+        <li>The kids marry the wizard and the witch (in the ministry robes), and they stop fighting. The things glow because the kids were chosen by the great earth spirit to bring joy and kindness to the world. At the end, the wizard, the witch, and the apprentice help fix the ship, and the kids fly on to Woolley Mountain.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="summary">
+    <h2>Connections the story still needs</h2>
+    <ol>
+      <li><b>The beginning:</b> why the kids are on the ship, where they're headed, and the first strange thing they notice.</li>
+      <li><b>The glowing mystery:</b> answered. The great earth spirit chose the kids to bring joy and kindness to the world.</li>
+      <li><b>Jon's bad guys:</b> connect the bad guys from the iPad to the wizard's team (the ping-pong bad guy, the witch, the wizard).</li>
+      <li><b>The armory:</b> place it on the ship, name the weapons, and make sure the flashlight is always reachable before the castle.</li>
+      <li><b>The secret mansion:</b> the final chase ends there, with a maze where the kids must find the wizard and the witch. The maze has music-note rooms: do, re, mi, fa, so, la, ti, do. Each room plays its note when the kids enter. Play "Twinkle Twinkle Little Star" (do do so so la la so, fa fa mi mi re re do) to find the wizard and the witch. Hint: a map in the ti room shows the notes for the song. Then a staircase comes down from the ceiling up to the wizard and the witch. Wearing the ministry robes, the kids offer to marry them. They're happy and stop fighting the kids.</li>
+      <li><b>The apprentice:</b> after the dogs, the right compliment makes him join the kids. He helps search for the chicken house and gives the hint about the marriage.</li>
+      <li><b>The witch's ministry:</b> what it is, and why the wizard would want to join.</li>
+            <li><b>The dogs of darkness:</b> beaten with a can of dog food from the mansion's kitchen, or by throwing the glowing ball so the dogs chase it and the kids escape down the emergency-exit slide.</li>
+      <li><b>The final showdown:</b> the wizard frees the witch and they go mobile with the house. The kids follow clues (chicken feathers, then wind) to find it. What happens there?</li>
+      <li><b>The ending:</b> the kids marry the wizard and the witch, who stop fighting. The wizard and witch were grumpy because they were lonely; now they're happy. The wizard, the witch, and the apprentice help fix the ship, and the kids fly on to Woolley Mountain.</li>
+    </ol>
+    <div class="two">
+      <div class="box">
+        <h3>Small things to confirm with the kids</h3>
+        <ul>
+          <li>Mom stone: in the windshield washer container?</li>
+          <li>"Pile of papers" or "pilot papers" in Jon's portal?</li>
+          <li>Hallway door order on the ship.</li>
+          <li>Sphinx letters: which room gets which letter?</li>
+          <li>Past room reward: the mouthpiece?</li>
+          <li>What each character's voice sounds like.</li>
+        </ul>
+      </div>
+      <div class="box">
+        <h3>Game updates needed</h3>
+        <ul>
+          <li>Statue: say "Follow the wheel of the year" instead of the truck entrance secret.</li>
+          <li>Armory: add the flashlight.</li>
+          <li>Castle inside: wheel-of-the-year hall, sphinx, hall of mirrors with past, present, and future rooms, and the crystal trumpet.</li>
+          <li>The atrium: the kids beat the dogs with a can of dog food from the mansion's kitchen, or throw the glowing ball and escape down the emergency-exit slide.</li>
+          <li>Secret mansion: eventually a big exterior and more rooms; can of dog food in the kitchen.</li>
+          <li>Truck entrance: keep it; it leads to the castle kitchen, then the reception area.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>From doc/README.md, doc/zones/01–09, and secret-mansion.md in the Mysteries of Manor Konsz repo. Play the game at dowagercode.github.io/mysteries-of-manor-konsz.</footer>
+</div>
+</body>
+</html>
