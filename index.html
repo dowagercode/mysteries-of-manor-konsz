@@ -55134,7 +55134,7 @@ function doMove(k) {
   }
   if (k === "jon") return [() => FX.portal(true), ["", "The ping-pong bad guy swings his paddle! Jon opens his portal and hides everyone inside."], ["", "WHIFF! The paddle swings right past!"], () => { f.ppPhase = 1; save(); }];
   if (k === "jasin") return [["", "Before Olivia comes out, Jasin kicks his soccer ball. It glows and flies like a fireball!"], () => FX.fireball(), ["", "WHAM! The paddle goes flying out of the ping-pong bad guy's hand!"], () => { FX.portal(false); f.ppPhase = 2; save(); }];
-  if (k === "olivia") return [["Ping-pong bad guy", "Hey! Come back down here!"], ["", "He attacks again! Olivia spins, her tutu glows really strong, and everyone floats up out of reach!"], () => FX.float(true), ["Olivia", "I'll keep spinning! Get him!"], () => { f.ppPhase = 3; save(); }];
+  if (k === "olivia") return [["Ping-pong bad guy", "Hey! Come back down here!"], ["", "He attacks again! Olivia spins, her tutu glows really strong, and Jon, Jasin, and Olivia float up out of reach!"], ["", "May stays on the ground and gets ready to use her mind."], () => FX.float(true), ["Olivia", "I'll keep spinning! Get him!"], () => { f.ppPhase = 3; save(); }];
   return [["May", "I can lift that with my mind!"], ["", "May grabs the ping-pong stick with her mind..."], () => FX.bonk(), ["", "BONK! The ping-pong bad guy is knocked out!"], () => { FX.float(false); f.ppKO = true; save(); }, ["", "Now the crew can get away. Down the mountain, the road leads to a gas station."]];
 }
 const PP = { fx: {} };
@@ -55194,7 +55194,7 @@ LV.pingpong = () => {
     const f = S.flags;
     kids.forEach((c, i) => {
       c.root.visible = !f.ppHidden;
-      c.yOff = f.ppFloat ? 0.9 + Math.sin(t * 2 + i) * 0.12 : 0;
+      c.yOff = f.ppFloat && c !== team.may ? 0.9 + Math.sin(t * 2 + i) * 0.12 : 0;   // May stays on the ground for her telekinesis
     });
     portal.visible = !!f.ppHidden;
     if (fireT >= 0) {
