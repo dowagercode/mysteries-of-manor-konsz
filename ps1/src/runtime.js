@@ -332,6 +332,7 @@ function frame(now) {
   updateClue(t);
   updateSparkles(t, dt);
   placeTags();
+  if (L.preRender) L.preRender(dt);
   if (ps1) {
     renderer.setRenderTarget(rt); renderer.render(L.scene, curCam);
     renderer.setRenderTarget(null); renderer.render(post, postCam);

@@ -147,13 +147,23 @@ LV.hideout = () => {
   put(L, fl, mat({ map: T.holeFloor, rep: [3, 3] }));
   const rim = new THREE.RingGeometry(R - 0.05, R + 0.3, 16); rim.rotateX(-Math.PI / 2);
   put(L, rim, mat({ color: 0x2a1f3d }), 0, 0.01, 0);
-  // the way out: a ladder up to the glowing opening
-  const out = group(L, -2.6, 0, -2.9, 0.65, { name: "Climb out", stand: [-2.2, -1.5], go: "jons" });
-  const lad = mat({ color: 0xc9a46a });
-  put(L, boxG(0.08, 3.6, 0.08), lad, -0.3, 0, 0, 0, null, out); put(L, boxG(0.08, 3.6, 0.08), lad, 0.3, 0, 0, 0, null, out);
-  for (let i = 0; i < 8; i++) put(L, boxG(0.6, 0.06, 0.06), lad, 0, 0.3 + i * 0.42, 0, 0, null, out);
-  const glow = new THREE.CircleGeometry(0.75, 12); glow.scale(1, 0.55, 1);
-  put(L, glow, mat({ color: 0xfff2c8, em: 1 }), 0, 3.95, -0.1, 0, null, out);
+  // the way out: an oval doorway in the wall that shows Jon's room on the other side (live view)
+  const out = group(L, -2.55, 0, -2.85, 0.73, { name: "Climb out to Jon's room", stand: [-2.2, -1.5], go: "jons" });
+  const viewRT = new THREE.WebGLRenderTarget(96, 192, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter });
+  const viewCam = new THREE.PerspectiveCamera(78, 0.5, 0.1, 60);
+  viewCam.position.set(3.25, 1.25, -0.55); viewCam.lookAt(-0.2, 0.95, -2.9);
+  const view = new THREE.CircleGeometry(1, 16); view.scale(0.55, 1.12, 1); view.translate(0, 1.2, 0);
+  put(L, view, mat({ map: viewRT.texture, em: 1, fog: 0 }), 0, 0, 0, 0, null, out);
+  const doorRim = new THREE.RingGeometry(0.97, 1.12, 16); doorRim.scale(0.55, 1.12, 1); doorRim.translate(0, 1.2, 0);
+  put(L, doorRim, mat({ color: 0xb77cf0, em: 0.7 }), 0, 0, 0.01, 0, null, out);
+  let viewT = 1; L.viewCam = viewCam;
+  L.preRender = (dt) => {   // redraw the view of Jon's room a few times a second
+    viewT += dt; if (viewT < 0.2) return; viewT = 0;
+    const jl = getLevel("jons"), me = jl.player.root, was = me.visible;
+    me.visible = false;   // May is in here, not out there
+    applyLight(jl); renderer.setRenderTarget(viewRT); renderer.render(jl.scene, viewCam);
+    me.visible = was; applyLight(L);
+  };
   // tall box with a pink flower
   const box = group(L, -0.4, 0, -3.0, 0.15, { name: "Tall box", say: [["", "A tall box with a pink flower on it."]] });
   put(L, boxG(0.9, 1.8, 0.7), mat({ map: T.tallBox }), 0, 0, 0, 0, null, box);
@@ -178,7 +188,7 @@ LV.hideout = () => {
   L.walk = [-3, 3, -2.2, 2.4];
   L.start = [-1.6, 1.4]; L.entries = { jons: [-1.6, 1.4] };
   L.onEnter = [["", "May climbs inside Jon's portal. It's a cozy round room!"]];
-  L.light = { amb: 0x8a70b0, dir: [0.2, -1, -0.4], dirCol: 0x806898, pts: [[[-2.6, 3.6, -2.6], 0xfff0c0, 5], [[1, 2.5, 0], 0xd0a0ff, 6], [[0, 0, 0], 0, 1]] };
+  L.light = { amb: 0x8a70b0, dir: [0.2, -1, -0.4], dirCol: 0x806898, pts: [[[-2.1, 1.5, -2.2], 0xd8b8ff, 4.5], [[1, 2.5, 0], 0xd0a0ff, 6], [[0, 0, 0], 0, 1]] };
   L.fog = [0x2a1450, 9, 22]; L.bg = 0x2a1450;
   cam(L, [0.8, 2.7, 4.6], [0, 0.9, -1.2], 58);
   L.update = (t, dt) => {
