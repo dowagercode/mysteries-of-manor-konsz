@@ -42,7 +42,7 @@
   await use('Mirror back to the hall'); await use('Mirror marked PAST'); step('past');
   await use('Giant table'); await use('Giant chair'); await use('Giant chair'); await use('Giant picture book'); await use('Giant chair'); step('cookie');
   await use('Mirror back to the hall'); await use('Mirror marked PRESENT');
-  await use('Thick fog', 'flashlight'); await use('Owl', null, 'Socks'); await use('Owl', null, 'Footsteps'); step('owl');
+  if (!M.S.flags.fogClear) await use('Thick fog', 'flashlight'); await use('Owl', null, 'Socks'); await use('Owl', null, 'Footsteps'); step('owl');
   await use('Mirror back to the hall'); await use('Mirror marked FUTURE'); step('future');
   for (const s of ['Stone hair bow', 'Stone portal disk', 'Stone soccer ball', 'Stone tutu']) await use(s);
   await use('Tall statue with spiky hair', 'stoneBow'); step('wrong statue');

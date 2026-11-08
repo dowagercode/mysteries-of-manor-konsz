@@ -30,12 +30,7 @@ LV.beach = () => {
   const mtn = new THREE.ConeGeometry(9, 9, 7); 
   put(L, mtn, mat({ color: 0x6a6070 }), -22, 0, 18);
   // the crew: May leads, the others follow
-  const may = addChar(L, "may", 0, 2, 1.3);
-  const jon = addChar(L, "jonOval", -0.8, 2.6, 1.3, { name: "Jon", say: [["Jon", "No ma'am!"]] });
-  const jasin = addChar(L, "jasin", -1.6, 3.0, 1.3, { name: "Jasin", say: [["Jasin", "I've got my soccer ball, just in case."]] });
-  const olivia = addChar(L, "olivia", -2.4, 3.4, 1.3, { name: "Olivia", say: [["Olivia", "Watch this!"]] });
-  jon.follow = may; jasin.follow = jon; olivia.follow = jasin;
-  L.player = may;
+  const { may, jon, jasin, olivia } = crew(L, 0, 2);
   // the finale: the wizard, the witch, and the apprentice help fix the ship
   [["wizard", 2.4, 0.4, 1.9, "Wizard", "Have a wonderful trip, kids!"], ["witch", 3.4, 0.9, 1.8, "Witch", "Come back and visit. We'll have TEA."], ["apprentice", 1.4, -0.2, 1.5, "Apprentice", "Bye, friends!"]].forEach(([k, x, z, h, n, line1]) => {
     const c = addChar(L, k, x, z, h, { name: n, say: [[n, line1]] }); c.show = c.body.userData.hot.show = () => !!S.flags.finale;
@@ -96,17 +91,17 @@ LV.beach = () => {
 };
 
 // ===================== Chapter 2: after the crash (from doc/zones 02–04) =====================
-// The whole crew walks together: May leads, the others follow.
+// The whole crew walks together: the chosen kid leads (S.flags.lead, see powers.js), the others follow.
 function crew(L, x, z) {
-  const may = addChar(L, "may", x, z, 1.3);
+  const may = addChar(L, "may", x, z, 1.3, { name: "May", say: () => kidAct("may") });
   const jon = addChar(L, "jonOval", x - 0.7, z + 0.5, 1.3, { name: "Jon", say: () => kidAct("jon") });
   const jasin = addChar(L, "jasin", x - 1.4, z + 0.9, 1.3, { name: "Jasin", say: () => kidAct("jasin") });
   const olivia = addChar(L, "olivia", x - 2.1, z + 1.3, 1.3, { name: "Olivia", say: () => kidAct("olivia") });
-  jon.follow = may; jasin.follow = jon; olivia.follow = jasin;
-  L.player = may;
-  return { may, jon, jasin, olivia };
+  L.crew = { may, jon, jasin, olivia };
+  applyLead(L);
+  return L.crew;
 }
-const KID_TALK = { jon: ["Jon", "No ma'am!"], jasin: ["Jasin", "I've got my soccer ball, just in case."], olivia: ["Olivia", "Watch this!"] };
+const KID_TALK = { may: ["May", "I can move things with my mind!"], jon: ["Jon", "No ma'am!"], jasin: ["Jasin", "I've got my soccer ball, just in case."], olivia: ["Olivia", "Watch this!"] };
 function kidAct(k) {
   if (L && L.id === "pingpong" && !S.flags.ppKO) return fightMenu(k);
   return [KID_TALK[k]];
@@ -182,7 +177,7 @@ LV.pingpong = () => {
   };
   ["jon", "jasin", "olivia"].forEach((k) => {});
   team.may.body.userData.hot = { name: "May", say: () => S.flags.ppKO ? [["May", "We did it!"]] : fightMenu("may") };
-  L.hots.push(team.may.body);
+  if (!L.hots.includes(team.may.body)) L.hots.push(team.may.body);
   L.walk = [-5, 5, -0.8, 3.2];
   L.start = [-2.6, 1.0];
   L.entries = { beach: [-4.2, 2.4], gas: [4.2, 2.4] };

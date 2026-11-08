@@ -102,11 +102,12 @@ function renderHud() {
     b.innerHTML = `<span class="ico">${ITEMS[id][0]}</span><span>${ITEMS[id][1]}</span>`;
     b.onclick = () => {
       if (talking() || busy) return;
-      if (S.sel && S.sel !== id) { const a = S.sel; S.sel = null; if (!combine(a, id)) say([["", "Those don't go together."]]); renderHud(); return; }
+      if (S.sel && S.sel !== id && S.sel !== "power") { const a = S.sel; S.sel = null; if (!combine(a, id)) say([["", "Those don't go together."]]); renderHud(); return; }
       S.sel = S.sel === id ? null : id; renderHud();
     };
     d.appendChild(b);
   });
+  renderCrewBar();
   $("selHint").textContent = S.sel ? `Using: ${ITEMS[S.sel][1]}. Click something to use it on, or click it again to put it back.` : "";
 }
 function combine(a, b) {

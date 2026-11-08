@@ -63,7 +63,7 @@ const fade = $("fade");
 function goLevel(id, from) {
   busy = true; fade.style.opacity = 1;
   setTimeout(() => {
-    L = getLevel(id); S.room = id; if (id === "pingpong") S.flags.metPP = true; if (id === "swamp") S.flags.sawSwamp = true; save(); renderExits();
+    L = getLevel(id); applyLead(L); S.room = id; if (id === "pingpong") S.flags.metPP = true; if (id === "swamp") S.flags.sawSwamp = true; save(); renderExits();
     const e = (from && L.entries[from]) || (from === undefined ? L.start : null);
     if (e) {
       L.player.pos.set(...e); L.player.target = null;
@@ -179,7 +179,7 @@ function setNdc(e) { const r = canvas.getBoundingClientRect(); ndc.set(((e.clien
 function pick() {
   ray.setFromCamera(ndc, curCam);
   const hits = ray.intersectObjects(L.hots, true);
-  for (const h of hits) { let o = h.object; while (o && !o.userData.hot) o = o.parent; if (o && (!o.userData.hot.show || o.userData.hot.show())) return o; }
+  for (const h of hits) { let o = h.object; while (o && !o.userData.hot) o = o.parent; if (o && L.player && o === L.player.body) continue; if (o && (!o.userData.hot.show || o.userData.hot.show())) return o; }
   return null;
 }
 const clampWalk = (x, z) => new THREE.Vector2(Math.min(L.walk[1], Math.max(L.walk[0], x)), Math.min(L.walk[3], Math.max(L.walk[2], z)));
@@ -216,7 +216,8 @@ function useHot(o) {
   const sel = S.sel;
   if (sel) { S.sel = null; renderHud(); }
   walkTo(dest, () => {
-    if (sel && h.use && h.use[sel]) say(h.use[sel]());
+    if (sel === "power") say(powerOn(h, o));
+    else if (sel && h.use && h.use[sel]) say(h.use[sel]());
     else if (sel && !h.go && !h.run) say([["", `The ${ITEMS[sel][1].toLowerCase()} doesn't work there.`]]);
     else act(h);
   });
@@ -350,6 +351,7 @@ function frame(now) {
   L.chars.forEach((c) => { if (c.show) c.root.visible = !!c.show(); stepChar(c, dt, t); });
   updateClue(t);
   updateSparkles(t, dt);
+  updatePowerFx(dt);
   placeTags();
   if (L.preRender) L.preRender(dt);
   if (ps1) {
@@ -597,7 +599,7 @@ async function start() {
   $("newBtn").onclick = (e) => { e.stopPropagation(); beginGame(true); };
   initDebug();
   if (SHOT && LV[SHOT]) { $("title").hidden = true; goLevel(SHOT); }
-  if (SHOT) window.__mk = { doMove, kidAct, ownerAct, beginGame, get spaceCut() { return spaceCut; }, get spaceWait() { return spaceWait; }, enterShip, openDollhouse, closeDollhouse, get dhParts() { return dhParts; }, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
+  if (SHOT) window.__mk = { doMove, kidAct, ownerAct, beginGame, get spaceCut() { return spaceCut; }, get spaceWait() { return spaceWait; }, enterShip, openDollhouse, closeDollhouse, get dhParts() { return dhParts; }, setLead, powerOn, usePowerBtn, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
   requestAnimationFrame(frame);
 }
 start().catch((e) => { msg.hidden = false; msg.textContent = "Something went wrong: " + e.message; console.error(e); });

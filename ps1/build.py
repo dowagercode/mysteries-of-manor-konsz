@@ -16,7 +16,7 @@ template = (ROOT / "ps1" / "template.html").read_text()
 # The game code lives in ps1/src/, one file per part, joined in this order.
 # Shared pieces come first, then the chapters, then the parts that start the game.
 SRC_ORDER = ["engine.js", "textures.js", "story.js", "ch1-ship.js", "dollhouse.js", "ch2-crash.js",
-             "ch3-road.js", "ch4-castle.js", "ch5-chase.js", "debug.js", "runtime.js"]
+             "ch3-road.js", "ch4-castle.js", "ch5-chase.js", "powers.js", "debug.js", "runtime.js"]
 src_dir = ROOT / "ps1" / "src"
 extra = sorted(f.name for f in src_dir.glob("*.js") if f.name not in SRC_ORDER)
 assert not extra, f"add these to SRC_ORDER in build.py: {extra}"
