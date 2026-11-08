@@ -146,20 +146,80 @@ LV.castleBack = () => {
   outdoor(L, T.greySky, T.rock, [14, 10]);
   const wall = new THREE.Group(); wall.position.set(0, 0, -7); L.scene.add(wall);
   put(L, boxG(16, 7, 2), mat({ color: 0x6a6070 }), 0, 0, 0, 0, null, wall);
-  const garage = group(L, 0.5, 0, -5.95, 0, { name: "Truck entrance", exit: true, stand: [0.5, -3.4], go: "castleKitchen" });
+  // delivery station overhang and loading dock platform
+  put(L, boxG(7.8, 0.28, 1.8), mat({ color: 0x4a4252 }), 0.8, 3.55, 1.5, 0, null, wall);
+  put(L, boxG(7.6, 0.35, 1.4), mat({ color: 0x585060 }), 0.8, 0, 1.4, 0, null, wall);
+  put(L, planeG(3.2, 0.45), mat({ map: label(["DELIVERY STATION"], 116, 14, "#3a3048", "#ffd23f", "#6a6070") }), 0.8, 3.9, 1.02, 0, null, wall);
+  // the truck bay (roll-up door) and the small access door beside it
+  const garage = group(L, -0.4, 0.35, -5.95, 0, { name: "Truck entrance", exit: true, stand: [-0.4, -3.4], go: "castleKitchen" });
   put(L, planeG(4, 3.2), mat({ map: T.garage }), 0, 0, 0, 0, null, garage);
-  const truck = group(L, -4.2, 0, -3.6, 0.3, { name: "Old truck", say: [["", "An old delivery truck. What does the wizard get delivered?"]] });
+  const accessDoor = group(L, 3.1, 0.35, -5.95, 0, { name: "Small access door", exit: true, stand: [3.1, -3.4], go: "castleKitchen" });
+  put(L, planeG(1.1, 2.1), mat({ map: doorC("#8a6a4a") }), 0, 0, 0, 0, null, accessDoor);
+  put(L, boxG(1.2, 0.35, 0.7), mat({ color: 0x4a4252 }), 0, -0.35, 0.7, 0, null, accessDoor);
+  // the delivery truck backed up near the bay
+  const truck = group(L, -4.6, 0, -3.6, 0.25, { name: "Old truck", say: [["", "An old delivery truck parked by the truck bay. What does the wizard get delivered?"]] });
   put(L, boxG(2.6, 1.8, 1.5), mat({ color: 0x8a8a90 }), 0.4, 0.4, 0, 0, null, truck);
   put(L, boxG(1.1, 1.2, 1.4), mat({ color: 0x5a6a8a }), -1.5, 0.4, 0, 0, null, truck);
   [[-1.4, 0.75], [1.0, 0.75], [-1.4, -0.75], [1.0, -0.75]].forEach(([a, b]) => { const w = new THREE.CylinderGeometry(0.4, 0.4, 0.2, 10); w.rotateX(Math.PI / 2); put(L, w, mat({ color: 0x1a1a1e }), a, 0.4, b, 0, null, truck); });
-  crew(L, 2, 2.4);
-  L.walk = [-6, 6, -3.6, 4]; L.start = [2, 2.4];
-  L.entries = { castle: [5.4, 2.6], castleKitchen: [0.5, -3.2] };
+  // pile of tires
+  const tires = group(L, -3.2, 0, -5.2, 0, { name: "Pile of tires", say: [["", "A big pile of old rubber tires stacked by the delivery bay."]] });
+  const tireM = mat({ color: 0x1e1e24 }), rimM = mat({ color: 0x7a7a84 });
+  [[0, 0.14, 0, 0, 0], [0.06, 0.42, -0.04, 0.08, 0.1], [-0.05, 0.7, 0.03, -0.1, 0], [0.72, 0.14, 0.18, 0, 0], [0.52, 0.44, 0.22, 0.65, 0.3]].forEach(([tx, ty, tz, rx, rz]) => {
+    const tg = new THREE.TorusGeometry(0.32, 0.13, 7, 12); tg.rotateX(Math.PI / 2);
+    const tm = put(L, tg, tireM, tx, ty, tz, 0, null, tires); tm.rotation.set(rx, 0, rz);
+    const rg = new THREE.CylinderGeometry(0.18, 0.18, 0.08, 8);
+    const rm = put(L, rg, rimM, tx, ty - 0.04, tz, 0, null, tires); rm.rotation.set(rx, 0, rz);
+  });
+  // barbecue grill with glowing coals and smoke
+  const grill = group(L, -4.6, 0, 0.8, 0.4, { name: "Grill", say: [["", "A backyard barbecue grill! The coals are still warm."]] });
+  const darkM = mat({ color: 0x222228 }), legM = mat({ color: 0x7a7a84 });
+  [[-0.35, -0.25], [0.35, -0.25], [-0.35, 0.25], [0.35, 0.25]].forEach(([lx, lz]) => put(L, boxG(0.06, 0.75, 0.06), legM, lx, 0, lz, 0, null, grill));
+  put(L, boxG(1.0, 0.42, 0.68), darkM, 0, 0.7, 0, 0, null, grill);
+  put(L, planeG(0.86, 0.54).rotateX(-Math.PI / 2), mat({ color: 0xff5a20, em: 0.85 }), 0, 1.13, 0, 0, null, grill);
+  for (let i = -3; i <= 3; i++) put(L, boxG(0.03, 0.02, 0.56), legM, i * 0.12, 1.14, 0, 0, null, grill);
+  const lid = put(L, boxG(1.02, 0.18, 0.68), mat({ color: 0xb82828 }), 0, 1.42, -0.28, 0, null, grill); lid.rotation.x = -0.95;
+  const gSmoke = [0, 1, 2].map(() => put(L, new THREE.SphereGeometry(0.14, 6, 4), mat({ color: 0xd8d8e0, em: 0.4, alpha: 0.6 }), 0, 1.3, 0, 0, null, grill));
+  // lawn chair recliner
+  const chair = group(L, -2.2, 0, 1.1, -0.35, { name: "Lawn chair recliner", say: [["", "A striped lawn chair recliner. The wizard must like relaxing back here!"]] });
+  const frameM = mat({ color: 0xd8dce4 }), stripeM = mat({ color: 0x2a9ad8 }), stripe2M = mat({ color: 0xf4f0e0 });
+  [[-0.38, -0.55], [0.38, -0.55], [-0.38, 0.55], [0.38, 0.55]].forEach(([lx, lz]) => put(L, boxG(0.05, 0.38, 0.05), frameM, lx, 0, lz, 0, null, chair));
+  put(L, boxG(0.82, 0.06, 1.25), stripeM, 0, 0.36, 0.1, 0, null, chair);
+  [-0.22, 0, 0.22].forEach((sx) => put(L, boxG(0.1, 0.07, 1.24), stripe2M, sx, 0.365, 0.1, 0, null, chair));
+  const backRest = new THREE.Group(); backRest.position.set(0, 0.4, -0.48); backRest.rotation.x = -0.55; chair.add(backRest);
+  put(L, boxG(0.82, 0.95, 0.06), stripeM, 0, 0, 0, 0, null, backRest);
+  [-0.22, 0, 0.22].forEach((sx) => put(L, boxG(0.1, 0.94, 0.07), stripe2M, sx, 0, 0, 0, null, backRest));
+  [-0.42, 0.42].forEach((ax) => put(L, boxG(0.08, 0.05, 0.75), frameM, ax, 0.58, -0.1, 0, null, chair));
+  // Jacuzzi hot tub with warm glowing bubbling water
+  const jacuzzi = group(L, 3.6, 0, -0.8, 0, { name: "Jacuzzi", say: [["", "A bubbling hot Jacuzzi! Even an evil wizard likes a nice warm soak."]] });
+  const tubWood = mat({ color: 0x7a4a2a }), rimWood = mat({ color: 0x9a643c });
+  put(L, new THREE.CylinderGeometry(1.35, 1.28, 0.95, 12), tubWood, 0, 0.48, 0, 0, null, jacuzzi);
+  const tubRim = new THREE.RingGeometry(1.02, 1.38, 12); tubRim.rotateX(-Math.PI / 2);
+  put(L, tubRim, rimWood, 0, 0.96, 0, 0, null, jacuzzi);
+  const waterDisc = new THREE.CircleGeometry(1.05, 12); waterDisc.rotateX(-Math.PI / 2);
+  put(L, waterDisc, mat({ color: 0x4ad8e8, em: 0.75 }), 0, 0.88, 0, 0, null, jacuzzi);
+  put(L, boxG(0.65, 0.28, 0.4), rimWood, -1.35, 0, 0.3, -0.2, null, jacuzzi);
+  put(L, boxG(0.65, 0.54, 0.36), rimWood, -1.15, 0, 0.25, -0.2, null, jacuzzi);
+  const bubbles = Array.from({ length: 8 }, (_, i) => put(L, new THREE.SphereGeometry(0.08 + (i % 3) * 0.03, 6, 4), mat({ color: 0xe8ffff, em: 0.9, alpha: 0.8 }), 0, 0.9, 0, 0, null, jacuzzi));
+  crew(L, 1.2, 2.6);
+  L.walk = [-6, 6, -3.6, 4]; L.start = [1.2, 2.6];
+  L.entries = { castle: [5.4, 2.6], castleKitchen: [-0.4, -3.2] };
   signpost(L, 6.4, 3.0, "FRONT >", { name: "Path back to the front", exit: true, go: "castle", stand: [5.8, 2.8] });
-  L.onEnter = [["", "Around behind the castle... there's a truck entrance!"]];
-  L.light = { amb: 0x707080, dir: [0.4, -1, -0.5], dirCol: 0x606070, pts: [[[0.5, 3, -4], 0xffe08a, 6], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
+  L.onEnter = [["", "Around behind the castle: a delivery station with a truck bay and a small access door... plus a pile of tires, a grill, a lawn chair recliner, and a Jacuzzi!"]];
+  L.light = { amb: 0x707080, dir: [0.4, -1, -0.5], dirCol: 0x606070, pts: [[[0.5, 3, -4], 0xffe08a, 6], [[3.6, 1.6, -0.8], 0x60f0ff, 5], [[-4.6, 1.5, 0.8], 0xff7a30, 4]] };
   L.fog = [0x8a8a98, 14, 50]; L.bg = 0x8a8a98;
-  cam(L, [1, 4.4, 10], [0, 1.4, -3], 54, null, 200);
+  cam(L, [0.4, 4.6, 10.2], [0, 1.2, -2.6], 54, null, 200);
+  L.update = (t) => {
+    gSmoke.forEach((s, i) => {
+      const k = (t * 0.5 + i / 3) % 1;
+      s.position.set(Math.sin(t * 2 + i) * 0.12, 1.2 + k * 1.1, Math.cos(t * 1.7 + i) * 0.08);
+      s.scale.setScalar(0.6 + k * 0.9);
+    });
+    bubbles.forEach((b, i) => {
+      const a = i * 0.8 + t * 0.7, r = 0.25 + (i % 3) * 0.24, k = (t * 1.4 + i * 0.37) % 1;
+      b.position.set(Math.cos(a) * r, 0.88 + k * 0.35, Math.sin(a) * r);
+      b.scale.setScalar(1 - k * 0.5);
+    });
+  };
   return L;
 };
 
@@ -425,8 +485,11 @@ function blowTrumpet() {
 LV.mirrors = () => {
   const L = newLevel("mirrors", "Hall of Mirrors");
   const tx = CT();
-  put(L, floorG(30, 14), mat({ map: tx.tiles, rep: [24, 11] }), 0, 0, 0);
-  put(L, planeG(30, 4), mat({ color: 0x1a1626 }), 0, 0, -5.5);
+  // shiny see-through floor and a mirror ceiling, with upside-down kids in them
+  put(L, floorG(30, 14), mat({ map: tx.tiles, rep: [24, 11], alpha: 0.55 }), 0, 0, 0);
+  const ceil = new THREE.PlaneGeometry(30, 16); ceil.rotateX(Math.PI / 2);
+  put(L, ceil, mat({ color: 0xc8d8f0, em: 0.4, alpha: 0.35, side: THREE.DoubleSide }), 0, 3.4, 2);
+  put(L, planeG(30, 3.4), mat({ color: 0xb8d0f0, em: 0.2, alpha: 0.25, side: THREE.DoubleSide }), 0, 0, -5.5);   // back wall is a mirror too
   const big = group(L, 0, 0, -5.4, 0, { name: "Giant mirror", stand: [0, -3.8], say: () => blowTrumpet(), use: { trumpet: blowTrumpet } });
   put(L, boxG(3.4, 3.4, 0.1), mat({ color: 0xc8a040 }), 0, 0, 0, 0, null, big);
   put(L, planeG(3.0, 3.0), mat({ map: T.mirror, em: 0.3 }), 0, 0.2, 0.06, 0, null, big);
@@ -445,19 +508,43 @@ LV.mirrors = () => {
     g.userData.shimmer = sh;
   });
   const kids = crew(L, 0, 3.4);
+  // Mirror copies of every kid. The side mirrors face each other, so the kids repeat
+  // down a mirror tunnel (x' = a + s*x), plus flipped copies in the floor and ceiling.
   const refl = [];
-  [-4, 4].forEach((wx) => Object.values(kids).forEach((c) => {
-    const r = addChar(L, c.key, 2 * wx - c.pos.x, c.pos.y, 1.3);
-    r.body.material.uniforms.uColor.value.set(0x9ab8e0); r.src = c; r.wx = wx; refl.push(r);
-  }));
+  const copy = (c, a, s, back, tint, fy) => {
+    const r = addChar(L, c.key, 0, 0, 1.3); L.chars.splice(L.chars.indexOf(r), 1);
+    r.root.children[1].visible = false;   // no shadow on reflections
+    r.body.material.uniforms.uColor.value.set(tint);
+    Object.assign(r, { src: c, a, s, back, fy }); refl.push(r);
+  };
+  // [a, s, tint]: side-mirror tunnel. back = also reflected in the back mirror (z' = -11 - z).
+  const SIDES = [[0, 1, 0xffffff], [8, -1, 0x9ab8e0], [-8, -1, 0x9ab8e0], [16, 1, 0x7890c4], [-16, 1, 0x7890c4], [24, -1, 0x5a6ca4], [-24, -1, 0x5a6ca4]];
+  Object.values(kids).forEach((c) => {
+    SIDES.forEach(([a, s, tint], i) => {
+      if (i) copy(c, a, s, false, tint, 0);
+      if (i < 5) copy(c, a, s, true, i ? 0x8098c8 : 0xa8c0e8, 0);
+    });
+    [[0, 1, false], [8, -1, false], [-8, -1, false], [0, 1, true]].forEach(([a, s, back], i) => {
+      copy(c, a, s, back, i ? 0x7c8cb8 : 0xa8b8e0, -1);   // in the floor
+      copy(c, a, s, back, i ? 0x8c80c0 : 0xc0b0f0, 1);    // in the ceiling
+    });
+  });
   L.walk = [-3.3, 3.3, -3.9, 4.4]; L.start = [0, 3.4];
   L.entries = { castleUp: [-3.2, -3.4], pastRoom: [-3.0, -2], presentRoom: [3.0, -2], futureRoom: [-3.0, 2] };
   L.onEnter = [["", "A hall of mirrors! Reflections of the kids, everywhere they look."], ["Olivia", "Look! Some of the mirrors have words on them."]];
   L.light = { amb: 0x8080a0, dir: [0.2, -1, -0.5], dirCol: 0x606078, pts: [[[0, 3, 0], 0xd8c8ff, 9], [[0, 2, -5], 0xffe0b0, 5], [[0, 0, 0], 0, 1]] };
-  L.fog = [0x14101a, 12, 30]; L.bg = 0x14101a;
-  cam(L, [0, 4.2, 9.6], [0, 1.2, -2.4], 56);
+  L.fog = [0x14101a, 14, 42]; L.bg = 0x14101a;
+  cam(L, [0, 2.3, 8.8], [0, 1.6, -3], 62);
   L.update = (t) => {
-    refl.forEach((r) => { r.pos.set(2 * r.wx - r.src.pos.x, r.src.pos.y); r.face = -r.src.face; r.walkT = r.src.walkT; });
+    refl.forEach((r) => {
+      const c = r.src, x = r.a + r.s * c.pos.x, z = r.back ? -11 - c.pos.y : c.pos.y;
+      r.root.visible = c.root.visible;
+      r.root.position.set(x, r.fy < 0 ? 0 : r.fy > 0 ? 4.9 : 0, z);
+      r.root.scale.y = r.fy ? -1 : 1;
+      r.body.position.y = c.body.position.y;
+      r.body.scale.set(c.body.scale.x * r.s, c.body.scale.y, 1);
+      r.body.rotation.y = Math.atan2(curCam.position.x - x, curCam.position.z - z);
+    });
     L.hots.forEach((o, i) => { if (o.userData.shimmer) o.userData.shimmer.material.uniforms.uAlpha.value = 0.4 + Math.sin(t * 2 + i) * 0.15; });
   };
   return L;
