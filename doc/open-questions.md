@@ -36,3 +36,26 @@ These are in the playable game, but the kids didn't decide them. Ask the kids to
 - If the kids skipped the armory, they row back to the ship for the flashlight.
 - Castle reception hall is locked from the kitchen side until the kids come in through the front door.
 - Snack is served in the "reception hall" with lemonade and muffins (kids said they "have tea" in the main reception area; check which).
+
+### Game update to THE END (2026-11-08, main 26c2b6d) — new guesses to check with the kids
+
+- After the dog food, the kids also leave by the emergency slide.
+- The ball: the game says "(Does Jasin get his ball back? The kids are still deciding!)"
+- The apprentice's replies to the wrong compliments: "Um... thanks, I guess" (rower), "Shh! Don't let him hear you say that!" (better wizard), "It's a little itchy, actually" (hat).
+- The chase path: swamp (feathers) → forest → gas station → secret mansion. The house is caught at the forest, then the gas station, then the mansion.
+- The wind shows on the road map as white swirls; the feathers lie next to the stop where the house was.
+- Music hall: the doors are in a mixed-up order, each door plays its note when clicked, and only the ti door opens into a real room (with the note map). A wrong note quietly starts the song over.
+- At the top of the mansion: the wizard says "Really?! Oh, YES!" and the witch says "I suppose he IS kind of sweet."
+- At the beach, the wizard, the witch, and the apprentice each say goodbye.
+- The mansion now has a big outside view: two towers, lit windows, trees.
+
+### Game update 2026-11-08 (main 752cc25): Dandy's 5 queued tasks — check with the kids
+
+These change what the kids said, so the zone notes still have the kids' version:
+- **Music hall:** now one giant xylophone with labeled bars (do to ti); the kids play Twinkle Twinkle on it. The note map is pinned on the hall wall, and **the ti room is gone**. (Kids said: 7 rooms that play a note when you enter, and a map in the ti room.)
+- **Opening:** a cutscene of the stalled ship in space, then **May in the hallway**. (Kids said: the story begins with May, in her room.)
+
+New guesses:
+- Empty swamp: giant bird footprints and feathers where the house stood, plus "Maybe ask the apprentice."
+- Chase: the walking house stands at each stop (forest, gas station), then jumps up and runs off; at the mansion, the wizard and the witch run inside.
+- Lots of new visual cues (sparkles on findable things, kids hop when they talk, hearts at the wedding, and more).
