@@ -59200,8 +59200,8 @@ function next() {
   typing = setInterval(() => { i += 2; boxText.textContent = t.slice(0, i); if (i >= t.length) finishType(); }, 28);
 }
 function finishType() { clearInterval(typing); typing = null; boxText.textContent = fullText; boxMore.hidden = false; }
-// Clicking while someone is still talking waits for them to finish, so voices never overlap or get cut off.
-function advance() { if (choosing) return; if (typing) finishType(); else if (speaking) pendingNext = true; else next(); }
+// Clicking while someone is still talking cuts their voice off and moves straight on.
+function advance() { if (choosing) return; if (typing) finishType(); else { stopSpeaking(); next(); } }
 const talking = () => !box.hidden;
 let peekOpen = false;
 function showPeek(src, cap) { $("peekImg").src = src; $("peekCap").textContent = cap; $("peek").hidden = false; peekOpen = true; }
