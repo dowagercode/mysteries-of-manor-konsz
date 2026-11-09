@@ -16,7 +16,7 @@ template = (ROOT / "ps1" / "template.html").read_text()
 # The game code lives in ps1/src/, one file per part, joined in this order.
 # Shared pieces come first, then the chapters, then the parts that start the game.
 SRC_ORDER = ["engine.js", "textures.js", "story.js", "ch1-ship.js", "dollhouse.js", "ch2-crash.js", "ch2-mountain.js",
-             "ch3-road.js", "ch4-castle.js", "ch5-chase.js", "powers.js", "debug.js", "runtime.js"]
+             "ch3-road.js", "ch4-castle.js", "ch5-chase.js", "powers.js", "debug.js", "flat-rooms.js", "flat.js", "runtime.js"]
 src_dir = ROOT / "ps1" / "src"
 extra = sorted(f.name for f in src_dir.glob("*.js") if f.name not in SRC_ORDER)
 assert not extra, f"add these to SRC_ORDER in build.py: {extra}"
@@ -31,6 +31,10 @@ defs = re.search(r"<defs>.*?</defs>", re.search(r'<svg width="0" height="0".*?</
 if '<symbol id="spider"' not in defs:
     spider = re.search(r'<symbol id="spider".*?</symbol>', art, re.S).group(0)
     defs = defs.replace("</defs>", spider + "</defs>")
+
+sh_tex = ROOT / "ps1" / "tex" / "spaceship-hideout.jpg"
+if not sh_tex.exists() and (ROOT / "sample-art" / "02-spaceship-and-hideout.jpg").exists():
+    sh_tex.write_bytes((ROOT / "sample-art" / "02-spaceship-and-hideout.jpg").read_bytes())
 
 images = {}
 for f in sorted((ROOT / "ps1" / "tex").glob("*.jpg")):

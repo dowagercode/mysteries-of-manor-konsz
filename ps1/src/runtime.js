@@ -70,6 +70,7 @@ function goLevel(id, from) {
       L.chars.forEach((c, i) => { if (c.follow) c.pos.set(e[0] - 0.8 * i, e[1] + 0.4 * i); });
     }
     applyLight(L);
+    syncFlatUI();
     document.querySelectorAll("#levels button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.id === id));
     setTimeout(() => {
       fade.style.opacity = 0; busy = false;
@@ -190,9 +191,11 @@ function act(h) {
   else if (h.say) say(typeof h.say === "function" ? h.say() : h.say);
 }
 canvas.addEventListener("pointermove", (e) => {
-  if (spaceWait && L && curCam && !talking()) { canvas.style.cursor = overShip(e) ? "pointer" : "default"; return; }
+  if (spaceWait && L && curCam && !talking()) { canvas.style.cursor = (flatActive() ? overShipFlat(e) : overShip(e)) ? "pointer" : "default"; return; }
   if (!L || !curCam || castOpen || talking() || !$("title").hidden) { $("hover").textContent = ""; return; }
-  setNdc(e); const o = pick();
+  let o = null;
+  if (flatActive()) o = pickFlat(e);
+  else { setNdc(e); o = pick(); }
   $("hover").textContent = o ? (S.sel ? `Use ${ITEMS[S.sel][1]} on ${o.userData.hot.name}` : o.userData.hot.name) : "";
   canvas.style.cursor = o ? "pointer" : "default";
 });
@@ -201,8 +204,15 @@ stage.addEventListener("click", (e) => {
   if (!L || !curCam || castOpen || busy || !$("title").hidden) return;
   $("hover").textContent = "";
   if (talking()) { advance(); return; }
-  if (spaceWait) { if (overShip(e)) enterShip(); else $("hover").textContent = "Click the spaceship to go inside!"; return; }
-  if (e.target !== canvas) return;
+  if (spaceWait) { if (flatActive() ? overShipFlat(e) : overShip(e)) enterShip(); else $("hover").textContent = "Click the spaceship to go inside!"; return; }
+  if (e.target !== canvas && e.target !== flatC) return;
+  if (flatActive()) {
+    const o = pickFlat(e);
+    if (o) { useHot(o); return; }
+    const uv = eventToFlatUV(e);
+    walkTo(flatToWorld(L, uv.x, uv.y));
+    return;
+  }
   setNdc(e);
   const o = pick();
   if (o) { useHot(o); return; }
@@ -292,6 +302,9 @@ function stepChar(c, dt, t) {
 }
 const tagV = new THREE.Vector3(), tagC = new THREE.Vector3();
 function placeTags() {
+  if (!L) return;
+  if (flatActive()) { placeTagsFlat(); return; }
+  if (!curCam) return;
   const hideAll = talking() || !$("title").hidden || spaceCut;
   const pp = L.player.pos;
   TAGS.forEach((g) => {
@@ -365,6 +378,10 @@ function frame(now) {
   updateSparkles(t, dt);
   updatePowerFx(dt);
   placeTags();
+  if (flatActive()) {
+    renderFlat(t, dt);
+    return;
+  }
   if (L.preRender) L.preRender(dt);
   if (ps1) {
     renderer.setRenderTarget(rt); renderer.render(L.scene, curCam);
@@ -419,6 +436,7 @@ function overShip(e) {
 }
 function beginGame(fresh) {
   $("title").hidden = true;
+  syncFlatUI();
   if (fresh) { S.items = []; S.flags = {}; S.room = "hall"; save(); }
   const isIntro = fresh || !S.flags.started;
   goLevel(S.room && LV[S.room] ? S.room : "hall");
@@ -615,8 +633,9 @@ async function start() {
   $("playBtn").onclick = (e) => { e.stopPropagation(); beginGame(!saved); };
   $("newBtn").onclick = (e) => { e.stopPropagation(); beginGame(true); };
   initDebug();
+  initFlat();
   if (SHOT && LV[SHOT]) { $("title").hidden = true; goLevel(SHOT); }
-  if (SHOT) window.__mk = { doMove, kidAct, ownerAct, startPong, finishPong, showDiploma, beginGame, get spaceCut() { return spaceCut; }, get spaceWait() { return spaceWait; }, enterShip, openDollhouse, closeDollhouse, get dhParts() { return dhParts; }, setLead, powerOn, usePowerBtn, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
+  if (SHOT) window.__mk = { doMove, kidAct, ownerAct, startPong, finishPong, showDiploma, beginGame, get spaceCut() { return spaceCut; }, get spaceWait() { return spaceWait; }, enterShip, openDollhouse, closeDollhouse, get dhParts() { return dhParts; }, setLead, powerOn, usePowerBtn, FLAT, setFlatMode, flatActive, get flatMode() { return flatMode; }, rawSpotForHot, screenSpotForHot, getLevel, LV, useHot, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
   requestAnimationFrame(frame);
 }
 start().catch((e) => { msg.hidden = false; msg.textContent = "Something went wrong: " + e.message; console.error(e); });
