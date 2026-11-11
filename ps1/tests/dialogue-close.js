@@ -44,6 +44,26 @@
   M.advance();   // finish typing; the voice (if this browser has one) is still going
   document.getElementById("stage").dispatchEvent(new MouseEvent("click", { bubbles: true })); await w(100);
   ok(M.talking() && $("boxText").textContent.startsWith("Second"), "a click while speaking moves on to the next line: " + $("boxText").textContent.slice(0, 20));
+  // "Skip talk: off": the same click waits for the voice. (A stand-in voice that never says it has finished, so the
+  // engine's own timer ends the line: about 3 seconds for a short one.)
+  await settle();
+  const realSpeak = speechSynthesis.speak;
+  try { speechSynthesis.speak = () => {}; } catch {}
+  ok($("skipBtn").textContent === "Skip talk: on" && M.skipTalk, "the Skip talk button starts on");
+  $("skipBtn").click();
+  ok($("skipBtn").textContent === "Skip talk: off" && !M.skipTalk && $("skipBtn").getAttribute("aria-pressed") === "false", "clicking it turns skipping off");
+  M.say([["May", "Hi."], ["May", "Second line."]]); await w(150);
+  M.advance();
+  document.getElementById("stage").dispatchEvent(new MouseEvent("click", { bubbles: true })); await w(300);
+  ok(M.talking() && $("boxText").textContent.startsWith("Hi"), "skip off: a click while speaking stays on the line: " + $("boxText").textContent.slice(0, 20));
+  await until(() => $("boxText").textContent.startsWith("Second"), 8000);
+  ok($("boxText").textContent.startsWith("Second"), "skip off: the next line comes when the voice is done");
+  // Turning skipping back on lets a waiting click through at once.
+  M.advance(); await w(100); M.advance(); await w(100);   // finish typing, then wait on the voice
+  ok(M.talking(), "skip off: still waiting on the last line");
+  $("skipBtn").click(); await w(200);
+  ok(!M.talking() && M.skipTalk, "turning Skip talk back on lets the waiting click through");
+  try { speechSynthesis.speak = realSpeak; } catch {}
   M.setVoices(false); await settle();
   return log.join("\n");
 } catch (e) { return "ERROR " + e.stack; } })()

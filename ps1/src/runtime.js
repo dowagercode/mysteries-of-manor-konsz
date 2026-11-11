@@ -173,8 +173,11 @@ function next() {
   typing = setInterval(() => { i += 2; boxText.textContent = t.slice(0, i); if (i >= t.length) finishType(); }, 28);
 }
 function finishType() { clearInterval(typing); typing = null; boxText.textContent = fullText; boxMore.hidden = false; }
-// Clicking while someone is still talking cuts their voice off and moves straight on.
-function advance() { if (choosing) return; if (typing) finishType(); else { stopSpeaking(); next(); } }
+// "Skip talk: on": clicking while someone is still talking cuts their voice off and moves straight on.
+// "Skip talk: off": the click is remembered, and the next line comes when the voice has finished.
+let skipTalk = true;
+try { skipTalk = localStorage.getItem(SAVE_KEY + "-skip") !== "off"; } catch {}
+function advance() { if (choosing) return; if (typing) finishType(); else if (speaking && !skipTalk) pendingNext = true; else { stopSpeaking(); next(); } }
 const talking = () => !box.hidden;
 // Choice highlight: one choice is selected (aria-selected + the .sel class); keys and the mouse move it.
 const choiceBtns = () => [...boxText.querySelectorAll(".choice")];
@@ -651,6 +654,10 @@ $("readBtn").onclick = (e) => {
   voicesOn = !voicesOn; e.currentTarget.textContent = "Voices: " + (voicesOn ? "on" : "off"); e.currentTarget.setAttribute("aria-pressed", voicesOn);
   if (!voicesOn) stopSpeaking();
 };
+const showSkip = () => { const b = $("skipBtn"); b.textContent = "Skip talk: " + (skipTalk ? "on" : "off"); b.setAttribute("aria-pressed", skipTalk); };
+const setSkip = (on) => { skipTalk = !!on; showSkip(); if (skipTalk && pendingNext) advance(); };   // a click that was waiting goes now
+$("skipBtn").onclick = () => { setSkip(!skipTalk); try { localStorage.setItem(SAVE_KEY + "-skip", skipTalk ? "on" : "off"); } catch {} };
+showSkip();
 $("fullBtn").onclick = () => {
   const d = document, el = $("game");
   if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
@@ -917,7 +924,7 @@ async function start() {
   initDebug();
   initFlat();
   if (SHOT && LV[SHOT]) { $("title").hidden = true; goLevel(SHOT); }
-  if (SHOT) window.__game = window.__mk = { add, navCheck, hitsSolid, activeSolids, SPR, PLAYERS, playerKey, pickPlayer, addPlayer, removePlayer, playerStarted, save, doMove, kidAct, ownerAct, startPong, finishPong, showDiploma, beginGame, get spaceCut() { return spaceCut; }, get spaceWait() { return spaceWait; }, enterShip, openDollhouse, closeDollhouse, get dhParts() { return dhParts; }, setLead, powerOn, usePowerBtn, FLAT, setFlatMode, flatActive, get flatMode() { return flatMode; }, rawSpotForHot, screenSpotForHot, getLevel, LV, useHot, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
+  if (SHOT) window.__game = window.__mk = { add, navCheck, hitsSolid, activeSolids, SPR, PLAYERS, playerKey, pickPlayer, addPlayer, removePlayer, playerStarted, save, doMove, kidAct, ownerAct, startPong, finishPong, showDiploma, beginGame, get spaceCut() { return spaceCut; }, get spaceWait() { return spaceWait; }, enterShip, openDollhouse, closeDollhouse, get dhParts() { return dhParts; }, setLead, powerOn, usePowerBtn, FLAT, setFlatMode, flatActive, get flatMode() { return flatMode; }, rawSpotForHot, screenSpotForHot, getLevel, LV, useHot, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, setSkip, get skipTalk() { return skipTalk; }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
   requestAnimationFrame(frame);
 }
 start().catch((e) => { msg.hidden = false; msg.textContent = "Something went wrong: " + e.message; console.error(e); });
