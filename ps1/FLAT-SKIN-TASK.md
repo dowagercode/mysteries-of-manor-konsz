@@ -91,12 +91,12 @@ Things that change during the story and should show in flat too, where simple: i
 ## Testing
 
 - Syntax check (no node here): join the source files and run `deno lint --rules-include=no-undef` on them. Ignore browser globals like `document`.
-- Playthroughs: `python3 ps1/tests/cdp.py "file://$PWD/ps1/manor-konsz-ps1.html#shot=mays" ps1/tests/out/run "$(cat ps1/tests/play.js)"` (and play2..play5, scare). All must still pass with the 3D look.
+- Playthroughs: `CDP_PORT=$((9400 + RANDOM % 500)) python3 ps1/tests/cdp.py "file://$PWD/ps1/manor-konsz-ps1.html#shot=mays" ps1/tests/out/run "$(cat ps1/tests/play.js)"` (and play2..play5, scare). All must still pass with the 3D look. The engine-feature tests in `ps1/tests/README.md` (`keys.js`, `action-key.js` and so on) also check the Flat look.
 - **Add `ps1/tests/flat.js`** that turns the flat look on and then:
   - checks every ship level has `FLAT` data, every spot name matches a hot in that level, and every hot (except "The kids' drawing") has a spot;
   - clicks through chapter 1 in flat (like play.js does) to the beach;
   - flips the look back and forth mid-room and checks the room, items and goal stay the same.
-- Watch for the test port: `cdp.py` uses port 9333. Claude runs its tests on port 9447, so you can both test at the same time. If a test crashes with "Connection reset", another test browser is probably on your port.
+- Watch for the test port: always give each test run its own random `CDP_PORT` (`CDP_PORT=$((9400 + RANDOM % 500)) python3 ps1/tests/cdp.py ...`; the default is 9333). `cdp.py` gives each run its own throwaway browser profile, so two sessions can test at the same time. If a test crashes with "Connection reset", another test browser is probably on your port.
 - Dandy prefers saving credits: use screenshots only to check the look of a finished room.
 
 ## Working alongside Claude
@@ -115,3 +115,13 @@ Claude also edits this repo. To avoid stepping on each other:
 - Every ship room, the hallway, the inside of Jon's portal and the space intro work in flat: walking, clicking everything, doors, items, powers, dialogue, the Dream House toy, the asteroid storm, and the trip to the beach.
 - Places after the crash fall back to 3D with the "coming soon" note, and the button never breaks the game.
 - All playthroughs pass, plus the new `flat.js` test.
+
+## Engine changes since this was written (2026-11-11): keyboard play, the action button, players, solid objects
+
+The entry points this file names are unchanged (`useHot`, `act`, `walkTo`, `clampWalk`, `c.pos`, `L.walk`, `L.hots`, `goLevel`, the `FLAT` data), so the flat skin needs no change for them. What the flat skin must keep true:
+
+- **Keyboard walking in Flat.** `keyFloorDir()` in `runtime.js` turns the arrow keys into a floor direction. In 3D it uses the camera. In Flat it assumes the mapping in `worldToFlat()`: across the picture is x and up the picture is -z; in the hallway strip across is -z and up is -x. **If you change `worldToFlat()` / `flatToWorld()` (or add a room that maps differently), change `keyFloorDir()` to match**, and `ps1/tests/keys.js` will tell you.
+- **The action button** (`#actBtn`, "Space: <thing>") offers hots near the player. In Flat it skips any hot that has no spot (`rawSpotForHot(L, o)` is null, for example "The kids' drawing"), so keep `rawSpotForHot` returning null for things the player cannot see or click.
+- **Solid objects** (`L.solids`) are floor areas in world x, z. Nobody uses them in the story yet. Flat draws characters from `c.pos`, so a character going round a solid just follows the route; nothing to do in flat unless a flat room should show the solid.
+- **Players.** Each player has their own save (`playerKey()`); the Look is a device setting (`manor_konsz_look`) and is not part of a player's save. Nothing to do in flat.
+- Dialogue: clicking or pressing Space while someone talks now cuts the voice and moves on; the Next control is a real `<button>` (`#boxMore`). The box is shared by both looks.
