@@ -28,7 +28,7 @@
   P().set(door.stand[0] + 1.6, door.stand[1]); M.L.player.target = null;
   for (let i = 0; i < 40 && Math.hypot(P().x - door.stand[0], P().y - door.stand[1]) > 0.5; i++) await hold("ArrowLeft", 250);
   await w(300);
-  ok(prompt() === "Space: " + door.name, "prompt shows the door: " + JSON.stringify(prompt()) + " at " + P().x.toFixed(2) + "," + P().y.toFixed(2));
+  ok(prompt() === "Space: Hallway", "prompt shows the door by its tag name: " + JSON.stringify(prompt()) + " at " + P().x.toFixed(2) + "," + P().y.toFixed(2));
   key("ArrowRight"); await w(150); ok(prompt() === "", "prompt hidden while walking"); up("ArrowRight"); await w(300);
   P().set(...door.stand); M.L.player.target = null; await w(300);
   ok(prompt() !== "", "prompt back when idle at the door");
