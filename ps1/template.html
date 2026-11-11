@@ -37,13 +37,13 @@
   .px { font-family: "Press Start 2P", monospace; }
   #hover { position: absolute; left: calc(var(--u) * 6); top: calc(var(--u) * 6); font-size: calc(var(--u) * 7); color: #fff;
     text-shadow: calc(var(--u)) calc(var(--u)) 0 #000; pointer-events: none; }
-  #box { position: absolute; left: 4%; right: 4%; bottom: 4%; min-height: 26%; padding: calc(var(--u) * 7) calc(var(--u) * 9);
+  #box { position: absolute; left: 4%; right: 4%; bottom: 4%; min-height: 26%; padding: calc(var(--u) * 7) calc(var(--u) * 9) calc(var(--u) * 14);
     background: linear-gradient(#2c3d96, #0c1240); border: calc(var(--u) * 1.5) solid #e4e4f0; border-radius: calc(var(--u) * 3);
     box-shadow: inset 0 0 0 calc(var(--u)) #6a76c4, 0 0 0 calc(var(--u)) #000; color: #fff; font-size: calc(var(--u) * 7.5);
     line-height: 1.7; cursor: pointer; }
   #boxName { color: #ffd23f; margin-bottom: calc(var(--u) * 3); }
   #boxName:empty { display: none; }
-  #boxMore { position: absolute; right: calc(var(--u) * 5); bottom: calc(var(--u) * 4); font: inherit; font-size: calc(var(--u) * 6); color: #fff;
+  #boxMore { position: absolute; right: calc(var(--u) * 5); bottom: calc(var(--u) * 3); font: inherit; font-size: calc(var(--u) * 5.5); color: #fff;
     background: transparent; border: calc(var(--u)) solid #6a76c4; border-radius: calc(var(--u) * 2); padding: calc(var(--u) * 1.5) calc(var(--u) * 3); cursor: pointer; }
   #boxMore[hidden] { display: none; }
   #boxMore i { font-style: normal; display: inline-block; animation: blink .8s steps(2) infinite; }
@@ -69,7 +69,7 @@
   /* The action button: says what Space / Enter / e would do here (clicking it does the same). */
   #actBtn { position: absolute; left: 50%; bottom: calc(var(--u) * 3); transform: translateX(-50%); z-index: 3; max-width: 90%;
     font: calc(var(--u) * 5.5) "Press Start 2P", monospace; color: #10122a; background: #ffd23f; border: calc(var(--u)) solid #000; border-radius: calc(var(--u) * 2);
-    padding: calc(var(--u) * 2) calc(var(--u) * 4); cursor: pointer; }
+    padding: calc(var(--u) * 2) calc(var(--u) * 4); line-height: 1.4; cursor: pointer; }
   #actBtn:hover, #actBtn:focus-visible { background: #fff; outline: none; }
   #peek { position: absolute; inset: 0; background: rgba(8, 6, 20, .92); display: grid; grid-template-rows: 1fr auto;
     padding: calc(var(--u) * 8); gap: calc(var(--u) * 4); cursor: pointer; }
@@ -93,15 +93,15 @@
   #title button { font: 16px "Press Start 2P", monospace; padding: 12px 18px; background: #5a2a8a; color: #fff; border: 0; }
   /* Who is playing: a list of players over the title screen. Each has their own saved game. */
   #title #whoBtn { font-size: 11px; padding: 10px 14px; background: #2b1a45; border: 1px solid #b77cf0; }
-  #players { position: absolute; inset: 0; z-index: 2; background: #000; overflow: auto; padding: calc(var(--u) * 6);
-    display: grid; align-content: start; gap: calc(var(--u) * 3); }
-  #players h2 { margin: 0; font: calc(var(--u) * 7) "Press Start 2P", monospace; color: #ffd23f; text-align: center; font-weight: normal; }
-  #playerList { display: grid; gap: calc(var(--u) * 2); }
-  #players .who { display: flex; gap: calc(var(--u) * 2); }
+  #players { position: absolute; inset: 0; z-index: 2; background: #000; overflow: auto; padding: max(10px, calc(var(--u) * 6));
+    display: grid; align-content: start; gap: max(8px, calc(var(--u) * 3)); }
+  #players h2 { margin: 0; font: max(12px, calc(var(--u) * 7)) "Press Start 2P", monospace; color: #ffd23f; text-align: center; font-weight: normal; }
+  #playerList { display: grid; gap: max(6px, calc(var(--u) * 2)); }
+  #players .who { display: flex; gap: max(6px, calc(var(--u) * 2)); }
   #players .who > :first-child { flex: 1; min-width: 0; text-align: left; }
-  #title #players button { font: calc(var(--u) * 6) "Press Start 2P", monospace; padding: calc(var(--u) * 3) calc(var(--u) * 4); }
+  #title #players button { font: max(11px, calc(var(--u) * 6)) "Press Start 2P", monospace; padding: max(8px, calc(var(--u) * 3)) max(10px, calc(var(--u) * 4)); }
   #title #players button[aria-pressed="true"] { background: #b77cf0; color: #120e1c; }
-  #players input { font: calc(var(--u) * 6) "Press Start 2P", monospace; width: 16ch; min-width: 0; flex: 1; padding: calc(var(--u) * 3); color: #fff; background: #000; border: 1px solid #b77cf0; }
+  #players input { font: max(11px, calc(var(--u) * 6)) "Press Start 2P", monospace; width: 16ch; min-width: 0; flex: 1; padding: max(8px, calc(var(--u) * 3)); color: #fff; background: #000; border: 1px solid #b77cf0; }
   #game:fullscreen { background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 12px 16px; overflow: auto; }
   #game:fullscreen #stage, #game:fullscreen #hud { width: min(100%, calc((100vh - 220px) * 4 / 3)); }
   #exitWrap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
