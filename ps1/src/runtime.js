@@ -339,7 +339,8 @@ function doAction() { const o = actTarget(); if (o) { $("hover").textContent = "
 let actShown = "";
 function updateActBtn() {
   const o = actTarget();
-  const txt = o ? "Space: " + (S.sel ? `Use ${ITEMS[S.sel][1]} on ${o.userData.hot.name}` : o.userData.hot.name) : "";
+  const h = o && o.userData.hot, nm = h && (isExit(h) ? exitName(h) : h.name);   // doors read like their tags ("Hallway")
+  const txt = o ? "Space: " + (S.sel ? `Use ${ITEMS[S.sel][1]} on ${nm}` : nm) : "";
   if (txt === actShown) return;
   actShown = txt; actBtn.hidden = !txt; actBtn.textContent = txt;
 }
