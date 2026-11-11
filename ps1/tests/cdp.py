@@ -1,15 +1,17 @@
 """Tiny CDP client: open a URL in headless Brave, optionally run JS, save screenshots.
 usage: cdp.py <url> <out-prefix> [js-step ...]   (each js-step runs, then a screenshot is taken)
 """
-import base64, json, os, socket, subprocess, sys, time, urllib.request
+import base64, json, os, shutil, socket, subprocess, sys, tempfile, time, urllib.request
 
 SP = os.path.dirname(os.path.abspath(__file__))
 B = "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser"
-PORT = 9333
+if not os.path.exists(B):  # no Brave on this computer: use Chrome
+    B = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+PORT = int(os.environ.get("CDP_PORT", "9333"))  # set CDP_PORT when two sessions run tests at once
 url, prefix, steps = sys.argv[1], sys.argv[2], sys.argv[3:]
-prof = os.path.join(SP, "prof-cdp")  # browser profile kept next to this script
-proc = subprocess.Popen([B, "--headless=new", "--no-sandbox", "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
-                         f"--remote-debugging-port={PORT}", f"--user-data-dir={prof}", "--window-size=900,800", "about:blank"],
+prof = tempfile.mkdtemp(prefix="cdp-prof-")  # a fresh browser profile per run, so parallel sessions don't lock each other out
+proc = subprocess.Popen([B, "--headless=new", "--no-sandbox", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--autoplay-policy=no-user-gesture-required", "--mute-audio",
+                         f"--remote-debugging-port={PORT}", f"--user-data-dir={prof}", "--window-size=" + os.environ.get("CDP_SIZE", "900,800"), "about:blank"],
                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 try:
     for _ in range(60):
@@ -72,6 +74,9 @@ try:
 
     call("Runtime.enable"); call("Page.enable")
     call("Page.navigate", {"url": url})
+    if "#" in url:  # Chrome loads file:// pages without the #hash and adds it after; reload so the page starts with it
+        time.sleep(1)
+        call("Page.reload")
     time.sleep(8)
     def shot(name):
         r = call("Page.captureScreenshot", {"format": "png"})
@@ -87,3 +92,5 @@ try:
         if "GL Driver" not in l: print("LOG", l[:300])
 finally:
     proc.kill()
+    proc.wait()
+    shutil.rmtree(prof, ignore_errors=True)
