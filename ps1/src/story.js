@@ -4,7 +4,47 @@
 // ---------- the game: items, puzzles, goals (story from the kids' notes) ----------
 const SAVE_KEY = "manorkonsz-ps1-save";
 const S = { items: [], flags: {}, room: "hall", sel: null };
-try { const d = JSON.parse(localStorage.getItem(SAVE_KEY) || "null"); if (d) Object.assign(S, d, { sel: null }); } catch {}
+// Players: several people can share one device, each with their own saved game. The list is kept under
+// SAVE_KEY + "-players". Player 1 keeps the plain SAVE_KEY, so a save from before there were players is theirs.
+// (The Look, voices and the other switches are for the device, not the player.)
+const PLAYERS = { list: [{ id: 1, name: "Player 1" }], cur: 1, next: 2 };
+const playerKey = (id = PLAYERS.cur) => (id === 1 ? SAVE_KEY : SAVE_KEY + "-p" + id);
+const curPlayer = () => PLAYERS.list.find((p) => p.id === PLAYERS.cur) || PLAYERS.list[0];
+function loadPlayers() {
+  try {
+    const p = JSON.parse(localStorage.getItem(SAVE_KEY + "-players") || "null");
+    if (p && Array.isArray(p.list) && p.list.length) Object.assign(PLAYERS, p);
+  } catch {}
+  PLAYERS.cur = curPlayer().id;
+}
+function savePlayers() { try { localStorage.setItem(SAVE_KEY + "-players", JSON.stringify(PLAYERS)); } catch {} }
+// Has this player started a game? (Read straight from their save, without loading it.)
+function playerStarted(id) {
+  try { return !!(JSON.parse(localStorage.getItem(playerKey(id)) || "null") || {}).flags?.started; } catch { return false; }
+}
+function pickPlayer(id) {
+  if (!PLAYERS.list.some((p) => p.id === id)) return;
+  PLAYERS.cur = id; savePlayers(); loadSave(); renderHud();
+}
+function addPlayer(name) {
+  const id = PLAYERS.next++;
+  PLAYERS.list.push({ id, name: (name || "").trim().slice(0, 14) || "Player " + (PLAYERS.list.length + 1) });
+  pickPlayer(id);
+  return id;
+}
+// Takes a player off the list and wipes their save. There is always at least one player.
+function removePlayer(id) {
+  if (!PLAYERS.list.some((p) => p.id === id)) return;
+  try { localStorage.removeItem(playerKey(id)); } catch {}
+  PLAYERS.list = PLAYERS.list.filter((p) => p.id !== id);
+  if (!PLAYERS.list.length) PLAYERS.list.push({ id: PLAYERS.next++, name: "Player 1" });
+  pickPlayer(curPlayer().id);
+}
+function loadSave() {
+  S.items = []; S.flags = {}; S.room = "hall"; S.sel = null;
+  try { const d = JSON.parse(localStorage.getItem(playerKey()) || "null"); if (d) Object.assign(S, d, { sel: null }); } catch {}
+}
+loadPlayers(); loadSave();
 const ITEMS = {
   tuna: ["🥫", "Can of tuna"], opener: ["🔧", "Can opener"], key: ["🗝️", "Engine room key"], cheese: ["🧀", "Moldy cheese"],
   map: ["🗺️", "Engine room map"], pills: ["💊", "Memory pills"], flour: ["🌾", "Flour"], oil: ["🫒", "Oil"], sugar: ["🍬", "Sugar"],
@@ -21,7 +61,7 @@ const ITEMS = {
 const CAKE = ["flour", "oil", "sugar", "water", "yeast", "cacao"];
 const has = (id) => S.items.includes(id);
 function save() {
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ items: S.items, flags: S.flags, room: S.room })); } catch {}
+  try { localStorage.setItem(playerKey(), JSON.stringify({ items: S.items, flags: S.flags, room: S.room })); } catch {}
   renderHud();
 }
 function add(id, flag) {

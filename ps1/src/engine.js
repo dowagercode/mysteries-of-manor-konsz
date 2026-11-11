@@ -47,9 +47,12 @@ void main(){
   #ifdef USE_COLOR
   L *= color;
   #endif
-  vLight = mix(L, vec3(1.0), uEm);
+  // Glow (uEm) lifts toward full brightness: white for textured things, their own colour for
+  // vertex-coloured models (so a glowing model keeps its colours instead of washing out).
   #ifdef USE_COLOR
-  if (uEm > 0.0) vLight = mix(vLight, color, uEm);
+  vLight = mix(L, color, uEm);
+  #else
+  vLight = mix(L, vec3(1.0), uEm);
   #endif
   vec4 vp = viewMatrix * wp;
   vec4 cp = projectionMatrix * vp;
@@ -192,7 +195,7 @@ function wavyString(x, y0, y1, z, wig = 0.12) {
 
 // ---------- levels ----------
 function newLevel(id, name) {
-  return { id, name, scene: new THREE.Scene(), hots: [], chars: [], allChars: [], cams: [], walk: [-3, 3, -1, 2], start: [0, 1], entries: {},
+  return { id, name, scene: new THREE.Scene(), hots: [], solids: [], chars: [], allChars: [], cams: [], walk: [-3, 3, -1, 2], start: [0, 1], entries: {},
     light: { amb: 0x707080, dir: [0.3, -1, -0.5], dirCol: 0x606060, pts: [] }, fog: [0x000000, 12, 30], bg: 0x000000 };
 }
 function put(L, geo, m, x = 0, y = 0, z = 0, ry = 0, hot, parent) {
@@ -567,9 +570,23 @@ function addChar(L, key, x, z, h = 1.3, hot) {
   sh.position.y = 0.025; root.add(sh);
   if (hot) { body.userData.hot = hot; L.hots.push(body); }
   const c = { key, root, body, mesh3d, limbs, parts, tex2d: s.tex, h, pos: new THREE.Vector2(x, z), target: null, face: 1, walkT: 0, speed: 2.4, phase: rnd() * 6 };
+  // Angles: if SPR has key + "_side" / "_back" / "_q" (three-quarter front) / "_qback", walking picks among them.
+  // (Inactive unless one of those sprites exists.)
+  if (["_side", "_back", "_q", "_qback"].some((k) => SPR[key + k])) { c.angles = true; c.view = ""; }
   L.chars.push(c);
   if (L.allChars) L.allChars.push(c);
   return c;
 }
+
+// ---------- solid floor areas ----------
+// Characters walk around these. All in floor x,z. `show` (optional) switches one off while it returns false.
+//   solid(L, x, z, w, d)       a box centred on x,z, w wide (x) and d deep (z)
+//   solidCircle(L, x, z, r)    a round footprint (barrel, pillar, round table)
+//   solidOf(L, object, pad)    the footprint of a group or mesh (its bounding box on the floor), measured the first time someone walks
+//   a hot object with `solid: true` does the same for itself (and goes away when its `show` is false)
+// No story room uses these yet; they are an engine capability (see ps1/src/README.md).
+function solid(L, x, z, w, d, show) { L.solids.push({ x0: x - w / 2, x1: x + w / 2, z0: z - d / 2, z1: z + d / 2, show }); }
+function solidCircle(L, x, z, r, show) { L.solids.push({ cx: x, cz: z, r, show }); }
+function solidOf(L, obj, pad = 0, show) { L.solids.push({ obj, pad, show }); }
 
 const LV = {};

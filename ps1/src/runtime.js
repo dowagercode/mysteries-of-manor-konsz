@@ -44,6 +44,7 @@ function getLevel(id) {
     const lv = LV[id]();
     if (!lv.player) lv.player = addChar(lv, "may", ...lv.start, 1.3);
     if (["hub", "mays", "jasins", "olivias", "jons", "hideout", "hall", "engine", "storage", "bath", "playroom", "control"].includes(id)) addClueTrail(lv);
+    lv.hots.forEach((o) => { if (o.userData.hot.solid) solidOf(lv, o); });   // hot: { solid: true } = its footprint is solid
     addRoomSparkles(lv);
     built[id] = lv;
   }
@@ -129,7 +130,7 @@ function speak(name, text) {
   if (!words) return;
   const c = castFor(name), u = new SpeechSynthesisUtterance(words);
   if (c.voice) u.voice = c.voice;
-  u.pitch = c.pitch; u.rate = c.rate;
+  u.pitch = c.pitch; u.rate = c.rate; u.volume = (c.volume ?? 1) * (typeof voiceLevel === "function" ? voiceLevel() : 1);
   const done = () => {
     if (!speaking) return;
     speaking = false; clearTimeout(speakTimer);
@@ -149,14 +150,18 @@ function next() {
     clearInterval(typing); typing = null; choosing = true;
     box.hidden = false; boxName.textContent = ""; boxMore.hidden = true; boxText.textContent = "";
     choices.forEach(([labelText, fn]) => {
-      const b = document.createElement("button"); b.className = "choice px"; b.textContent = "▸ " + labelText;
+      const b = document.createElement("button"); b.className = "choice px"; b.textContent = labelText;   // the ▸ is drawn by CSS (▶ on the highlighted one)
+      b.setAttribute("role", "option");
       b.onclick = (e) => { e.stopPropagation(); choosing = false; say(fn() || []); };
+      b.onmouseenter = () => { const j = choiceBtns().indexOf(b); if (j >= 0) hiChoice(j, false); };
       boxText.appendChild(b);
     });
+    boxText.setAttribute("role", "listbox");
+    hiChoice(0, false);
     return;
   }
   const [n, t] = dq.shift();
-  box.hidden = false; boxName.textContent = n; fullText = t; boxText.textContent = ""; boxMore.hidden = true;
+  box.hidden = false; boxName.textContent = n; fullText = t; boxText.textContent = ""; boxMore.hidden = true; boxText.removeAttribute("role");
   if (L && n) {
     const who = n.toLowerCase();
     L.chars.forEach((c) => {
@@ -168,9 +173,19 @@ function next() {
   typing = setInterval(() => { i += 2; boxText.textContent = t.slice(0, i); if (i >= t.length) finishType(); }, 28);
 }
 function finishType() { clearInterval(typing); typing = null; boxText.textContent = fullText; boxMore.hidden = false; }
-// Clicking while someone is still talking waits for them to finish, so voices never overlap or get cut off.
-function advance() { if (choosing) return; if (typing) finishType(); else if (speaking) pendingNext = true; else next(); }
+// Clicking while someone is still talking cuts their voice off and moves straight on.
+function advance() { if (choosing) return; if (typing) finishType(); else { stopSpeaking(); next(); } }
 const talking = () => !box.hidden;
+// Choice highlight: one choice is selected (aria-selected + the .sel class); keys and the mouse move it.
+const choiceBtns = () => [...boxText.querySelectorAll(".choice")];
+function hiChoice(i, focus = true) {
+  const bs = choiceBtns(); if (!bs.length) return;
+  i = (i + bs.length) % bs.length;
+  bs.forEach((b, j) => { b.classList.toggle("sel", j === i); b.setAttribute("aria-selected", j === i ? "true" : "false"); });
+  if (focus) bs[i].focus({ preventScroll: true });
+}
+const hiIndex = () => Math.max(0, choiceBtns().findIndex((b) => b.classList.contains("sel")));
+boxMore.onclick = (e) => { e.stopPropagation(); advance(); };   // the Next button (a real button, so touch and keyboard users can use it)
 let peekOpen = false;
 function showPeek(src, cap) { $("peekImg").src = src; $("peekCap").textContent = cap; $("peek").hidden = false; peekOpen = true; }
 
@@ -183,7 +198,13 @@ function pick() {
   for (const h of hits) { let o = h.object; while (o && !o.userData.hot) o = o.parent; if (o && L.player && o === L.player.body) continue; if (o && (!o.userData.hot.show || o.userData.hot.show())) return o; }
   return null;
 }
-const clampWalk = (x, z) => new THREE.Vector2(Math.min(L.walk[1], Math.max(L.walk[0], x)), Math.min(L.walk[3], Math.max(L.walk[2], z)));
+// The walkable area is the box L.walk. A room can also set L.walkSide(z): how far from the middle (x = 0) a
+// character may stand at depth z, for a floor that narrows toward the camera (so nobody walks off the picture).
+const walkSide = (z) => (L.walkSide ? L.walkSide(z) : Infinity);
+const clampWalk = (x, z) => {
+  const cz = Math.min(L.walk[3], Math.max(L.walk[2], z)), side = walkSide(cz);
+  return new THREE.Vector2(Math.min(L.walk[1], side, Math.max(L.walk[0], -side, x)), cz);
+};
 function walkTo(v, then) { L.player.target = v; L.player.onArrive = then || null; }
 function act(h) {
   if (h.run) h.run();
@@ -254,10 +275,219 @@ function renderExits() {
     row.appendChild(b);
   });
 }
-window.addEventListener("keydown", (e) => { if ((e.key === " " || e.key === "Enter") && talking()) { e.preventDefault(); advance(); } });
+// While talking: Space/Enter advance (or pick the highlighted choice); arrows and h/j/k/l move the choice highlight.
+const CHOICE_STEP = { arrowdown: 1, j: 1, arrowright: 1, l: 1, arrowup: -1, k: -1, arrowleft: -1, h: -1 };
+window.addEventListener("keydown", (e) => {
+  if (!talking() || e.ctrlKey || e.metaKey || e.altKey || typingIn(e.target) || !$("title").hidden) return;
+  if (e.key === " " || e.key === "Enter") {
+    e.preventDefault();
+    if (choosing) { const b = choiceBtns()[hiIndex()]; if (b) b.click(); } else advance();
+    return;
+  }
+  const k = e.key.toLowerCase();
+  if (CHOICE_STEP[k] && !e.shiftKey) { e.preventDefault(); if (choosing) hiChoice(hiIndex() + CHOICE_STEP[k]); }
+});
+
+// Arrow keys or h/j/k/l (vi keys) walk the player. Hold to keep walking; two at once walks diagonally.
+// Up is away from the camera (in the Flat look: up the picture). Keys only steer the same walk target a click sets,
+// so the walkable area, room scripts and the "busy" rules all work the same. Walking into a door doesn't go through it.
+const KEY_DIRS = { arrowleft: [-1, 0], h: [-1, 0], arrowright: [1, 0], l: [1, 0], arrowup: [0, 1], k: [0, 1], arrowdown: [0, -1], j: [0, -1] };
+const heldKeys = new Set();
+let keyTarget = null;   // the last target the keys set (so we only stop walks the keys started)
+const typingIn = (el) => el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
+const canKeyWalk = () => L && L.player && curCam && !busy && !talking() && !peekOpen && $("title").hidden && !spaceCut && !spaceWait && !castOpen && !(typeof dhOpen !== "undefined" && dhOpen);
+window.addEventListener("keydown", (e) => {
+  const k = e.key.toLowerCase();
+  if (!KEY_DIRS[k] || talking() || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || typingIn(e.target)) return;
+  if (!$("title").hidden) return;   // title screen: leave the keys to the page
+  e.preventDefault();   // no page scrolling while playing
+  heldKeys.add(k);
+});
+window.addEventListener("keyup", (e) => heldKeys.delete(e.key.toLowerCase()));
+window.addEventListener("blur", () => heldKeys.clear());
+// Action key: Space, Enter or e uses the nearest thing the player is standing by (a door wins a near tie), like a click.
+// A small button near the bottom of the view says what it would do; clicking it does the same (for touch).
+const ACT_RADIUS = 1.0;
+const actBtn = $("actBtn");
+function actReady() { return canKeyWalk() && L.player.root.visible; }
+// A room can take the action key for itself while it needs it (e.g. jumping on a stair):
+// while L.ownsAction() is true, Space/Enter/e call L.onAction() instead, and no prompt shows.
+const roomOwnsAction = () => !!(L && L.ownsAction && L.ownsAction());
+// Where the player stands to use a hot thing: the same spot useHot walks to.
+function standOf(o) {
+  const h = o.userData.hot;
+  if (h.stand) return new THREE.Vector2(h.stand[0], h.stand[1]);
+  const w = o.getWorldPosition(new THREE.Vector3());
+  return clampWalk(w.x, w.z + 0.9);
+}
+function actTarget() {
+  if (!actReady() || roomOwnsAction() || L.player.target || heldKeys.size) return null;
+  const p = L.player.pos; let best = null, bs = Infinity;
+  L.hots.forEach((o) => {
+    const h = o.userData.hot;
+    if (!h || o === L.player.body || !o.visible || (h.show && !h.show())) return;
+    if (flatActive() && !rawSpotForHot(L, o)) return;   // in the Flat look, only things you can see and click
+    const w = o.getWorldPosition(new THREE.Vector3()), s = standOf(o);
+    const d = Math.min(Math.hypot(s.x - p.x, s.y - p.y), Math.hypot(w.x - p.x, w.z - p.y));
+    if (d > ACT_RADIUS) return;
+    const sc = d - (isExit(h) ? 0.3 : 0);
+    if (sc < bs) { bs = sc; best = o; }
+  });
+  return best;
+}
+function doAction() { const o = actTarget(); if (o) { $("hover").textContent = ""; useHot(o); } return !!o; }
+let actShown = "";
+function updateActBtn() {
+  const o = actTarget();
+  const txt = o ? "Space: " + (S.sel ? `Use ${ITEMS[S.sel][1]} on ${o.userData.hot.name}` : o.userData.hot.name) : "";
+  if (txt === actShown) return;
+  actShown = txt; actBtn.hidden = !txt; actBtn.textContent = txt;
+}
+actBtn.addEventListener("click", (e) => { e.stopPropagation(); doAction(); });
+window.addEventListener("keydown", (e) => {
+  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || typingIn(e.target) || talking() || e.defaultPrevented) return;   // defaultPrevented: the dialogue listener above already used this key
+  if (e.key !== " " && e.key !== "Enter" && e.key.toLowerCase() !== "e") return;
+  if (e.target && e.target.tagName === "BUTTON" && e.key !== "e") return;   // let a focused button take Space/Enter itself
+  if (!$("title").hidden || !L || !L.player) return;
+  if (roomOwnsAction()) { if (L.onAction && L.onAction(e)) e.preventDefault(); return; }
+  if (doAction()) e.preventDefault();
+});
+const kFwd = new THREE.Vector3(), kRight = new THREE.Vector3(), keyDir = new THREE.Vector2();
+// Which way on the floor (x, z) a key's screen direction (dx right, dy up) goes. In 3D: by the camera. In the Flat
+// look the picture decides: across the picture is x and up it is -z (in the hallway strip: across is -z, up it is -x).
+function keyFloorDir(dx, dy) {
+  if (flatActive()) return L.id === "hall" ? keyDir.set(-dy, -dx) : keyDir.set(dx, -dy);
+  kRight.setFromMatrixColumn(curCam.matrixWorld, 0); kFwd.setFromMatrixColumn(curCam.matrixWorld, 2).negate();
+  const r = new THREE.Vector2(kRight.x, kRight.z).normalize(), f = new THREE.Vector2(kFwd.x, kFwd.z).normalize();
+  return keyDir.copy(r.multiplyScalar(dx).add(f.multiplyScalar(dy)));
+}
+function keyWalk() {
+  let dx = 0, dy = 0;
+  heldKeys.forEach((k) => { dx += KEY_DIRS[k][0]; dy += KEY_DIRS[k][1]; });
+  const p = L && L.player;
+  if ((!dx && !dy) || !canKeyWalk()) {
+    if (p && keyTarget && p.target === keyTarget) p.target = null;   // let go: stop at once
+    keyTarget = null; return;
+  }
+  const v = keyFloorDir(dx, dy).normalize().multiplyScalar(0.35);   // a short step ahead
+  keyTarget = clampWalk(p.pos.x + v.x, p.pos.y + v.y);
+  const act = L.solids && L.solids.length ? activeSolids(L) : null;
+  if (act && act.length && !hitsSolid(act, p.pos.x, p.pos.y) && hitsSolid(act, keyTarget.x, keyTarget.y)) {
+    // walking into something: slide along it, or stop
+    const kx = clampWalk(p.pos.x + v.x, p.pos.y), kz = clampWalk(p.pos.x, p.pos.y + v.y);
+    const okx = !hitsSolid(act, kx.x, kx.y), okz = !hitsSolid(act, kz.x, kz.y);
+    keyTarget = okx && (!okz || Math.abs(v.x) >= Math.abs(v.y)) ? kx : okz ? kz : p.pos.clone();
+  }
+  walkTo(keyTarget);
+}
+
+
+// ---------- solid objects: keep characters out of L.solids ----------
+// Click-walking and followers plan a route (small grid A*, then pulled straight); keys slide along edges.
+// A target inside a solid becomes the nearest free point. A character that starts inside one just walks out.
+// Rooms with no solids skip all of this.
+const NAV_PAD = 0.16, NAV_CELL = 0.1;
+const _bb = new THREE.Box3();
+function activeSolids(lv) {
+  const out = [];
+  (lv.solids || []).forEach((s) => {
+    if (s.show && !s.show()) return;
+    if (s.obj) {
+      if (!s.rc) {   // measure once, after the room is built
+        s.obj.updateMatrixWorld(true); _bb.setFromObject(s.obj);
+        if (_bb.isEmpty()) return;
+        s.rc = { x0: _bb.min.x - s.pad, x1: _bb.max.x + s.pad, z0: _bb.min.z - s.pad, z1: _bb.max.z + s.pad };
+      }
+      if (!s.obj.visible) return;   // hidden things (a room stage, a hot's show) aren't solid
+      const h = s.obj.userData && s.obj.userData.hot;
+      if (h && h.show && !h.show()) return;
+      out.push(s.rc);
+    } else out.push(s);
+  });
+  return out;
+}
+function hitsSolid(act, x, z) {
+  for (let i = 0; i < act.length; i++) {
+    const s = act[i];
+    if (s.r !== undefined) { const dx = x - s.cx, dz = z - s.cz, r = s.r + NAV_PAD; if (dx * dx + dz * dz < r * r) return true; }
+    else if (x > s.x0 - NAV_PAD && x < s.x1 + NAV_PAD && z > s.z0 - NAV_PAD && z < s.z1 + NAV_PAD) return true;
+  }
+  return false;
+}
+function segHits(act, ax, az, bx, bz) {
+  const n = Math.ceil(Math.hypot(bx - ax, bz - az) / 0.05);
+  for (let i = 0; i <= n; i++) { const t = n ? i / n : 0; if (hitsSolid(act, ax + (bx - ax) * t, az + (bz - az) * t)) return true; }
+  return false;
+}
+// Route from (sx,sz) to (gx,gz): { goal: [x,z], route: [[x,z],...] }.
+function planRoute(act, sx, sz, gx, gz) {
+  const W = L.walk, nx = Math.round((W[1] - W[0]) / NAV_CELL) + 1, nz = Math.round((W[3] - W[2]) / NAV_CELL) + 1;
+  const cx = (i) => W[0] + i * NAV_CELL, cz = (j) => W[2] + j * NAV_CELL;
+  const blocked = new Uint8Array(nx * nz);
+  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) if (hitsSolid(act, cx(i), cz(j)) || Math.abs(cx(i)) > walkSide(cz(j)) + 0.01) blocked[j * nx + i] = 1;
+  const nearest = (x, z) => {   // nearest free cell to a point
+    let best = -1, bd = 1e9;
+    for (let k = 0; k < blocked.length; k++) if (!blocked[k]) { const d = (cx(k % nx) - x) ** 2 + (cz((k / nx) | 0) - z) ** 2; if (d < bd) { bd = d; best = k; } }
+    return best;
+  };
+  let goal = [gx, gz];
+  if (hitsSolid(act, gx, gz)) { const k = nearest(gx, gz); if (k < 0) return { goal: [sx, sz], route: [] }; goal = [cx(k % nx), cz((k / nx) | 0)]; }
+  if (!segHits(act, sx, sz, goal[0], goal[1])) return { goal, route: [] };
+  const cell = (x, z) => Math.min(nz - 1, Math.max(0, Math.round((z - W[2]) / NAV_CELL))) * nx + Math.min(nx - 1, Math.max(0, Math.round((x - W[0]) / NAV_CELL)));
+  let s0 = cell(sx, sz); const startFree = !blocked[s0] ? s0 : nearest(sx, sz), g0 = cell(goal[0], goal[1]);
+  if (startFree < 0) return { goal, route: [] };
+  s0 = startFree;
+  const g = new Float32Array(nx * nz).fill(1e9), from = new Int32Array(nx * nz).fill(-1), done = new Uint8Array(nx * nz);
+  const gxi = g0 % nx, gzi = (g0 / nx) | 0, h = (k) => Math.hypot((k % nx) - gxi, ((k / nx) | 0) - gzi);
+  const heap = [[h(s0), s0]]; g[s0] = 0;
+  const push = (it) => { heap.push(it); let i = heap.length - 1; while (i > 0) { const q = (i - 1) >> 1; if (heap[q][0] <= heap[i][0]) break; [heap[q], heap[i]] = [heap[i], heap[q]]; i = q; } };
+  const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { let l = 2 * i + 1, r = l + 1, m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+  while (heap.length) {
+    const k = pop()[1]; if (done[k]) continue; done[k] = 1;
+    if (k === g0) break;
+    const ki = k % nx, kj = (k / nx) | 0;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+      if (!di && !dj) continue;
+      const i = ki + di, j = kj + dj; if (i < 0 || j < 0 || i >= nx || j >= nz) continue;
+      const m = j * nx + i; if (blocked[m] || done[m]) continue;
+      if (di && dj && (blocked[kj * nx + i] || blocked[j * nx + ki])) continue;   // no squeezing past a corner
+      const ng = g[k] + (di && dj ? 1.414 : 1);
+      if (ng < g[m]) { g[m] = ng; from[m] = k; push([ng + h(m), m]); }
+    }
+  }
+  if (!done[g0]) return { goal: [sx, sz], route: [] };   // walled off: stay put
+  const pts = [goal];
+  for (let k = g0; k !== -1; k = from[k]) pts.push([cx(k % nx), cz((k / nx) | 0)]);
+  pts.reverse();   // start cell ... goal
+  pts.unshift([sx, sz]);
+  // pull the path straight: from each point, jump to the farthest one it can see
+  const route = []; let a = 0;
+  while (a < pts.length - 1) {
+    let b = pts.length - 1;
+    while (b > a + 1 && segHits(act, pts[a][0], pts[a][1], pts[b][0], pts[b][1])) b--;
+    route.push(pts[b]); a = b;
+  }
+  return { goal, route };
+}
+// For tests: can the player (from where it stands) reach (x,z)? Not inside a solid, and a route exists.
+function navCheck(x, z) {
+  const act = activeSolids(L), p = L.player.pos, c = clampWalk(x, z);
+  const inside = hitsSolid(act, c.x, c.y), r = planRoute(act, p.x, p.y, c.x, c.y);
+  return { inside, goal: r.goal, ok: !inside && Math.hypot(r.goal[0] - c.x, r.goal[1] - c.y) < 0.02 };
+}
+// Called each frame for a walking character: keeps c.goal (where it really ends up) and c.route (corners to pass) current.
+function navUpdate(c) {
+  if (!L.solids || !L.solids.length) { c.goal = c.target; c.route = null; return; }
+  const tol = c.follow ? 0.3 : 0.001, jumped = c.navP && Math.hypot(c.pos.x - c.navP.x, c.pos.y - c.navP.y) > 0.6;
+  if (!c.route || !c.navT || jumped || Math.hypot(c.target.x - c.navT.x, c.target.y - c.navT.y) > tol) {
+    const r = planRoute(activeSolids(L), c.pos.x, c.pos.y, c.target.x, c.target.y);
+    c.goal = new THREE.Vector2(...r.goal); c.route = r.route.map((q) => new THREE.Vector2(...q)); c.navT = c.target.clone();
+  }
+  if (c.navP) c.navP.copy(c.pos); else c.navP = c.pos.clone();
+}
 
 // ---------- per-frame ----------
-const camRight = new THREE.Vector3();
+const camRight = new THREE.Vector3(), camFwd = new THREE.Vector3();
 function stepChar(c, dt, t) {
   if (c.follow) {
     const d = c.follow.pos.clone().sub(c.pos);
@@ -265,18 +495,31 @@ function stepChar(c, dt, t) {
     c.speed = 2.6;
   }
   if (c.target) {
-    const d = c.target.clone().sub(c.pos), dist = d.length();
-    if (dist < 0.04) {
-      c.pos.copy(c.target); c.target = null;
+    navUpdate(c);   // with solids in the room: plans a route round them (c.goal = where it really ends up)
+    const aim = c.route && c.route.length ? c.route[0] : c.goal;
+    const d = aim.clone().sub(c.pos), dist = d.length();
+    if (dist < 0.04 && aim !== c.goal) c.route.shift();
+    else if (dist < 0.04) {
+      c.pos.copy(c.goal); c.target = null; c.route = null; c.navT = null;
       if (c.onArrive) { const f = c.onArrive; c.onArrive = null; f(); }
     } else {
       c.pos.addScaledVector(d.normalize(), Math.min(dist, c.speed * dt));
+      if (c.navP) c.navP.copy(c.pos);
       c.walkT += dt;
       camRight.setFromMatrixColumn(curCam.matrixWorld, 0);
       const sx = d.x * camRight.x + d.y * camRight.z;
       if (Math.abs(sx) > 0.2) c.face = sx > 0 ? 1 : -1;
+      if (c.angles && !chars3d) {   // 8 directions on screen: away (back), toward (front), sides, and the diagonals between
+        curCam.getWorldDirection(camFwd); camFwd.y = 0; camFwd.normalize();
+        const fz = d.x * camFwd.x + d.y * camFwd.z, ax = Math.abs(sx), az = Math.abs(fz), T22 = 0.414;
+        const v = az < T22 * ax ? "_side" : ax < T22 * az ? (fz > 0 ? "_back" : "") : (fz > 0 ? "_qback" : "_q");
+        if (v !== c.view && (!v || SPR[c.key + v])) {
+          c.view = v; c.tex2d = (SPR[c.key + v] || SPR[c.key]).tex; c.body.material.uniforms.map.value = c.tex2d;
+        }
+      }
     }
   }
+  else c.route = null;
   const moving = !!c.target;
   const y = L.groundY ? L.groundY(c.pos.x, c.pos.y) : 0;
   c.root.position.set(c.pos.x, y, c.pos.y);
@@ -371,13 +614,14 @@ function frame(now) {
   const cc = L.cams.find((c) => c.when(p)) || L.cams[L.cams.length - 1];
   if (cc.follow) { cc.follow(cc.c, p); cc.c.updateMatrixWorld(); }
   curCam = cc.c;
+  keyWalk();
   L.update && L.update(t, dt);
   L.hots.forEach((o) => { const h = o.userData.hot; if (h.show) o.visible = !!h.show(); });
   L.chars.forEach((c) => { if (c.show) c.root.visible = !!c.show(); stepChar(c, dt, t); });
   updateClue(t);
   updateSparkles(t, dt);
   updatePowerFx(dt);
-  placeTags();
+  placeTags(); updateActBtn();
   if (flatActive()) {
     renderFlat(t, dt);
     return;
@@ -414,7 +658,7 @@ $("fullBtn").onclick = () => {
 let restartArmed = false;
 $("restartBtn").onclick = (e) => {
   if (!restartArmed) { restartArmed = true; e.currentTarget.textContent = "Really start over?"; setTimeout(() => { restartArmed = false; $("restartBtn").textContent = "Start over"; }, 3000); return; }
-  try { localStorage.removeItem(SAVE_KEY); } catch {}
+  try { localStorage.removeItem(playerKey()); } catch {}   // only this player's game
   location.reload();
 };
 ["fullscreenchange", "webkitfullscreenchange"].forEach((ev) => document.addEventListener(ev, () => setTimeout(resize, 50)));
@@ -445,6 +689,44 @@ function beginGame(fresh) {
     S.flags.started = true; save();
     setTimeout(() => { spaceCut = true; say(INTRO); }, 450);
   }
+}
+
+// ---------- title screen: who is playing ----------
+// The Play button says Continue when the current player has a game going.
+function refreshTitle() {
+  const saved = !!S.flags.started;
+  $("playBtn").textContent = saved ? "Continue" : "Play";
+  $("newBtn").hidden = !saved;
+  $("whoBtn").textContent = "Player: " + curPlayer().name;
+}
+// The player list: pick who is playing, add someone, or take someone off (two clicks, since it wipes their game).
+function initPlayers() {
+  const box = $("players"), list = $("playerList"), name = $("playerName");
+  let armed = null;   // the player whose Remove button has been clicked once
+  const close = () => { box.hidden = true; armed = null; refreshTitle(); $("whoBtn").focus({ preventScroll: true }); };
+  const render = () => {
+    list.textContent = "";
+    PLAYERS.list.forEach((p) => {
+      const row = document.createElement("div"); row.className = "who";
+      const pick = document.createElement("button");
+      pick.textContent = p.name + (playerStarted(p.id) ? "" : " (new)"); pick.setAttribute("aria-pressed", p.id === PLAYERS.cur);
+      pick.onclick = () => { pickPlayer(p.id); close(); };
+      const del = document.createElement("button");
+      del.textContent = armed === p.id ? "Really?" : "Remove"; del.setAttribute("aria-label", "Remove " + p.name + " and their saved game");
+      del.onclick = () => { if (armed !== p.id) { armed = p.id; render(); return; } armed = null; removePlayer(p.id); render(); refreshTitle(); };
+      row.append(pick, del); list.appendChild(row);
+    });
+  };
+  const addNew = () => { addPlayer(name.value); name.value = ""; close(); };
+  $("whoBtn").onclick = (e) => { e.stopPropagation(); armed = null; render(); box.hidden = false; };
+  $("playerAdd").onclick = addNew;
+  $("playersClose").onclick = close;
+  box.addEventListener("click", (e) => e.stopPropagation());
+  box.addEventListener("keydown", (e) => {
+    e.stopPropagation();   // typing a name is not playing
+    if (e.key === "Escape") close();
+    else if (e.key === "Enter" && e.target === name) { e.preventDefault(); addNew(); }
+  });
 }
 
 // ---------- start ----------
@@ -627,15 +909,14 @@ async function start() {
   resize();
   renderHud();
   $("coverImg").src = IMAGES.cover;
-  const saved = !!S.flags.started;
-  $("playBtn").textContent = saved ? "Continue" : "Play";
-  $("newBtn").hidden = !saved;
-  $("playBtn").onclick = (e) => { e.stopPropagation(); beginGame(!saved); };
+  refreshTitle();
+  $("playBtn").onclick = (e) => { e.stopPropagation(); beginGame(!S.flags.started); };
   $("newBtn").onclick = (e) => { e.stopPropagation(); beginGame(true); };
+  initPlayers();
   initDebug();
   initFlat();
   if (SHOT && LV[SHOT]) { $("title").hidden = true; goLevel(SHOT); }
-  if (SHOT) window.__mk = { doMove, kidAct, ownerAct, startPong, finishPong, showDiploma, beginGame, get spaceCut() { return spaceCut; }, get spaceWait() { return spaceWait; }, enterShip, openDollhouse, closeDollhouse, get dhParts() { return dhParts; }, setLead, powerOn, usePowerBtn, FLAT, setFlatMode, flatActive, get flatMode() { return flatMode; }, rawSpotForHot, screenSpotForHot, getLevel, LV, useHot, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
+  if (SHOT) window.__game = window.__mk = { add, navCheck, hitsSolid, activeSolids, SPR, PLAYERS, playerKey, pickPlayer, addPlayer, removePlayer, playerStarted, save, doMove, kidAct, ownerAct, startPong, finishPong, showDiploma, beginGame, get spaceCut() { return spaceCut; }, get spaceWait() { return spaceWait; }, enterShip, openDollhouse, closeDollhouse, get dhParts() { return dhParts; }, setLead, powerOn, usePowerBtn, FLAT, setFlatMode, flatActive, get flatMode() { return flatMode; }, rawSpotForHot, screenSpotForHot, getLevel, LV, useHot, setVoices: (v) => { voicesOn = v; if (!v) stopSpeaking(); }, S, goLevel, act, say, advance, combine, get L() { return L; }, get busy() { return busy; }, talking, goal, sideGoal };
   requestAnimationFrame(frame);
 }
 start().catch((e) => { msg.hidden = false; msg.textContent = "Something went wrong: " + e.message; console.error(e); });
