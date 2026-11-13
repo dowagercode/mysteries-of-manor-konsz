@@ -40,9 +40,10 @@ function updateSparkles(t, dt) {
 }
 
 function getLevel(id) {
+  if (built[id] && S.flags.crashed && !built[id].crew && SHIP_ROOMS.includes(id)) delete built[id];   // a ship room from before the crash: build it again with the whole crew
   if (!built[id]) {
     const lv = LV[id]();
-    if (!lv.player) lv.player = addChar(lv, "may", ...lv.start, 1.3);
+    if (!lv.player) { if (SHIP_ROOMS.includes(id)) shipKids(lv, ...lv.start); else lv.player = addChar(lv, "may", ...lv.start, 1.3); }
     if (["hub", "mays", "jasins", "olivias", "jons", "hideout", "hall", "engine", "storage", "bath", "playroom", "control"].includes(id)) addClueTrail(lv);
     lv.hots.forEach((o) => { if (o.userData.hot.solid) solidOf(lv, o); });   // hot: { solid: true } = its footprint is solid
     addRoomSparkles(lv);
@@ -262,6 +263,12 @@ function exitName(h) {
   return h.name.replace(/^Door to the /, "").replace(/^Door to /, "").replace(/^(Path|Road) (back )?(down )?to the /, "").replace(" (climb in)", "").replace(/^./, (c) => c.toUpperCase());
 }
 let TAGS = [];
+// Put a door tag at a point of the picture (0..1 across and down), slid sideways if needed so its whole name stays in view.
+function placeTag(t, fx, fy) {
+  const W = t.parentElement.clientWidth, half = t.offsetWidth / 2;
+  if (W && half && half * 2 < W) fx = Math.min(1 - half / W, Math.max(half / W, fx));
+  t.style.left = (fx * 100) + "%"; t.style.top = (fy * 100) + "%";
+}
 function renderExits() {
   const row = $("exits"); row.textContent = "";
   $("tags").textContent = ""; TAGS = [];
@@ -582,8 +589,7 @@ function placeTags() {
       g.t.textContent = arrow === "left" ? "◀ " + n : arrow === "right" ? n + " ▶" : arrow === "up" ? "▲ " + n : arrow === "down" ? "▼ " + n : n;
       g.t.classList.toggle("edge", !!arrow);
     }
-    g.t.style.left = ((x + 1) / 2 * 100) + "%";
-    g.t.style.top = ((1 - y) / 2 * 100) + "%";
+    placeTag(g.t, (x + 1) / 2, (1 - y) / 2);
     g.dist = tagC.length();
   });
   // nearer doors win; a tag that would overlap a nearer one stays hidden

@@ -74,6 +74,13 @@ const flag = (f) => () => { S.flags[f] = true; save(); };
 const take = (id) => [() => add(id, "got_" + id), ["", ITEMS[id][1] + "! It goes in your item drawer."]];
 
 function goal() {
+  const g = goalLine();
+  // back on the ship after the crash: always say how to get off it
+  if (S.flags.crashed && L && SHIP_ROOMS.includes(L.id) && L.id !== "hideout")
+    return g + (L.id === "hub" ? " (To leave the ship: the boat door on the right.)" : " (To leave the ship: the boat is in the kitchen + rec room.)");
+  return g;
+}
+function goalLine() {
   const f = S.flags;
   if (f.crashed) {
     if (f.drove) return roadGoal();

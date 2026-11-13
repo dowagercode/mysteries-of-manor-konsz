@@ -248,8 +248,7 @@ function placeTagsFlat() {
       g.t.textContent = arrow === "left" ? "◀ " + n : arrow === "right" ? n + " ▶" : n;
       g.t.classList.toggle("edge", !!arrow);
     }
-    g.t.style.left = (cx * 100) + "%";
-    g.t.style.top = (cy * 100) + "%";
+    placeTag(g.t, cx, cy);
     g.dist = Math.abs(cx - 0.5);
   });
   const kept = [];
@@ -406,7 +405,7 @@ function renderFlat(t, dt) {
     // Hallway door on left, kitchen drawers next to stove, and boat exit if available
     drawDoorCutout(ctx, W, H, "Door to the kitchen + rec room", F.spots["Door to the hallway"]);
     drawFlatProp(ctx, W, H, "Kitchen drawers", F.spots["Kitchen drawers"], t);
-    if (S.flags.boatTaken) drawDoorCutout(ctx, W, H, "Door to the engine room", F.spots["Climb down to the boat"]);
+    if (canLeaveShip()) drawDoorCutout(ctx, W, H, "Door to the engine room", F.spots["Boat: leave the ship"]);
     // Kitchen mouse hole & peeking mouse
     const ms = F.spots["Kitchen mouse"];
     const mx = (ms[0] + ms[2] * 0.5) * W, my = (ms[1] + ms[3] * 0.8) * H;

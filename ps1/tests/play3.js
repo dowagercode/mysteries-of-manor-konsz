@@ -40,7 +40,7 @@
   await use('Apprentice'); await use('Old post in the fog', null, 'Build'); step('scarecrow');
   await use("The apprentice's boat"); step('rowed to');
   await use('Space flower', null, 'Take'); step('flower');
-  await use('Climb down to the boat'); await use('Back to the field'); await use('Footpath back to the forest'); step('back in');
+  await use('Boat: leave the ship'); await use('Back to the field'); await use('Footpath back to the forest'); step('back in');
   await use('Woody', 'flower'); await w(2800); step('trees');
   await use('Back to the jeep'); await use('Swamp'); step('swamp by jeep');
   await use('Clothesline'); await use("Witch's house"); step('witch up');

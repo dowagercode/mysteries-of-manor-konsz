@@ -488,13 +488,18 @@ LV.gas = () => {
   put(L, planeG(0.5, 0.3), mat({ color: 0x1a1a20, em: 0.3 }), 0, 1.1, 0.26, 0, null, pump);
   const squeegee = group(L, 2.55, 0.9, -0.2, 0, { name: "Squeegee", show: () => !S.flags.got_squeegee,
     say: () => [() => add("squeegee", "got_squeegee"), ["", "A squeegee for cleaning windshields. It goes in your item drawer."]] });
-  put(L, boxG(0.04, 0.7, 0.04), mat({ color: 0x3a3a40 }), 0, -0.3, 0, 0.3, null, squeegee);
-  put(L, boxG(0.35, 0.08, 0.06), mat({ color: 0x2a6ad8 }), 0, 0.4, 0, 0.3, null, squeegee);
-  const washer = group(L, 3.4, 0, -0.5, 0, { name: "Windshield washer container",
+  // big and bright, so it stands out against the pump at night
+  put(L, boxG(0.08, 0.8, 0.08), mat({ color: 0xf0c020, em: 0.5 }), 0, -0.3, 0, 0.3, null, squeegee);
+  put(L, boxG(0.6, 0.14, 0.1), mat({ color: 0x40a0ff, em: 0.6 }), 0, 0.5, 0, 0.3, null, squeegee);
+  const washer = group(L, 3.5, 0, 0.3, 0, { name: "Windshield washer container",
     say: () => S.flags.got_momStone ? [["", "Just blue windshield washer fluid."]] : [["", "A container of blue windshield washer fluid. Something is sitting at the bottom... too deep to reach with your hand."]],
     use: { squeegee: () => S.flags.got_momStone ? [["", "Nothing else in there."]] : [() => { remove("squeegee"); add("momStone", "got_momStone"); }, ["", "May fishes around with the squeegee... and pulls out a stone! It has a picture of a skeleton lady on it. His mom?"]] } });
-  put(L, new THREE.CylinderGeometry(0.3, 0.26, 0.7, 8), mat({ color: 0x3a8ad8, em: 0.15, alpha: 0.75 }), 0, 0.35, 0, 0, null, washer);
-  const washerStone = put(L, new THREE.DodecahedronGeometry(0.11, 0), mat({ color: 0xd8d0b8, em: 0.4 }), 0, 0.12, 0, 0, null, washer);
+  // a big glowing tub with a sign over it, and the stone bobbing inside, so it is easy to spot
+  put(L, new THREE.CylinderGeometry(0.5, 0.44, 0.9, 10), mat({ color: 0x3a9af0, em: 0.5, alpha: 0.7 }), 0, 0.45, 0, 0, null, washer);
+  put(L, new THREE.CylinderGeometry(0.54, 0.54, 0.07, 10), mat({ color: 0xf4f4f4, em: 0.4 }), 0, 0.92, 0, 0, null, washer);
+  put(L, boxG(0.08, 1.9, 0.08), mat({ color: 0xe8e0d0 }), 0, 0, -0.55, 0, null, washer);
+  put(L, planeG(1.3, 0.75), mat({ map: label(["WINDOW", "WASH"], 44, 26, "#2a6ad8", "#ffffff", "#103a80"), em: 0.8 }), 0, 1.75, -0.5, 0, null, washer);
+  const washerStone = put(L, new THREE.DodecahedronGeometry(0.17, 0), mat({ color: 0xfff0b0, em: 1 }), 0, 0.3, 0, 0, null, washer);
   addChaseSpot(L, "gas", 4.5, 4.2, -0.4, [3.2, 4.2]);
   // three old cars; one is the creepy jeep
   const car = (x, z, c, name, line) => {
@@ -529,12 +534,16 @@ LV.gas = () => {
   put(L, boxG(0.14, 1.6, 0.14), mat({ color: 0x6b4f35 }), 0, 0, 0, 0, null, back);
   put(L, planeG(1.2, 0.4), mat({ map: label(["< MOUNTAIN"], 80, 14, "#d9c39a", "#3b2a20", "#6b4f35") }), 0, 1.3, 0.08, 0, null, back);
   L.onEnter = [["", "Down the mountain road, there's a gas station. A very strange, empty place..."], ["", "Three old cars are parked here. One of them is a creepy jeep!"]];
-  L.light = { amb: 0x5a5878, dir: [-0.3, -1, -0.4], dirCol: 0x484868, pts: [[[2, 3.2, -0.5], 0xfff0c0, 9], [[-1.5, 1.5, -4], 0xffe0a0, 6], [[8.5, 2, 1.5], 0x90ffb0, 5]] };
+  L.light = { amb: 0x5a5878, dir: [-0.3, -1, -0.4], dirCol: 0x484868, pts: [[[2, 3.2, -0.5], 0xfff0c0, 9], [[-1.5, 1.5, -4], 0xffe0a0, 6], [[8.5, 2, 1.5], 0x90ffb0, 5], [[3.5, 1.3, 1.0], 0x80c0ff, 4]] };
   L.fog = [0x1a1430, 12, 45]; L.bg = 0x1a1430;
+  // close-up when the player walks up to the pump, so the squeegee and the washer tub are big on screen
+  cam(L, [2.7, 3.6, 7.8], [2.75, 0.55, 0.2], 44, (p) => Math.hypot(p.x - 2.7, p.z) < 3, 200);
   cam(L, [-2, 5, 12], [0.5, 0.5, -1.5], 52, (p) => p.x < 4.5, 200);
   cam(L, [11, 3.2, 8], [5, 0.6, -1], 54, null, 200);
   L.update = (t, dt) => {
     washerStone.visible = !S.flags.got_momStone;
+    washerStone.position.y = 0.32 + Math.sin(t * 3) * 0.1;
+    washerStone.rotation.y = t * 1.5;
     if (L.chaseUpd) L.chaseUpd(t, dt);
   };
   return L;

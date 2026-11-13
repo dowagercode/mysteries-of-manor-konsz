@@ -119,7 +119,7 @@ const FLAT = {
       ],
       "TV": [0.655, 0.06, 0.22, 0.34],
       "Box with faces": [0.705, 0.57, 0.15, 0.22],
-      "Climb down to the boat": [0.94, 0.38, 0.055, 0.36],
+      "Boat: leave the ship": [0.94, 0.38, 0.055, 0.36],
     },
   },
 

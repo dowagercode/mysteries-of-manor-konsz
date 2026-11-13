@@ -1,6 +1,19 @@
 // ch1-ship.js: Chapter 1: every room on the spaceship, the Follow the Mouse crumbs, and the Chapter 1 puzzles (fridge, drawers, cake, Jon, engine, armory).
 // Part of the game; ps1/build.py joins every file in ps1/src/ (in the order listed there) into one page.
 
+// Before the crash May walks the ship alone and the other kids are in their rooms.
+// After it (rowing back from the swamp, or through Jon's portal) the whole crew walks together: crew() is in ch2-crash.js.
+const SHIP_ROOMS = ["hall", "hub", "mays", "jasins", "olivias", "jons", "hideout", "playroom", "control", "armory", "engine", "storage", "bath"];
+function shipKids(L, x, z) {
+  if (S.flags.crashed) crew(L, x, z); else L.player = addChar(L, "may", x, z, 1.3);
+  return L.player;
+}
+// The kids who stand in a ship room in chapter 1 are not there once they walk with the crew.
+function shipNpc(c, show) {
+  c.show = c.body.userData.hot.show = () => !S.flags.crashed && (!show || !!show());
+  return c;
+}
+const canLeaveShip = () => !!(S.flags.boatTaken || S.flags.crashed);
 LV.mays = () => {
   const L = newLevel("mays", "May's Room");
   const RW = 9, RD = 6, R = [RW, RD];
@@ -45,8 +58,7 @@ LV.mays = () => {
     return g;
   });
   onWall(L, "left", R, TEX.mays, 1.3, 0.9, -1.9, 1.3, { name: "Addie's drawing", say: [["", "Addie's drawing of May's room. This 3D room is built from it."]] }, 0x8a6a4a);
-  const may = addChar(L, "may", 0, 1, 1.3);
-  L.player = may;
+  shipKids(L, 0, 1);
   L.walk = [-3.8, 3.8, -1.35, 2.5];
   L.start = [0, 1]; L.entries = { hall: [-3.3, -1.0] };
   L.light = { amb: 0x8a7a88, dir: [0.4, -1, -0.7], dirCol: 0x706068, pts: [[[0, 2.9, 0.5], 0xffd0e0, 7], [[-3, 1.5, -2], 0xc090ff, 4], [[0, 0, 0], 0, 1]] };
@@ -89,7 +101,7 @@ LV.jasins = () => {
   put(L, new THREE.CylinderGeometry(0.11, 0.13, 0.5, 6), mat({ color: 0xe8c040 }), 0, 0.25, 0, 0, null, oil);
   put(L, new THREE.CylinderGeometry(0.05, 0.05, 0.14, 6), mat({ color: 0x2f9a57 }), 0, 0.56, 0, 0, null, oil);
   onWall(L, "left", R, TEX.jasins, 1.3, 0.9, -1.9, 1.3, { name: "The kids' drawing", say: [["", "The kids' drawing of Jasin's room. This 3D room is built from it."]] }, 0x8a6a4a);
-  L.player = addChar(L, "may", 0, 1, 1.3);
+  shipKids(L, 0, 1);
   L.walk = [-3.8, 3.8, -1.35, 2.5];
   L.start = [0, 1]; L.entries = { hall: [-3.2, -1.0] };
   L.light = { amb: 0x7a8478, dir: [-0.3, -1, -0.6], dirCol: 0x707a68, pts: [[[0, 2.9, 0.5], 0xfff0c8, 7], [[3, 2, -2], 0xffa850, 3.5], [[0, 0, 0], 0, 1]] };
@@ -130,8 +142,8 @@ LV.olivias = () => {
   const flour = group(L, 1.0, 0, -2.6, -0.2, { name: "Flour", show: () => !S.flags.got_flour, say: () => take("flour") });
   put(L, boxG(0.36, 0.48, 0.24), mat({ map: label(["FLOUR"], 48, 16, "#ffffff", "#8a6a4a", "#e8dcc8") }), 0, 0, 0, 0, null, flour);
   onWall(L, "left", R, TEX.olivias, 1.3, 0.94, -1.9, 1.3, { name: "The kids' drawing", say: [["", "The kids' drawing of Olivia's room. This 3D room is built from it."]] }, 0x8a6a4a);
-  addChar(L, "olivia", -1.6, -1.1, 1.3, { name: "Olivia", stand: [-0.6, -0.6], say: () => oliviaAct(), use: { pills: oliviaAct } });
-  L.player = addChar(L, "may", 0.4, 1, 1.3);
+  shipNpc(addChar(L, "olivia", -1.6, -1.1, 1.3, { name: "Olivia", stand: [-0.6, -0.6], say: () => oliviaAct(), use: { pills: oliviaAct } }));
+  shipKids(L, 0.4, 1);
   L.walk = [-3.8, 3.8, -1.35, 2.5];
   L.start = [0.4, 1]; L.entries = { hall: [-3.2, -1.0] };
   L.light = { amb: 0x8a7a92, dir: [0.3, -1, -0.6], dirCol: 0x706874, pts: [[[0, 2.9, 0.5], 0xffe0f0, 7], [[-3, 1.6, -2], 0xff9cb8, 3.5], [[0, 0, 0], 0, 1]] };
@@ -194,7 +206,7 @@ LV.hideout = () => {
   const jon = addChar(L, "jon", 2.3, -1.5, 1.3, { name: "Jon", stand: [1.2, -0.7] });
   jon.show = () => !S.flags.gaveCake;
   Object.assign(jon.body.userData.hot, { show: jon.show, say: () => jonHoleAct(), use: { cake: giveCake } });
-  if (S.flags.crashed) crew(L, -1.6, 1.4); else L.player = addChar(L, "may", -1.6, 1.4, 1.3);
+  shipKids(L, -1.6, 1.4);
   L.walk = [-3, 3, -2.2, 2.4];
   L.start = [-1.6, 1.4]; L.entries = { jons: [-1.6, 1.4] };
   L.onEnter = [["", "May climbs inside Jon's portal. It's a cozy round room!"]];
@@ -376,10 +388,10 @@ LV.hub = () => {
   put(L, planeG(1.6, 0.75), mat({ map: T.faceBox }), 0, 0, 0.41, 0, null, faces);
 
   onWall(L, "left", R, doorTex("#7a4a2a", "#e2cdb0"), 1.15, 2.1, 1.2, 0, { name: "Door to the hallway", go: "hall", stand: [-7.1, 1.2] });
-  onWall(L, "right", R, T.engineDoor, 1.1, 1.9, 1.6, 0, { name: "Climb down to the boat", exit: true, go: "swamp", stand: [7.3, 1.6], show: () => !!S.flags.boatTaken });
+  onWall(L, "right", R, T.engineDoor, 1.1, 1.9, 1.6, 0, { name: "Boat: leave the ship", exit: true, go: "swamp", stand: [7.3, 1.6], show: canLeaveShip });
 
-  addChar(L, "jasin", 1.3, -0.9, 1.3, { name: "Jasin", stand: [0.6, -0.3],
-    say: [["Jasin", "Hi May!"], ["Jasin", "I've got my soccer ball, just in case."]] });
+  shipNpc(addChar(L, "jasin", 1.3, -0.9, 1.3, { name: "Jasin", stand: [0.6, -0.3],
+    say: [["Jasin", "Hi May!"], ["Jasin", "I've got my soccer ball, just in case."]] }));
   L.walk = [-7.2, 7.4, -1.25, 2.7];
   L.start = [-3, 0.8];
   L.entries = { hall: [-6.6, 1.2], swamp: [6.8, 1.6] };
@@ -450,7 +462,7 @@ LV.jons = () => {
     setTimeout(() => { const me = built.jons.player; me.entering = false; me.scaleMul = 1; }, 1100);
   };
   onWall(L, "left", R, TEX.jonsRoom, 1.3, 0.94, -1.9, 1.3, { name: "The kids' drawing", say: [["", "The kids' drawing of Jon's room. This 3D room is built from it."]] }, 0x8a6a4a);
-  L.player = addChar(L, "may", -1.0, 1.0, 1.3);
+  shipKids(L, -1.0, 1.0);
   L.walk = [-3.8, 3.4, -1.35, 2.5];
   L.start = [-1.0, 1.0]; L.entries = { hall: [-3.2, -1.0], hideout: [2.7, -0.2] };
   L.light = { amb: 0x7a8aa4, dir: [0.3, -1, -0.6], dirCol: 0x607088, pts: [[[3.6, 1.3, -0.6], 0xb06cff, 4.5], [[0, 2.9, 0.5], 0xe8f4ff, 7], [[0, 0, 0], 0, 1]] };
@@ -483,7 +495,7 @@ LV.playroom = () => {
     .forEach(([c, bx, by]) => put(L, boxG(0.42, 0.42, 0.42), mat({ color: c }), bx, by, 0, 0, null, blocks));
   put(L, floorG(2.4, 0.6, 2, 1), mat({ map: label(["PLAY ROOM"], 80, 16, "#9cd0f0", "#e0337f", "#9cd0f0") }), 0.5, 0.04, 2.0);
   onWall(L, "left", R, TEX.playroom, 1.3, 0.94, -1.9, 1.3, { name: "The kids' drawing", say: [["", "The kids' drawing of the playroom. This 3D room is built from it."]] }, 0x8a6a4a);
-  L.player = addChar(L, "may", -0.5, 1.0, 1.3);
+  shipKids(L, -0.5, 1.0);
   L.walk = [-3.8, 3.8, -1.35, 2.5];
   L.start = [-0.5, 1.0]; L.entries = { hall: [-3.2, -1.0] };
   L.light = { amb: 0x8a8a90, dir: [0.3, -1, -0.6], dirCol: 0x707068, pts: [[[0, 2.9, 0.5], 0xfff4e0, 7], [[0.2, 1.3, -2.4], 0x9ab8ff, 3], [[0, 0, 0], 0, 1]] };
@@ -512,7 +524,7 @@ LV.control = () => {
     use: { keycard: () => { armoryDoor(); return []; } } }, 0x2a2a32);
   onWall(L, "back", R, doorTex("#8a8f9a", "#f6f6f8"), 1.15, 2.1, -4.1, 0, { name: "Door to the hallway", go: "hall", stand: [-4.0, -1.2] });
   onWall(L, "back", R, TEX.control, 0.9, 1.24, 4.0, 1.4, { name: "The kids' drawing", say: [["", "The kids' drawing of the control room. This 3D room is built from it."]] }, 0x8a6a4a);
-  L.player = addChar(L, "may", -1.5, 1.2, 1.3);
+  shipKids(L, -1.5, 1.2);
   L.walk = [-4.3, 4.3, -1.3, 2.5];
   L.start = [-1.5, 1.2]; L.entries = { hall: [-3.9, -0.8], armory: [3.7, -0.6] };
   L.light = { amb: 0x707490, dir: [0.2, -1, -0.5], dirCol: 0x606070, pts: [[[0, 1.6, -2.4], 0x9ab8ff, 5], [[0, 2.9, 1], 0xe0e0f0, 8], [[4, 1.2, -0.6], 0xff6050, 2]] };
@@ -547,7 +559,7 @@ LV.armory = () => {
   const tube = new THREE.CylinderGeometry(0.09, 0.09, 0.5, 8); tube.rotateZ(Math.PI / 2);
   put(L, tube, mat({ color: 0xd8b030 }), 0, 0.9, 0, 0, null, fl);
   put(L, new THREE.CircleGeometry(0.1, 8).rotateY(Math.PI / 2), mat({ color: 0xfff6c0, em: 1 }), 0.26, 0.9, 0, 0, null, fl);
-  L.player = addChar(L, "may", -2.4, 1.2, 1.3);
+  shipKids(L, -2.4, 1.2);
   L.walk = [-3.8, 3.8, -1.35, 2.5];
   L.start = [-2.4, 1.2]; L.entries = { control: [-3.3, 1.4] };
   L.onEnter = [["", "The armory! All kinds of weird space weapons."]];
@@ -612,9 +624,9 @@ LV.engine = () => {
     drips.push(m);
   }
   const jonE = addChar(L, "jon", -1.0, -1.1, 1.3, { name: "Jon", stand: [-0.2, -0.6], say: () => jonEngineAct(), use: { map: jonEngineAct } });
-  jonE.show = jonE.body.userData.hot.show = () => !!S.flags.gaveCake;
+  shipNpc(jonE, () => S.flags.gaveCake);
   onWall(L, "left", R, TEX.engine, 1.3, 0.94, -0.4, 1.3, { name: "The kids' drawing", say: [["", "The kids' drawing of the engine room. This 3D room is built from it."]] }, 0x8a6a4a);
-  L.player = addChar(L, "may", -1.2, 1.0, 1.3);
+  shipKids(L, -1.2, 1.0);
   L.walk = [-3.8, 3.8, -1.35, 2.5];
   L.start = [-1.2, 1.0]; L.entries = { hall: [-3.6, -1.0] };
   L.onEnter = () => S.flags.gotMap ? [] : [["", "It's a maze of pipes and machines! Without a map, May can't find anything in here."]];
@@ -677,7 +689,7 @@ LV.storage = () => {
     return g;
   });
   onWall(L, "left", R, TEX.storage, 1.3, 0.94, -1.0, 1.3, { name: "The kids' drawing", say: [["", "The kids' drawing of the storage room. This 3D room is built from it."]] }, 0x8a6a4a);
-  L.player = addChar(L, "may", -0.6, 1.0, 1.3);
+  shipKids(L, -0.6, 1.0);
   L.walk = [-3.8, 3.8, -1.35, 2.5];
   L.start = [-0.6, 1.0]; L.entries = { hall: [-1.2, -0.9] };
   L.light = { amb: 0x6a6070, dir: [0.3, -1, -0.5], dirCol: 0x605458, pts: [[[0, 2.9, 0.5], 0xffd8a8, 7], [[0, 0.3, -1.8], 0x60ff60, 2.5], [[0, 0, 0], 0, 1]] };
@@ -714,7 +726,7 @@ LV.bath = () => {
   put(L, new THREE.SphereGeometry(0.09, 8, 6), mat({ color: 0xffe14a }), 0.1, 0.24, 0, 0, null, duck);
   put(L, boxG(0.08, 0.03, 0.06), mat({ color: 0xf0952a }), 0.2, 0.23, 0, 0, null, duck);
   onWall(L, "left", R, TEX.bathroom, 1.3, 0.94, -1.9, 1.3, { name: "The kids' drawing", say: [["", "The kids' drawing of the bathroom. This 3D room is built from it."]] }, 0x8a6a4a);
-  L.player = addChar(L, "may", -1.0, 1.0, 1.3);
+  shipKids(L, -1.0, 1.0);
   L.walk = [-3.8, 3.8, -1.35, 2.5];
   L.start = [-1.0, 1.0]; L.entries = { hall: [-3.2, -1.0] };
   L.light = { amb: 0x8a9098, dir: [0.3, -1, -0.5], dirCol: 0x707880, pts: [[[0, 2.9, 0.5], 0xf0f8ff, 7], [[0, 0, 0], 0, 1], [[0, 0, 0], 0, 1]] };
